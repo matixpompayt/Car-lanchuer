@@ -26,7 +26,11 @@ jobs:
       - name: Build release APK
         run: |
           chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon --stacktrace
+          set -o pipefail
+          if ! ./gradlew assembleRelease --no-daemon 2>&1 | tee build.log; then
+            grep -E "^e: |What went wrong|^> |error:" build.log | head -45 | while IFS= read -r l; do echo "::error::$l"; done
+            exit 1
+          fi
           mkdir -p out
           cp app/build/outputs/apk/release/app-release.apk "out/CarOS-1.0.${BUILD_NUMBER}.apk"
 
