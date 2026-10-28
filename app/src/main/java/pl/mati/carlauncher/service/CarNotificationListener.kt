@@ -2,6 +2,7 @@ package pl.mati.carlauncher.service
 
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
+import pl.mati.carlauncher.data.AlertRepository
 import pl.mati.carlauncher.data.MediaRepository
 import pl.mati.carlauncher.data.NavRepository
 import pl.mati.carlauncher.data.NotificationRepository
@@ -17,6 +18,7 @@ class CarNotificationListener : NotificationListenerService() {
             activeNotifications?.forEach {
                 NavRepository.onPosted(this, it)
                 NotificationRepository.onPosted(this, it)
+                AlertRepository.onPosted(it)
             }
         } catch (_: Exception) {
         }
@@ -25,10 +27,12 @@ class CarNotificationListener : NotificationListenerService() {
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         NavRepository.onPosted(this, sbn)
         NotificationRepository.onPosted(this, sbn)
+        AlertRepository.onPosted(sbn)
     }
 
     override fun onNotificationRemoved(sbn: StatusBarNotification) {
         NavRepository.onRemoved(sbn)
         NotificationRepository.onRemoved(sbn)
+        AlertRepository.onRemoved(sbn)
     }
 }

@@ -37,6 +37,8 @@ import androidx.compose.material.icons.rounded.SignalCellularAlt
 import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material.icons.rounded.SystemUpdate
 import androidx.compose.material.icons.rounded.Thermostat
+import androidx.compose.material.icons.rounded.Warning
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.VolumeOff
 import androidx.compose.material.icons.rounded.VolumeUp
 import androidx.compose.material.icons.rounded.WbSunny
@@ -64,6 +66,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
+import pl.mati.carlauncher.data.AlertRepository
 import pl.mati.carlauncher.data.NotificationRepository
 import pl.mati.carlauncher.data.ObdManager
 import pl.mati.carlauncher.data.Prefs
@@ -351,6 +354,46 @@ fun VolumeHud() {
                 Column(Modifier.padding(bottom = 14.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(Icons.Rounded.VolumeUp, null, tint = CarColors.Text, modifier = Modifier.size(26.dp))
                     Text("$vol", fontSize = 16.sp)
+                }
+            }
+        }
+    }
+}
+
+
+/** Pomarańczowy pasek ostrzeżenia z CamSam / Yanosik – na każdym ekranie. */
+@Composable
+fun RoadAlertBanner() {
+    val alert by AlertRepository.current.collectAsState()
+    val ctx = LocalContext.current
+    LaunchedEffect(alert?.time) {
+        val a = alert ?: return@LaunchedEffect
+        delay(60_000)
+        if (AlertRepository.current.value?.time == a.time) AlertRepository.dismiss()
+    }
+    Box(Modifier.fillMaxWidth().padding(start = 124.dp, end = 24.dp, top = 58.dp), contentAlignment = Alignment.TopCenter) {
+        AnimatedVisibility(alert != null, enter = fadeIn() + slideInVertically { -it }, exit = fadeOut() + slideOutVertically { -it }) {
+            val a = alert
+            if (a != null) {
+                Row(
+                    Modifier
+                        .clip(RoundedCornerShape(22.dp))
+                        .background(Color(0xFFFF8A1F))
+                        .clickable { Launch.pkg(ctx, a.pkg) }
+                        .padding(start = 18.dp, end = 8.dp, top = 10.dp, bottom = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                ) {
+                    Icon(Icons.Rounded.Warning, null, tint = Color(0xFF1A1205), modifier = Modifier.size(34.dp))
+                    Column(Modifier.padding(end = 6.dp)) {
+                        Text(a.title, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1A1205), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        if (a.text.isNotBlank()) Text(a.text, fontSize = 17.sp, color = Color(0xFF3A2608), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                    Text(a.app, fontSize = 14.sp, color = Color(0xFF3A2608))
+                    Box(
+                        Modifier.size(44.dp).clip(CircleShape).clickable { AlertRepository.dismiss() },
+                        contentAlignment = Alignment.Center,
+                    ) { Icon(Icons.Rounded.Close, "Ukryj", tint = Color(0xFF1A1205), modifier = Modifier.size(24.dp)) }
                 }
             }
         }

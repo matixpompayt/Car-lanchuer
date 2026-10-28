@@ -97,6 +97,7 @@ private fun Shell() {
                 }
             }
         }
+        RoadAlertBanner()
         ControlCenter()
         VolumeHud()
     }

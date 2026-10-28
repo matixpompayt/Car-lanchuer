@@ -53,6 +53,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import pl.mati.carlauncher.data.AlertRepository
 import pl.mati.carlauncher.data.LocationRepository
 import pl.mati.carlauncher.data.MediaRepository
 import pl.mati.carlauncher.data.ObdManager
@@ -119,7 +120,7 @@ fun SettingsScreen() {
                 "disp" -> displayPage()
                 "sound" -> soundPage()
                 "conn" -> connPage()
-                "car" -> carPage()
+                "car" -> { carPage(); alertsSection() }
                 "update" -> updatePage()
                 else -> systemPage()
             }
@@ -308,6 +309,32 @@ private fun LazyListScope.carPage() {
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+private fun LazyListScope.alertsSection() {
+    item { SectionLabel("Ostrzeżenia drogowe (CamSam / Yanosik)") }
+    item {
+        val v by Prefs.roadAlerts.collectAsState()
+        SettingRow("Pokazuj ostrzeżenia", "Fotoradary, kontrole i zdarzenia z powiadomień CamSam na każdym ekranie", onClick = { Prefs.setRoadAlerts(!v) }) { CarSwitch(v) }
+    }
+    item {
+        val raw by AlertRepository.raw.collectAsState()
+        Column(
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(CarColors.Card).padding(horizontal = 20.dp, vertical = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text("Ostatnie powiadomienia CamSam", fontSize = 19.sp, fontWeight = FontWeight.SemiBold)
+            if (raw.isEmpty()) {
+                Text("Brak – uruchom CamSam w tle i włącz dostęp do powiadomień dla CAR OS.", fontSize = 15.sp, color = CarColors.Muted)
+            }
+            raw.forEach { r ->
+                Text(
+                    "${formatTime(r.time)} · ${r.app}${if (r.ongoing) " (stałe)" else ""}: ${r.title} | ${r.text}",
+                    fontSize = 15.sp, color = CarColors.Text2,
+                )
             }
         }
     }
