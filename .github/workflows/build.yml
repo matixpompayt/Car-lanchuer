@@ -28,7 +28,7 @@ jobs:
           chmod +x gradlew
           set -o pipefail
           if ! ./gradlew assembleRelease --no-daemon 2>&1 | tee build.log; then
-            grep -E "^e: |What went wrong|^> |error:" build.log | head -45 | while IFS= read -r l; do echo "::error::$l"; done
+            { grep -E "^e: " build.log; awk '/What went wrong/{f=1} /\* Try:/{f=0} f' build.log; grep -iE "^ERROR:|AAPT: error" build.log; } | grep -v "^\s*$" | head -45 | while IFS= read -r l; do echo "::error::$l"; done
             exit 1
           fi
           mkdir -p out
