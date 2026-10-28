@@ -76,7 +76,7 @@ fun BootScreen() {
             }
         }
         Text(
-            listOf(profile.carName.takeIf { profile.setupDone }, "OBD2", "Android 10").filterNotNull().joinToString(" · "),
+            listOf("CAR OS ${pl.mati.carlauncher.BuildConfig.VERSION_NAME}", profile.carName.takeIf { profile.setupDone }, "OBD2").filterNotNull().joinToString(" · "),
             fontSize = 16.sp, color = CarColors.Dim,
             modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 30.dp),
         )
