@@ -1,0 +1,101 @@
+package pl.mati.carlauncher
+
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
+import android.os.Bundle
+import android.view.WindowManager
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.mutableStateOf
+import androidx.core.content.ContextCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
+import org.osmdroid.config.Configuration
+import pl.mati.carlauncher.data.LocationRepository
+import pl.mati.carlauncher.data.MediaRepository
+import pl.mati.carlauncher.data.ObdManager
+import pl.mati.carlauncher.data.Prefs
+import pl.mati.carlauncher.data.WeatherRepository
+import pl.mati.carlauncher.ui.CarApp
+import pl.mati.carlauncher.ui.CarRoot
+import pl.mati.carlauncher.ui.Screen
+import java.io.File
+
+class MainActivity : ComponentActivity() {
+
+    private val screen = mutableStateOf(Screen.HOME)
+
+    private val permissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+            LocationRepository.start(this)
+        }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        Prefs.init(this)
+
+        Configuration.getInstance().apply {
+            userAgentValue = packageName
+            osmdroidBasePath = File(cacheDir, "osmdroid")
+            osmdroidTileCache = File(osmdroidBasePath, "tiles")
+        }
+
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        hideSystemBars()
+
+        requestMissingPermissions()
+        LocationRepository.start(this)
+        MediaRepository.attach(this)
+        WeatherRepository.start()
+        Prefs.obdMac.value?.let { mac ->
+            if (ObdManager.status.value == ObdManager.Status.OFF) ObdManager.start(mac)
+        }
+
+        setContent {
+            CarRoot {
+                CarApp(screen.value) { screen.value = it }
+            }
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        hideSystemBars()
+        MediaRepository.attach(this)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        // Przycisk HOME na radiu / kierownicy -> ekran główny
+        if (intent.action == Intent.ACTION_MAIN) screen.value = Screen.HOME
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) hideSystemBars()
+    }
+
+    private fun requestMissingPermissions() {
+        val perms = mutableListOf(
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_COARSE_LOCATION,
+        )
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) perms += Manifest.permission.BLUETOOTH_CONNECT
+        val missing = perms.filter {
+            ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
+        }
+        if (missing.isNotEmpty()) permissionLauncher.launch(missing.toTypedArray())
+    }
+
+    private fun hideSystemBars() {
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        WindowInsetsControllerCompat(window, window.decorView).apply {
+            hide(WindowInsetsCompat.Type.systemBars())
+            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        }
+    }
+}
