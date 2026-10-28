@@ -5,6 +5,8 @@ plugins {
 
 // Numer builda z GitHub Actions (github.run_number). Lokalnie = 1.
 val buildNumber = (System.getenv("BUILD_NUMBER") ?: "1").toInt()
+// Wersja główna – zmieniasz w gradle.properties (carosVersion)
+val carosVersion = (project.findProperty("carosVersion") as String?) ?: "1.0"
 
 android {
     namespace = "pl.mati.carlauncher"
@@ -15,7 +17,7 @@ android {
         minSdk = 29
         targetSdk = 34
         versionCode = buildNumber
-        versionName = "1.0.$buildNumber"
+        versionName = "$carosVersion.$buildNumber"
         buildConfigField("String", "UPDATE_REPO", "\"matixpompayt/Car-lanchuer\"")
     }
 
