@@ -143,6 +143,11 @@ object MediaRepository {
         else c.transportControls.play()
     }
 
+    fun play() {
+        val c = controller
+        if (c != null) c.transportControls.play() else sendKey(KeyEvent.KEYCODE_MEDIA_PLAY)
+    }
+
     fun seekTo(ms: Long) {
         controller?.transportControls?.seekTo(ms.coerceAtLeast(0))
     }

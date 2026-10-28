@@ -3,7 +3,7 @@ package pl.mati.carlauncher.ui
 import kotlinx.coroutines.flow.MutableStateFlow
 import pl.mati.carlauncher.data.Prefs
 
-enum class Screen { HOME, NAV, MUSIC, PHONE, VEHICLE, APPS, SETTINGS }
+enum class Screen { HOME, NAV, MUSIC, PHONE, VEHICLE, APPS, SETTINGS, TRIPS, SERVICE, WEATHER }
 enum class Phase { BOOT, SETUP, MAIN }
 
 /** Globalny stan nawigacji po systemie. */

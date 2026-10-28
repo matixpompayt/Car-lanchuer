@@ -71,7 +71,7 @@ private fun Shell() {
         when {
             cc -> UiState.controlCenter.value = false
             screen == Screen.SETTINGS && settingsPage == "update" -> UiState.settingsPage.value = "sys"
-            screen == Screen.SETTINGS -> UiState.go(Screen.APPS)
+            screen == Screen.SETTINGS || screen == Screen.TRIPS || screen == Screen.SERVICE || screen == Screen.WEATHER -> UiState.go(Screen.APPS)
             else -> UiState.go(Screen.HOME)
         }
     }
@@ -92,12 +92,16 @@ private fun Shell() {
                             Screen.VEHICLE -> VehicleScreen()
                             Screen.APPS -> AppsScreen()
                             Screen.SETTINGS -> SettingsScreen()
+                            Screen.TRIPS -> TripsScreen()
+                            Screen.SERVICE -> ServiceScreen()
+                            Screen.WEATHER -> WeatherScreen()
                         }
                     }
                 }
             }
         }
         RoadAlertBanner()
+        HomeSuggestionBanner()
         ControlCenter()
         VolumeHud()
     }
@@ -121,7 +125,7 @@ private fun Dock(current: Screen) {
             DockButton(Icons.Rounded.Phone, "Telefon", current == Screen.PHONE) { UiState.go(Screen.PHONE) }
             DockButton(Icons.Rounded.Speed, "Pojazd", current == Screen.VEHICLE) { UiState.go(Screen.VEHICLE) }
         }
-        DockButton(Icons.Rounded.Apps, "Aplikacje", current == Screen.APPS || current == Screen.SETTINGS) {
+        DockButton(Icons.Rounded.Apps, "Aplikacje", current in setOf(Screen.APPS, Screen.SETTINGS, Screen.TRIPS, Screen.SERVICE, Screen.WEATHER)) {
             UiState.go(Screen.APPS)
         }
     }

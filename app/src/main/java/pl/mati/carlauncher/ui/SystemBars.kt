@@ -38,6 +38,7 @@ import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material.icons.rounded.SystemUpdate
 import androidx.compose.material.icons.rounded.Thermostat
 import androidx.compose.material.icons.rounded.Warning
+import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.VolumeOff
 import androidx.compose.material.icons.rounded.VolumeUp
@@ -67,6 +68,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import pl.mati.carlauncher.data.AlertRepository
+import pl.mati.carlauncher.data.AutostartManager
+import pl.mati.carlauncher.data.RouteRepository
+import pl.mati.carlauncher.data.Prefs as P2
 import pl.mati.carlauncher.data.NotificationRepository
 import pl.mati.carlauncher.data.ObdManager
 import pl.mati.carlauncher.data.Prefs
@@ -298,6 +302,7 @@ private fun NotificationsColumn(modifier: Modifier) {
                         when (n.action) {
                             "update" -> UiState.openSettings("update")
                             "obd" -> UiState.go(Screen.VEHICLE)
+                            "service" -> UiState.go(Screen.SERVICE)
                             else -> NotificationRepository.open(n)
                         }
                     }
@@ -395,6 +400,40 @@ fun RoadAlertBanner() {
                         contentAlignment = Alignment.Center,
                     ) { Icon(Icons.Rounded.Close, "Ukryj", tint = Color(0xFF1A1205), modifier = Modifier.size(24.dp)) }
                 }
+            }
+        }
+    }
+}
+
+
+/** „Jedziesz do domu?” – po zapłonie w ustawionych godzinach. */
+@Composable
+fun HomeSuggestionBanner() {
+    val show by AutostartManager.homeSuggestion.collectAsState()
+    val ctx = LocalContext.current
+    val accent = LocalAccent.current
+    Box(Modifier.fillMaxSize().padding(start = 124.dp, end = 24.dp, bottom = 28.dp), contentAlignment = Alignment.BottomCenter) {
+        AnimatedVisibility(show, enter = fadeIn() + slideInVertically { it }, exit = fadeOut() + slideOutVertically { it }) {
+            Row(
+                Modifier
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(CarColors.Panel)
+                    .border(1.dp, accent.copy(alpha = 0.5f), RoundedCornerShape(24.dp))
+                    .padding(horizontal = 22.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(18.dp),
+            ) {
+                IconBadge(Icons.Rounded.Home, 56.dp)
+                Column {
+                    Text("Jedziesz do domu?", fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                    Text(P2.profile.value.home, fontSize = 16.sp, color = CarColors.Muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+                PrimaryButton("Jedź", {
+                    AutostartManager.homeSuggestion.value = false
+                    RouteRepository.quickStart(ctx, P2.profile.value.home, "Dom")
+                    Toaster.show("Wyznaczam trasę do domu…")
+                })
+                SecondaryButton("Nie", { AutostartManager.homeSuggestion.value = false })
             }
         }
     }

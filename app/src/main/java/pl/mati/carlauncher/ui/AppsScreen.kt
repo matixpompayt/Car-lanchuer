@@ -20,6 +20,10 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.Build
+import androidx.compose.material.icons.rounded.DirectionsCar
+import androidx.compose.material.icons.rounded.WbSunny
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -56,7 +60,7 @@ fun AppsScreen() {
 
     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(20.dp)) {
         Row(Modifier.fillMaxWidth().height(56.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("Aplikacje", fontSize = 34.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+            Text("CAR OS", fontSize = 34.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
             Row(
                 Modifier
                     .clip(RoundedCornerShape(16.dp))
@@ -71,6 +75,13 @@ fun AppsScreen() {
             }
         }
 
+        Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            SysTile(Icons.Rounded.DirectionsCar, "Dziennik tras", Modifier.weight(1f)) { UiState.go(Screen.TRIPS) }
+            SysTile(Icons.Rounded.Build, "Serwis", Modifier.weight(1f)) { UiState.go(Screen.SERVICE) }
+            SysTile(Icons.Rounded.WbSunny, "Pogoda", Modifier.weight(1f)) { UiState.go(Screen.WEATHER) }
+            SysTile(Icons.Rounded.Settings, "Ustawienia", Modifier.weight(1f)) { UiState.openSettings("look") }
+        }
+        Caption("Aplikacje", size = 15.sp)
         val list = apps
         if (list == null) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -130,4 +141,21 @@ private fun launch(ctx: Context, app: AppEntry) {
         .setClassName(app.pkg, app.activity)
         .addFlags(Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
     Launch.start(ctx, i)
+}
+
+@Composable
+private fun SysTile(icon: ImageVector, label: String, modifier: Modifier, onClick: () -> Unit) {
+    Row(
+        modifier
+            .height(88.dp)
+            .clip(RoundedCornerShape(20.dp))
+            .background(CarColors.Card)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 18.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        IconBadge(icon, 52.dp)
+        Text(label, fontSize = 19.sp, fontWeight = FontWeight.SemiBold)
+    }
 }

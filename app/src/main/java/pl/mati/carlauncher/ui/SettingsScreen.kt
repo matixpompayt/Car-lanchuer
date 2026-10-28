@@ -8,6 +8,8 @@ import android.net.Uri
 import android.provider.Settings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,6 +33,13 @@ import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.DirectionsCar
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Palette
+import androidx.compose.material.icons.rounded.PowerSettingsNew
+import androidx.compose.material.icons.rounded.KeyboardArrowUp
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.Remove
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Upload
+import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Brightness6
 import androidx.compose.material.icons.rounded.VolumeUp
@@ -54,6 +63,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import pl.mati.carlauncher.data.AlertRepository
+import pl.mati.carlauncher.data.BackupManager
 import pl.mati.carlauncher.data.LocationRepository
 import pl.mati.carlauncher.data.MediaRepository
 import pl.mati.carlauncher.data.ObdManager
@@ -69,6 +79,7 @@ private val CATS = listOf(
     Cat("sound", Icons.Rounded.VolumeUp, "Dźwięk"),
     Cat("conn", Icons.Rounded.Bluetooth, "Połączenia"),
     Cat("car", Icons.Rounded.DirectionsCar, "Pojazd i OBD2"),
+    Cat("auto", Icons.Rounded.PowerSettingsNew, "Autostart"),
     Cat("sys", Icons.Rounded.Info, "System"),
 )
 
@@ -121,6 +132,7 @@ fun SettingsScreen() {
                 "sound" -> soundPage()
                 "conn" -> connPage()
                 "car" -> { carPage(); alertsSection() }
+                "auto" -> autostartPage()
                 "update" -> updatePage()
                 else -> systemPage()
             }
@@ -156,6 +168,34 @@ private fun LazyListScope.lookPage() {
     item {
         val v by Prefs.bootAnim.collectAsState()
         SettingRow("Animacja uruchamiania", "Logo CAR OS przy starcie radia", onClick = { Prefs.setBootAnim(!v) }) { CarSwitch(v) }
+    }
+    item { SectionLabel("Kafle ekranu głównego (maks. 4)") }
+    item {
+        val str by Prefs.homeTiles.collectAsState()
+        val on = str.split(",").filter { k -> TILE_DEFS.any { it.first == k } }
+        val ordered = on + TILE_DEFS.map { it.first }.filter { it !in on }
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            ordered.forEach { key ->
+                val label = TILE_DEFS.first { it.first == key }.second
+                val enabled = key in on
+                val idx = on.indexOf(key)
+                SettingRow(
+                    label, if (enabled) "Pozycja ${idx + 1}" else null,
+                    onClick = {
+                        val next = if (enabled) on - key else if (on.size >= 4) { Toaster.show("Maksymalnie 4 kafle"); on } else on + key
+                        Prefs.setHomeTiles(next.joinToString(","))
+                    },
+                ) {
+                    if (enabled && idx > 0) RoundIconButton(Icons.Rounded.KeyboardArrowUp, "W górę", 44.dp, {
+                        val l = on.toMutableList(); java.util.Collections.swap(l, idx, idx - 1); Prefs.setHomeTiles(l.joinToString(","))
+                    })
+                    if (enabled && idx < on.lastIndex) RoundIconButton(Icons.Rounded.KeyboardArrowDown, "W dół", 44.dp, {
+                        val l = on.toMutableList(); java.util.Collections.swap(l, idx, idx + 1); Prefs.setHomeTiles(l.joinToString(","))
+                    })
+                    CarSwitch(enabled)
+                }
+            }
+        }
     }
 }
 
@@ -340,6 +380,82 @@ private fun LazyListScope.alertsSection() {
     }
 }
 
+private fun LazyListScope.autostartPage() {
+    item { SectionLabel("Po włączeniu zapłonu") }
+    item {
+        Text("„Zapłon” = start radia albo włączenie ekranu po co najmniej 3 minutach przerwy. Adapter OBD2 łączy się zawsze.", fontSize = 16.sp, color = CarColors.Muted)
+    }
+    item {
+        val v by Prefs.autoResumeMusic.collectAsState()
+        SettingRow("Wznów muzykę", "Odtwarza ostatnie źródło (Spotify, radio…) po kilku sekundach", onClick = { Prefs.setAutoResumeMusic(!v) }) { CarSwitch(v) }
+    }
+    item {
+        val v by Prefs.suggestHome.collectAsState()
+        val p by Prefs.profile.collectAsState()
+        SettingRow(
+            "Proponuj trasę do domu",
+            if (p.home.isBlank()) "Najpierw dodaj adres domu (System → Ulubione miejsca)" else "Okienko „Jedziesz do domu?” w wybranych godzinach",
+            onClick = { Prefs.setSuggestHome(!v) },
+        ) { CarSwitch(v) }
+    }
+    item {
+        val from by Prefs.homeFrom.collectAsState()
+        val to by Prefs.homeTo.collectAsState()
+        SettingRow("Godziny", "Od $from:00 do $to:00") {
+            HourStepper("od", from, { Prefs.setHomeFrom(it) })
+            HourStepper("do", to, { Prefs.setHomeTo(it) })
+        }
+    }
+    item {
+        val v by Prefs.homeWeekdaysOnly.collectAsState()
+        SettingRow("Tylko w dni robocze", "Pon–pt", onClick = { Prefs.setHomeWeekdaysOnly(!v) }) { CarSwitch(v) }
+    }
+}
+
+@Composable
+private fun HourStepper(label: String, value: Int, onChange: (Int) -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(label, fontSize = 15.sp, color = CarColors.Muted)
+        RoundIconButton(Icons.Rounded.Remove, "Mniej", 44.dp, { onChange(value - 1) })
+        Text("%02d".format(value), fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+        RoundIconButton(Icons.Rounded.Add, "Więcej", 44.dp, { onChange(value + 1) })
+    }
+}
+
+private fun LazyListScope.backupSection() {
+    item { SectionLabel("Kopia zapasowa") }
+    item {
+        val ctx = LocalContext.current
+        val exporter = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+            if (uri != null) Toaster.show(if (BackupManager.export(ctx, uri)) "Kopia zapisana" else "Nie udało się zapisać kopii")
+        }
+        SettingRow("Zapisz kopię ustawień", "Profil, wygląd, serwis, dziennik tras → plik (np. na pendrive)", leading = Icons.Rounded.Download, onClick = {
+            val d = java.text.SimpleDateFormat("yyyy-MM-dd", PL).format(java.util.Date())
+            exporter.launch("CarOS-kopia-$d.json")
+        }) { Chevron() }
+    }
+    item {
+        val ctx = LocalContext.current
+        val importer = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            if (uri == null) return@rememberLauncherForActivityResult
+            if (BackupManager.import(ctx, uri)) {
+                Toaster.show("Kopia wczytana – uruchamiam ponownie")
+                val i = ctx.packageManager.getLaunchIntentForPackage(ctx.packageName)
+                if (i != null) {
+                    i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                    ctx.startActivity(i)
+                }
+                Runtime.getRuntime().exit(0)
+            } else {
+                Toaster.show("To nie jest kopia CAR OS albo plik jest uszkodzony")
+            }
+        }
+        SettingRow("Wczytaj kopię ustawień", "Przywraca wszystko z pliku – obecne ustawienia zostaną zastąpione", leading = Icons.Rounded.Upload, onClick = {
+            importer.launch(arrayOf("application/json", "text/plain", "application/octet-stream", "*/*"))
+        }) { Chevron() }
+    }
+}
+
 private fun LazyListScope.systemPage() {
     item { SectionLabel("Oprogramowanie") }
     item {
@@ -380,6 +496,7 @@ private fun LazyListScope.systemPage() {
             Prefs.resetLook(); Toaster.show("Przywrócono domyślny wygląd")
         }) { Chevron() }
     }
+    backupSection()
     item { SettingRow("Wersja", "CAR OS ${UpdateManager.currentVersion} · Android 10") {} }
 }
 

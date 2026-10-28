@@ -19,6 +19,8 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.MyLocation
 import androidx.compose.material.icons.rounded.Navigation
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.WbSunny
+import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -51,6 +53,7 @@ import org.osmdroid.views.overlay.Polyline
 import org.osmdroid.views.overlay.TilesOverlay
 import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider
 import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay
+import pl.mati.carlauncher.data.ForecastRepository
 import pl.mati.carlauncher.data.LocationRepository
 import pl.mati.carlauncher.data.NavRepository
 import pl.mati.carlauncher.data.RouteRepository
@@ -108,6 +111,25 @@ fun MapCard(modifier: Modifier) {
                         Text(it, fontSize = 19.sp, color = CarColors.Text2, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                 }
+            }
+        }
+
+        // Pogoda na trasie
+        val rw by ForecastRepository.routeWeather.collectAsState()
+        rw?.let { w ->
+            Row(
+                Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = if (nav != null) 112.dp else 16.dp, end = 16.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(if (w.rain) Color(0xE615324A) else CarColors.Overlay)
+                    .clickable { UiState.go(Screen.WEATHER) }
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Icon(if (w.rain) weatherIcon(w.code) else Icons.Rounded.WbSunny, null, tint = if (w.rain) Color(0xFF6CC4FF) else CarColors.Green, modifier = Modifier.size(22.dp))
+                Text(w.text, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
             }
         }
 

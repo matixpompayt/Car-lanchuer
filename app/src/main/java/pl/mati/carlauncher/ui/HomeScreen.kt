@@ -36,6 +36,10 @@ import kotlinx.coroutines.delay
 import pl.mati.carlauncher.data.LocationRepository
 import pl.mati.carlauncher.data.MediaRepository
 import pl.mati.carlauncher.data.ObdManager
+import pl.mati.carlauncher.data.Prefs
+import pl.mati.carlauncher.data.ServiceRepository
+import pl.mati.carlauncher.data.TripRepository
+import pl.mati.carlauncher.data.WeatherRepository
 
 @Composable
 fun HomeScreen() {
@@ -135,26 +139,70 @@ private fun MediaCard(modifier: Modifier) {
     }
 }
 
+/** Kafle do wyboru na ekranie głównym (Ustawienia → Wygląd). */
+val TILE_DEFS = listOf(
+    "speed" to "Prędkość",
+    "coolant" to "Płyn chłodzący",
+    "boost" to "Doładowanie",
+    "voltage" to "Napięcie",
+    "load" to "Obciążenie silnika",
+    "rpm" to "Obroty",
+    "weather" to "Pogoda",
+    "service" to "Najbliższy serwis",
+    "today" to "Dziś przejechane",
+)
+
 @Composable
 private fun VehicleTiles(modifier: Modifier) {
     val d by ObdManager.data.collectAsState()
     val gps by LocationRepository.gpsSpeed.collectAsState()
-    Row(
-        modifier.clickable(onClickLabel = "Otwórz ekran Pojazd") { UiState.go(Screen.VEHICLE) },
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        SmallTile("Prędkość", (d.speed ?: gps)?.toString() ?: "--", "km/h", Modifier.weight(1f))
-        SmallTile("Płyn chł.", d.coolant?.toString() ?: "--", "°C", Modifier.weight(1f))
-        SmallTile("Doład.", d.boostBar?.pl1() ?: "--", "bar", Modifier.weight(1f))
+    val keysStr by Prefs.homeTiles.collectAsState()
+    val temp by WeatherRepository.temperature.collectAsState()
+    val trips by TripRepository.trips.collectAsState()
+    val cur by TripRepository.current.collectAsState()
+    val odo by ServiceRepository.odometerKm.collectAsState()
+    val svcItems by ServiceRepository.items.collectAsState()
+    val keys = keysStr.split(",").filter { k -> TILE_DEFS.any { it.first == k } }.take(4)
+    if (keys.isEmpty()) return
+    val size = if (keys.size >= 4) 34.sp else 44.sp
+
+    Row(modifier, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        keys.forEach { k ->
+            val m = Modifier.weight(1f)
+            when (k) {
+                "speed" -> SmallTile("Prędkość", (d.speed ?: gps)?.toString() ?: "--", "km/h", m, size) { UiState.go(Screen.VEHICLE) }
+                "coolant" -> SmallTile("Płyn chł.", d.coolant?.toString() ?: "--", "°C", m, size) { UiState.go(Screen.VEHICLE) }
+                "boost" -> SmallTile("Doład.", d.boostBar?.pl1() ?: "--", "bar", m, size) { UiState.go(Screen.VEHICLE) }
+                "voltage" -> SmallTile("Napięcie", d.voltage?.pl1() ?: "--", "V", m, size) { UiState.go(Screen.VEHICLE) }
+                "load" -> SmallTile("Obciąż.", d.load?.toString() ?: "--", "%", m, size) { UiState.go(Screen.VEHICLE) }
+                "rpm" -> SmallTile("Obroty", d.rpm?.toString() ?: "--", "", m, size) { UiState.go(Screen.VEHICLE) }
+                "weather" -> SmallTile("Pogoda", temp?.toString() ?: "--", "°C", m, size) { UiState.go(Screen.WEATHER) }
+                "today" -> {
+                    val km = remember(trips.size, cur?.distanceM?.toInt()) { TripRepository.summary(TripRepository.startOfDay()).distanceM / 1000 }
+                    SmallTile("Dziś", km.toFloat().pl1(), "km", m, size) { UiState.go(Screen.TRIPS) }
+                }
+                "service" -> {
+                    val next = remember(odo.toInt() / 10, svcItems) { ServiceRepository.dueList().firstOrNull { it.known } }
+                    val (v, u) = when {
+                        next == null -> "--" to ""
+                        next.kmLeft != null && (next.daysLeft == null || next.kmLeft < next.daysLeft * 40) ->
+                            (if (next.kmLeft >= 1000) (next.kmLeft / 1000f).pl1() else next.kmLeft.toString()) to (if (next.kmLeft >= 1000) "tys. km" else "km")
+                        next.daysLeft != null -> next.daysLeft.toString() to "dni"
+                        else -> "--" to ""
+                    }
+                    SmallTile(next?.item?.name?.substringBefore(" ") ?: "Serwis", v, u, m, size) { UiState.go(Screen.SERVICE) }
+                }
+            }
+        }
     }
 }
 
 @Composable
-private fun SmallTile(label: String, value: String, unit: String, modifier: Modifier) {
-    CarCard(modifier, radius = 20.dp) {
+private fun SmallTile(label: String, value: String, unit: String, modifier: Modifier, size: androidx.compose.ui.unit.TextUnit, onClick: () -> Unit) {
+    CarCard(modifier.clickable(onClick = onClick), radius = 20.dp) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
             Caption(label)
-            ValueText(value, unit, 44.sp)
+            ValueText(value, unit, size)
         }
     }
 }

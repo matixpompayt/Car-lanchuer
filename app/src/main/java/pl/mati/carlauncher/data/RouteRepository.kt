@@ -144,6 +144,21 @@ object RouteRepository {
         }
     }
 
+    /** Szybki start (np. „Jedziesz do domu?”): planuje i od razu rusza najszybszym wariantem. */
+    fun quickStart(ctx: Context, address: String, label: String) {
+        planToAddress(address, label)
+        scope.launch {
+            repeat(60) {
+                delay(500)
+                val p = plan.value
+                if (p != null && !p.computing && p.chosen != null) {
+                    main.post { start(ctx) }
+                    return@launch
+                }
+            }
+        }
+    }
+
     fun addStop(place: Place) {
         val p = plan.value ?: return
         clearResults()

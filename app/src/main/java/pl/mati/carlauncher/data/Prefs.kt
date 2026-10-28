@@ -42,6 +42,15 @@ object Prefs {
     val reverseCam = MutableStateFlow(true)
     val mapsInBackground = MutableStateFlow(true)
     val roadAlerts = MutableStateFlow(true)
+    val homeTiles = MutableStateFlow("speed,coolant,boost")
+    val autoResumeMusic = MutableStateFlow(true)
+    val suggestHome = MutableStateFlow(true)
+    val homeFrom = MutableStateFlow(14)
+    val homeTo = MutableStateFlow(19)
+    val homeWeekdaysOnly = MutableStateFlow(true)
+
+    /** Surowy dostęp dla repozytoriów (trasy, serwis) i kopii zapasowej. */
+    val store: SharedPreferences? get() = sp
 
     fun init(context: Context) {
         if (sp != null) return
@@ -58,6 +67,12 @@ object Prefs {
         reverseCam.value = p.getBoolean("reverse_cam", true)
         mapsInBackground.value = p.getBoolean("maps_bg", true)
         roadAlerts.value = p.getBoolean("road_alerts", true)
+        homeTiles.value = p.getString("home_tiles", "speed,coolant,boost") ?: "speed,coolant,boost"
+        autoResumeMusic.value = p.getBoolean("auto_music", true)
+        suggestHome.value = p.getBoolean("suggest_home", true)
+        homeFrom.value = p.getInt("home_from", 14)
+        homeTo.value = p.getInt("home_to", 19)
+        homeWeekdaysOnly.value = p.getBoolean("home_weekdays", true)
         profile.value = Profile(
             name = p.getString("p_name", "") ?: "",
             brand = p.getString("p_brand", "Volkswagen") ?: "Volkswagen",
@@ -84,6 +99,12 @@ object Prefs {
     fun setAutoUpdate(v: Boolean) { autoUpdate.value = v; edit { putBoolean("auto_update", v) } }
     fun setUpdateWifiOnly(v: Boolean) { updateWifiOnly.value = v; edit { putBoolean("update_wifi_only", v) } }
     fun setReverseCam(v: Boolean) { reverseCam.value = v; edit { putBoolean("reverse_cam", v) } }
+    fun setHomeTiles(v: String) { homeTiles.value = v; edit { putString("home_tiles", v) } }
+    fun setAutoResumeMusic(v: Boolean) { autoResumeMusic.value = v; edit { putBoolean("auto_music", v) } }
+    fun setSuggestHome(v: Boolean) { suggestHome.value = v; edit { putBoolean("suggest_home", v) } }
+    fun setHomeFrom(v: Int) { homeFrom.value = v.coerceIn(0, 23); edit { putInt("home_from", homeFrom.value) } }
+    fun setHomeTo(v: Int) { homeTo.value = v.coerceIn(1, 24); edit { putInt("home_to", homeTo.value) } }
+    fun setHomeWeekdaysOnly(v: Boolean) { homeWeekdaysOnly.value = v; edit { putBoolean("home_weekdays", v) } }
     fun setRoadAlerts(v: Boolean) { roadAlerts.value = v; edit { putBoolean("road_alerts", v) } }
     fun setMapsInBackground(v: Boolean) { mapsInBackground.value = v; edit { putBoolean("maps_bg", v) } }
 

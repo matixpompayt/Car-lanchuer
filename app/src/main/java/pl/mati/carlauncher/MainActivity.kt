@@ -14,7 +14,12 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import org.osmdroid.config.Configuration
+import android.content.IntentFilter
+import pl.mati.carlauncher.data.AutostartManager
+import pl.mati.carlauncher.data.ForecastRepository
 import pl.mati.carlauncher.data.LocationRepository
+import pl.mati.carlauncher.data.ServiceRepository
+import pl.mati.carlauncher.data.TripRepository
 import pl.mati.carlauncher.data.MediaRepository
 import pl.mati.carlauncher.data.ObdManager
 import pl.mati.carlauncher.data.Prefs
@@ -59,10 +64,27 @@ class MainActivity : ComponentActivity() {
             if (ObdManager.status.value == ObdManager.Status.OFF) ObdManager.start(mac)
         }
         if (Prefs.autoUpdate.value && Prefs.profile.value.setupDone) UpdateManager.check(this, silent = true)
+        ServiceRepository.load()
+        TripRepository.start()
+        ForecastRepository.start()
+        ContextCompat.registerReceiver(
+            this, AutostartManager.screenReceiver,
+            IntentFilter().apply {
+                addAction(Intent.ACTION_SCREEN_ON)
+                addAction(Intent.ACTION_SCREEN_OFF)
+            },
+            ContextCompat.RECEIVER_NOT_EXPORTED,
+        )
+        if (savedInstanceState == null) AutostartManager.run(this)
 
         setContent {
             CarRoot { CarApp() }
         }
+    }
+
+    override fun onDestroy() {
+        try { unregisterReceiver(AutostartManager.screenReceiver) } catch (_: Exception) {}
+        super.onDestroy()
     }
 
     override fun onResume() {
