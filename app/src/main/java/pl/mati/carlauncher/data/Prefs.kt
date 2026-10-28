@@ -40,6 +40,7 @@ object Prefs {
     val autoUpdate = MutableStateFlow(true)
     val updateWifiOnly = MutableStateFlow(true)
     val reverseCam = MutableStateFlow(true)
+    val mapsInBackground = MutableStateFlow(true)
 
     fun init(context: Context) {
         if (sp != null) return
@@ -54,6 +55,7 @@ object Prefs {
         autoUpdate.value = p.getBoolean("auto_update", true)
         updateWifiOnly.value = p.getBoolean("update_wifi_only", true)
         reverseCam.value = p.getBoolean("reverse_cam", true)
+        mapsInBackground.value = p.getBoolean("maps_bg", true)
         profile.value = Profile(
             name = p.getString("p_name", "") ?: "",
             brand = p.getString("p_brand", "Volkswagen") ?: "Volkswagen",
@@ -80,6 +82,7 @@ object Prefs {
     fun setAutoUpdate(v: Boolean) { autoUpdate.value = v; edit { putBoolean("auto_update", v) } }
     fun setUpdateWifiOnly(v: Boolean) { updateWifiOnly.value = v; edit { putBoolean("update_wifi_only", v) } }
     fun setReverseCam(v: Boolean) { reverseCam.value = v; edit { putBoolean("reverse_cam", v) } }
+    fun setMapsInBackground(v: Boolean) { mapsInBackground.value = v; edit { putBoolean("maps_bg", v) } }
 
     fun setProfile(p: Profile) {
         profile.value = p

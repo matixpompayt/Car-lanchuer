@@ -170,6 +170,7 @@ private fun OsmMap(modifier: Modifier) {
     val lifecycle = (ctx as? ComponentActivity)?.lifecycle
     val accent = LocalAccent.current
     val route by RouteRepository.route.collectAsState()
+    val plan by RouteRepository.plan.collectAsState()
 
     val holder = remember {
         val map = MapView(ctx)
@@ -209,7 +210,7 @@ private fun OsmMap(modifier: Modifier) {
             overlays.add(dest)
             overlays.add(me)
         }
-        MapParts(map, me, casing, line, dest)
+        MapParts(map, me, casing, line, dest, ArrayList())
     }
 
     holder.line.outlinePaint.color = accent.toArgb()
@@ -239,6 +240,54 @@ private fun OsmMap(modifier: Modifier) {
         delay(6000)
         holder.map.controller.setZoom(16.5)
         holder.me.enableFollowLocation()
+    }
+
+    // Planowanie: wszystkie warianty, wybrany na wierzchu w kolorze akcentu
+    val planKey = plan?.let { p -> p.alternatives.map { it.id } to p.selected }
+    LaunchedEffect(planKey, accent) {
+        holder.alts.forEach { holder.map.overlays.remove(it) }
+        holder.alts.clear()
+        val p = plan
+        if (p == null || p.alternatives.isEmpty()) {
+            if (route == null) holder.me.enableFollowLocation()
+            holder.map.invalidate()
+            return@LaunchedEffect
+        }
+        val order = p.alternatives.indices.sortedBy { if (it == p.selected) 1 else 0 }
+        for (i in order) {
+            val r = p.alternatives[i]
+            val sel = i == p.selected
+            if (sel) {
+                holder.alts += Polyline(holder.map).apply {
+                    setPoints(r.points)
+                    outlinePaint.color = android.graphics.Color.rgb(10, 12, 15)
+                    outlinePaint.strokeWidth = 22f
+                    outlinePaint.strokeCap = android.graphics.Paint.Cap.ROUND
+                    outlinePaint.strokeJoin = android.graphics.Paint.Join.ROUND
+                }
+            }
+            holder.alts += Polyline(holder.map).apply {
+                setPoints(r.points)
+                outlinePaint.color = if (sel) accent.toArgb() else android.graphics.Color.rgb(96, 106, 120)
+                outlinePaint.strokeWidth = if (sel) 13f else 10f
+                outlinePaint.strokeCap = android.graphics.Paint.Cap.ROUND
+                outlinePaint.strokeJoin = android.graphics.Paint.Join.ROUND
+                outlinePaint.isAntiAlias = true
+            }
+        }
+        holder.alts += Polyline(holder.map).apply {
+            setPoints(listOf(p.dest.point, GeoPoint(p.dest.lat + 0.000001, p.dest.lon)))
+            outlinePaint.color = android.graphics.Color.WHITE
+            outlinePaint.strokeWidth = 26f
+            outlinePaint.strokeCap = android.graphics.Paint.Cap.ROUND
+        }
+        holder.alts.forEachIndexed { k, o -> holder.map.overlays.add(k, o) }
+        holder.me.disableFollowLocation()
+        val all = p.alternatives.flatMap { it.points }
+        holder.map.post {
+            try { holder.map.zoomToBoundingBox(BoundingBox.fromGeoPoints(all).increaseByScale(1.2f), true) } catch (_: Exception) {}
+        }
+        holder.map.invalidate()
     }
 
     DisposableEffect(lifecycle) {
@@ -283,4 +332,5 @@ private class MapParts(
     val casing: Polyline,
     val line: Polyline,
     val dest: Polyline,
+    val alts: MutableList<Polyline>,
 )

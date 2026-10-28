@@ -76,6 +76,10 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         // Przycisk HOME na radiu / kierownicy -> ekran główny
         if (intent.action == Intent.ACTION_MAIN && UiState.phase.value == Phase.MAIN) UiState.go(Screen.HOME)
+        if (intent.action == "pl.mati.carlauncher.RETURN" && UiState.phase.value == Phase.MAIN) {
+            UiState.go(Screen.HOME)
+            pl.mati.carlauncher.ui.Toaster.show("Mapy Google prowadzą w tle – głos i manewry działają")
+        }
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {

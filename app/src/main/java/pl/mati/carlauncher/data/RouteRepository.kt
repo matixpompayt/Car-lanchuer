@@ -4,6 +4,9 @@ import android.content.Context
 import android.content.Intent
 import android.location.Location
 import android.net.Uri
+import android.os.Handler
+import android.os.Looper
+import android.provider.Settings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -11,7 +14,6 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 import org.osmdroid.util.GeoPoint
@@ -23,28 +25,43 @@ import java.util.Locale
 import kotlin.math.max
 
 /**
- * Własne wyznaczanie trasy, żeby była widoczna na mapie launchera.
- * Wyszukiwanie: Nominatim (OpenStreetMap). Trasa: OSRM (profil samochód).
- * Prowadzenie głosowe dalej robią Mapy Google – do tego samego punktu.
+ * Planowanie i rysowanie trasy w CAR OS.
+ * Wyszukiwanie: Nominatim (OpenStreetMap). Trasy: OSRM (warianty, przystanki).
+ * Prowadzenie głosowe: Mapy Google – w tle, CAR OS wraca na ekran.
  */
 object RouteRepository {
 
     data class Place(val name: String, val detail: String, val lat: Double, val lon: Double) {
         val point get() = GeoPoint(lat, lon)
+        val coord get() = String.format(Locale.US, "%.6f,%.6f", lat, lon)
     }
 
     data class Route(
         val dest: Place,
+        val stops: List<Place>,
         val points: List<GeoPoint>,
-        val cumulative: DoubleArray, // narastający dystans do każdego punktu [m]
+        val cumulative: DoubleArray,
         val distanceM: Double,
         val durationS: Double,
         val id: Long = System.nanoTime(),
     )
 
+    /** Planowana trasa: cel, przystanki, warianty do wyboru. */
+    data class Plan(
+        val dest: Place,
+        val stops: List<Place> = emptyList(),
+        val alternatives: List<Route> = emptyList(),
+        val selected: Int = 0,
+        val computing: Boolean = true,
+        val error: String? = null,
+    ) {
+        val chosen: Route? get() = alternatives.getOrNull(selected)
+    }
+
     data class Progress(val remainingM: Double, val remainingS: Double, val arrived: Boolean)
 
     val route = MutableStateFlow<Route?>(null)
+    val plan = MutableStateFlow<Plan?>(null)
     val progress = MutableStateFlow<Progress?>(null)
     val busy = MutableStateFlow(false)
     val results = MutableStateFlow<List<Place>>(emptyList())
@@ -52,9 +69,11 @@ object RouteRepository {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var monitor: Job? = null
+    private var planJob: Job? = null
     private var lastReroute = 0L
     private var offRouteCount = 0
-    private val UA = "CarOS/1.0 (Android head unit launcher; pl.mati.carlauncher)"
+    private val main = Handler(Looper.getMainLooper())
+    private const val UA = "CarOS/1.0 (Android head unit launcher; pl.mati.carlauncher)"
 
     // ---------- wyszukiwanie ----------
 
@@ -92,43 +111,102 @@ object RouteRepository {
         val out = ArrayList<Place>()
         for (i in 0 until arr.length()) {
             val o = arr.getJSONObject(i)
-            val full = o.optString("display_name")
-            val parts = full.split(", ")
+            val parts = o.optString("display_name").split(", ")
             val name = o.optString("name").ifBlank { parts.firstOrNull().orEmpty() }
-            val detail = parts.drop(1).take(3).joinToString(", ")
-            out += Place(name, detail, o.getString("lat").toDouble(), o.getString("lon").toDouble())
+            out += Place(name, parts.drop(1).take(3).joinToString(", "), o.getString("lat").toDouble(), o.getString("lon").toDouble())
         }
-        // najbliższe najpierw, gdy znamy pozycję
-        if (loc != null) {
-            out.sortBy { dist(loc.latitude, loc.longitude, it.lat, it.lon) }
-        }
+        if (loc != null) out.sortBy { dist(loc.latitude, loc.longitude, it.lat, it.lon) }
         return out
     }
 
-    // ---------- nawigacja ----------
+    // ---------- planowanie ----------
 
-    /** Wyznacza trasę, rysuje ją na mapie i uruchamia prowadzenie w Mapach Google. */
-    fun navigate(ctx: Context, place: Place) {
+    /** Zaczyna planowanie trasy do celu (warianty pojawią się na mapie). */
+    fun planTo(place: Place) {
         clearResults()
-        launchGoogleMaps(ctx, place)
-        scope.launch { buildRoute(place) }
+        plan.value = Plan(dest = place)
+        recompute()
     }
 
-    /** Dom / Praca: najpierw zamiana adresu na współrzędne. */
-    fun navigateToAddress(ctx: Context, address: String, label: String) {
+    /** Dom / Praca: adres → współrzędne → planowanie. */
+    fun planToAddress(address: String, label: String) {
         scope.launch {
             busy.value = true
             try {
                 val p = searchPlaces(address, false).firstOrNull()
-                if (p == null) {
-                    error.value = "Nie znaleziono adresu: $address"
-                    return@launch
-                }
-                withContext(Dispatchers.Main) { navigate(ctx, p.copy(name = label, detail = address)) }
+                if (p == null) error.value = "Nie znaleziono adresu: $address"
+                else planTo(p.copy(name = label, detail = address))
             } catch (e: Exception) {
                 error.value = "Brak połączenia z wyszukiwarką"
             } finally {
                 busy.value = false
+            }
+        }
+    }
+
+    fun addStop(place: Place) {
+        val p = plan.value ?: return
+        clearResults()
+        plan.value = p.copy(stops = (p.stops + place).take(3), alternatives = emptyList(), selected = 0, computing = true)
+        recompute()
+    }
+
+    fun removeStop(index: Int) {
+        val p = plan.value ?: return
+        plan.value = p.copy(stops = p.stops.filterIndexed { i, _ -> i != index }, alternatives = emptyList(), selected = 0, computing = true)
+        recompute()
+    }
+
+    fun select(index: Int) {
+        val p = plan.value ?: return
+        if (index in p.alternatives.indices) plan.value = p.copy(selected = index)
+    }
+
+    fun cancelPlan() {
+        planJob?.cancel()
+        plan.value = null
+    }
+
+    private fun recompute() {
+        planJob?.cancel()
+        planJob = scope.launch {
+            var from = LocationRepository.location.value
+            var waited = 0
+            while (from == null && waited < 30) {
+                plan.value = plan.value?.copy(computing = true, error = "Czekam na GPS…")
+                delay(1000); waited++
+                from = LocationRepository.location.value
+            }
+            val p = plan.value ?: return@launch
+            if (from == null) {
+                plan.value = p.copy(computing = false, error = "Brak pozycji GPS")
+                return@launch
+            }
+            try {
+                val alts = fetchRoutes(from, p.stops, p.dest)
+                plan.value = plan.value?.copy(alternatives = alts, selected = 0, computing = false, error = if (alts.isEmpty()) "Nie znaleziono trasy" else null)
+            } catch (e: Exception) {
+                plan.value = plan.value?.copy(computing = false, error = "Nie udało się wyznaczyć trasy – sprawdź internet")
+            }
+        }
+    }
+
+    /** Start: wybrany wariant staje się aktywną trasą, Mapy Google prowadzą (w tle). */
+    fun start(ctx: Context) {
+        val p = plan.value ?: return
+        val r = p.chosen ?: return
+        plan.value = null
+        route.value = r
+        offRouteCount = 0
+        startMonitor()
+
+        // Wymuszenie wybranego wariantu w Mapach Google: punkty „przez” z wybranej trasy.
+        val forced = if (p.selected > 0 && p.stops.isEmpty()) viaPoints(r) else emptyList()
+        launchGoogleMaps(ctx, r.dest, p.stops.map { it.coord } + forced)
+
+        if (Prefs.mapsInBackground.value) {
+            if (canReturn(ctx)) {
+                main.postDelayed({ bringLauncherToFront(ctx) }, 7000)
             }
         }
     }
@@ -139,47 +217,90 @@ object RouteRepository {
         progress.value = null
     }
 
-    private suspend fun buildRoute(place: Place, quiet: Boolean = false) {
-        val from = LocationRepository.location.value
-        if (from == null) {
-            error.value = "Czekam na GPS – trasa pojawi się po ustaleniu pozycji"
-            // spróbuj ponownie, gdy GPS złapie pozycję
-            repeat(30) {
-                delay(2000)
-                if (LocationRepository.location.value != null) return buildRoute(place, quiet)
-            }
-            return
+    /** Czy Android pozwoli launcherowi wrócić na ekran z tła (zgoda „nad innymi aplikacjami”). */
+    fun canReturn(ctx: Context) = Settings.canDrawOverlays(ctx)
+
+    fun requestReturnPermission(ctx: Context) {
+        val i = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + ctx.packageName))
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        try { ctx.startActivity(i) } catch (_: Exception) {}
+    }
+
+    private fun bringLauncherToFront(ctx: Context) {
+        val i = ctx.packageManager.getLaunchIntentForPackage(ctx.packageName) ?: return
+        i.action = "pl.mati.carlauncher.RETURN"
+        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        try { ctx.startActivity(i) } catch (_: Exception) {}
+    }
+
+    private fun viaPoints(r: Route): List<String> {
+        val out = ArrayList<String>()
+        for (f in listOf(0.35, 0.7)) {
+            val target = r.distanceM * f
+            val idx = r.cumulative.indexOfFirst { it >= target }.takeIf { it >= 0 } ?: continue
+            val pt = r.points[idx]
+            out += String.format(Locale.US, "%.6f,%.6f", pt.latitude, pt.longitude)
         }
-        if (!quiet) busy.value = true
+        return out
+    }
+
+    private fun launchGoogleMaps(ctx: Context, dest: Place, waypoints: List<String>) {
+        val uri = if (waypoints.isEmpty()) {
+            Uri.parse("google.navigation:q=${dest.coord}&mode=d")
+        } else {
+            Uri.parse(
+                "https://www.google.com/maps/dir/?api=1&travelmode=driving&dir_action=navigate" +
+                    "&destination=" + Uri.encode(dest.coord) +
+                    "&waypoints=" + Uri.encode(waypoints.joinToString("|")),
+            )
+        }
+        val i = Intent(Intent.ACTION_VIEW, uri).setPackage("com.google.android.apps.maps").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         try {
-            val r = fetchRoute(from, place)
-            route.value = r
-            error.value = null
+            ctx.startActivity(i)
+        } catch (_: Exception) {
+            try {
+                ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("geo:${dest.coord}?q=${dest.coord}")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            } catch (_: Exception) {
+            }
+        }
+    }
+
+    // ---------- trasy (OSRM) ----------
+
+    private fun fetchRoutes(from: Location, stops: List<Place>, dest: Place): List<Route> {
+        val coords = buildList {
+            add(String.format(Locale.US, "%.6f,%.6f", from.longitude, from.latitude))
+            stops.forEach { add(String.format(Locale.US, "%.6f,%.6f", it.lon, it.lat)) }
+            add(String.format(Locale.US, "%.6f,%.6f", dest.lon, dest.lat))
+        }.joinToString(";")
+        val alt = if (stops.isEmpty()) "&alternatives=3" else ""
+        val json = JSONObject(get("https://router.project-osrm.org/route/v1/driving/$coords?overview=full&geometries=polyline6$alt"))
+        if (json.optString("code") != "Ok") throw IOException(json.optString("code"))
+        val arr = json.getJSONArray("routes")
+        val out = ArrayList<Route>()
+        for (i in 0 until arr.length()) {
+            val r = arr.getJSONObject(i)
+            val pts = decodePolyline6(r.getString("geometry"))
+            if (pts.size < 2) continue
+            val cum = DoubleArray(pts.size)
+            for (k in 1 until pts.size) cum[k] = cum[k - 1] + dist(pts[k - 1].latitude, pts[k - 1].longitude, pts[k].latitude, pts[k].longitude)
+            out += Route(dest, stops, pts, cum, r.getDouble("distance"), r.getDouble("duration"))
+        }
+        return out
+    }
+
+    private suspend fun reroute(r: Route) {
+        val from = LocationRepository.location.value ?: return
+        try {
+            val nr = fetchRoutes(from, r.stops, r.dest).firstOrNull() ?: return
+            route.value = nr
             offRouteCount = 0
             startMonitor()
-        } catch (e: Exception) {
-            if (!quiet) error.value = "Nie udało się wyznaczyć trasy"
-        } finally {
-            if (!quiet) busy.value = false
+        } catch (_: Exception) {
         }
     }
 
-    private fun fetchRoute(from: Location, to: Place): Route {
-        val url = String.format(
-            Locale.US,
-            "https://router.project-osrm.org/route/v1/driving/%.6f,%.6f;%.6f,%.6f?overview=full&geometries=polyline6",
-            from.longitude, from.latitude, to.lon, to.lat,
-        )
-        val json = JSONObject(get(url))
-        if (json.optString("code") != "Ok") throw IOException(json.optString("code"))
-        val r = json.getJSONArray("routes").getJSONObject(0)
-        val pts = decodePolyline6(r.getString("geometry"))
-        val cum = DoubleArray(pts.size)
-        for (i in 1 until pts.size) cum[i] = cum[i - 1] + dist(pts[i - 1].latitude, pts[i - 1].longitude, pts[i].latitude, pts[i].longitude)
-        return Route(to, pts, cum, r.getDouble("distance"), r.getDouble("duration"))
-    }
-
-    /** Śledzi postęp, wykrywa dojazd i zjechanie z trasy (wtedy przelicza). */
+    /** Postęp, dojazd, zjechanie z trasy (przeliczenie), koniec nawigacji Google. */
     private fun startMonitor() {
         monitor?.cancel()
         monitor = scope.launch {
@@ -196,8 +317,7 @@ object RouteRepository {
                         if (d < best) { best = d; idx = i }
                     }
                     val remaining = max(0.0, r.distanceM - r.cumulative[idx]) + best.coerceAtMost(200.0)
-                    val toDest = dist(loc.latitude, loc.longitude, r.dest.lat, r.dest.lon)
-                    val arrived = toDest < 40
+                    val arrived = dist(loc.latitude, loc.longitude, r.dest.lat, r.dest.lon) < 40
                     progress.value = Progress(remaining, r.durationS * (remaining / max(1.0, r.distanceM)), arrived)
                     if (arrived) {
                         delay(15_000)
@@ -208,12 +328,10 @@ object RouteRepository {
                     val now = System.currentTimeMillis()
                     if (offRouteCount >= 3 && now - lastReroute > 30_000) {
                         lastReroute = now
-                        offRouteCount = 0
-                        buildRoute(r.dest, quiet = true)
-                        break // nowy monitor startuje w buildRoute
+                        reroute(r)
+                        break
                     }
                 }
-                // Zakończona nawigacja w Mapach Google → po chwili czyścimy trasę
                 val nav = NavRepository.state.value
                 if (nav != null) { navSeen = true; navGoneSince = 0L }
                 else if (navSeen) {
@@ -221,20 +339,6 @@ object RouteRepository {
                     else if (System.currentTimeMillis() - navGoneSince > 20_000) { stop(); break }
                 }
                 delay(2000)
-            }
-        }
-    }
-
-    private fun launchGoogleMaps(ctx: Context, p: Place) {
-        val q = String.format(Locale.US, "%.6f,%.6f", p.lat, p.lon)
-        val i = Intent(Intent.ACTION_VIEW, Uri.parse("google.navigation:q=$q")).setPackage("com.google.android.apps.maps")
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        try {
-            ctx.startActivity(i)
-        } catch (_: Exception) {
-            try {
-                ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("geo:$q?q=$q")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-            } catch (_: Exception) {
             }
         }
     }
