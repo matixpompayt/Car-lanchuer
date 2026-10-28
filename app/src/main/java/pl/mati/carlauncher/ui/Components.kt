@@ -494,7 +494,7 @@ fun CarTextField(
         textStyle = TextStyle(color = CarColors.Text, fontSize = 24.sp),
         cursorBrush = SolidColor(accent),
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = imeAction),
-        keyboardActions = KeyboardActions(onDone = { onDone() }, onNext = { onDone() }),
+        keyboardActions = KeyboardActions(onDone = { onDone() }, onNext = { onDone() }, onSearch = { onDone() }, onGo = { onDone() }),
         modifier = modifier
             .height(64.dp)
             .clip(RoundedCornerShape(18.dp))

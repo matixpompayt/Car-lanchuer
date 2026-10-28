@@ -12,14 +12,18 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.MyLocation
 import androidx.compose.material.icons.rounded.Navigation
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -28,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -36,19 +41,36 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import kotlinx.coroutines.delay
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
+import org.osmdroid.util.BoundingBox
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.CustomZoomButtonsController
 import org.osmdroid.views.MapView
+import org.osmdroid.views.overlay.Polyline
 import org.osmdroid.views.overlay.TilesOverlay
 import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider
 import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay
 import pl.mati.carlauncher.data.LocationRepository
 import pl.mati.carlauncher.data.NavRepository
+import pl.mati.carlauncher.data.RouteRepository
+import java.util.Calendar
+import kotlin.math.roundToInt
+
+fun formatDistance(m: Double): String =
+    if (m >= 1000) "${(m / 1000).toFloat().pl1()} km" else "${(m / 10).roundToInt() * 10} m"
+
+fun formatEta(secondsFromNow: Double): String {
+    val c = Calendar.getInstance()
+    c.add(Calendar.SECOND, secondsFromNow.roundToInt())
+    return formatTime(c.timeInMillis)
+}
 
 @Composable
 fun MapCard(modifier: Modifier) {
     val nav by NavRepository.state.collectAsState()
+    val route by RouteRepository.route.collectAsState()
+    val prog by RouteRepository.progress.collectAsState()
     val ctx = LocalContext.current
     val accent = LocalAccent.current
 
@@ -89,7 +111,7 @@ fun MapCard(modifier: Modifier) {
             }
         }
 
-        // Dolny pasek: przyjazd albo szukaj
+        // Dolny pasek: cel + przyjazd albo szukaj
         Row(
             Modifier
                 .align(Alignment.BottomCenter)
@@ -97,31 +119,80 @@ fun MapCard(modifier: Modifier) {
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(18.dp))
                 .background(CarColors.Overlay)
-                .clickable { Launch.navigation(ctx) }
-                .padding(horizontal = 18.dp, vertical = 14.dp),
+                .clickable { if (route == null) UiState.go(Screen.NAV) else Launch.navigation(ctx) }
+                .padding(start = 18.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            val extra = nav?.extra
-            if (extra != null) {
-                Text(extra, fontSize = 20.sp, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-            } else {
-                Icon(Icons.Rounded.Search, null, tint = CarColors.Muted, modifier = Modifier.size(26.dp))
-                Text("Dokąd jedziemy?", fontSize = 20.sp, color = CarColors.Muted, modifier = Modifier.weight(1f))
+            val r = route
+            val p = prog
+            when {
+                r != null -> {
+                    Column(Modifier.weight(1f).padding(vertical = 4.dp)) {
+                        if (p?.arrived == true) {
+                            Text("Jesteś na miejscu", fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+                        } else {
+                            val remM = p?.remainingM ?: r.distanceM
+                            val remS = p?.remainingS ?: r.durationS
+                            Text(
+                                "${formatEta(remS)} przyjazd",
+                                fontSize = 20.sp, fontWeight = FontWeight.SemiBold,
+                            )
+                            Text(
+                                "${(remS / 60).roundToInt()} min · ${formatDistance(remM)} · ${r.dest.name}",
+                                fontSize = 16.sp, color = CarColors.Text2, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
+                    Box(
+                        Modifier.size(48.dp).clip(CircleShape).background(CarColors.Raised).clickable { RouteRepository.stop() },
+                        contentAlignment = Alignment.Center,
+                    ) { Icon(Icons.Rounded.Close, "Zakończ trasę", tint = CarColors.Text, modifier = Modifier.size(26.dp)) }
+                }
+                nav?.extra != null -> {
+                    Text(nav?.extra ?: "", fontSize = 20.sp, modifier = Modifier.weight(1f).padding(vertical = 12.dp), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Icon(Icons.Rounded.Navigation, "Nawigacja", tint = accent, modifier = Modifier.padding(end = 10.dp).size(28.dp))
+                }
+                else -> {
+                    Icon(Icons.Rounded.Search, null, tint = CarColors.Muted, modifier = Modifier.size(26.dp))
+                    Text("Dokąd jedziemy?", fontSize = 20.sp, color = CarColors.Muted, modifier = Modifier.weight(1f).padding(vertical = 12.dp))
+                    Icon(Icons.Rounded.Navigation, "Nawigacja", tint = accent, modifier = Modifier.padding(end = 10.dp).size(28.dp))
+                }
             }
-            Icon(Icons.Rounded.Navigation, "Nawigacja", tint = accent, modifier = Modifier.size(28.dp))
         }
     }
 }
 
-/** Mapa OSM (osmdroid), ciemna przez odwrócenie kolorów, śledzi pozycję auta. */
+/** Mapa OSM (osmdroid): ciemna, śledzi auto, rysuje wyznaczoną trasę. */
 @Composable
 private fun OsmMap(modifier: Modifier) {
     val ctx = LocalContext.current
     val lifecycle = (ctx as? ComponentActivity)?.lifecycle
+    val accent = LocalAccent.current
+    val route by RouteRepository.route.collectAsState()
 
-    val mapView = remember {
-        MapView(ctx).apply {
+    val holder = remember {
+        val map = MapView(ctx)
+        val me = MyLocationNewOverlay(GpsMyLocationProvider(ctx), map)
+        val casing = Polyline(map).apply {
+            outlinePaint.color = android.graphics.Color.rgb(10, 12, 15)
+            outlinePaint.strokeWidth = 22f
+            outlinePaint.strokeCap = android.graphics.Paint.Cap.ROUND
+            outlinePaint.strokeJoin = android.graphics.Paint.Join.ROUND
+            outlinePaint.isAntiAlias = true
+        }
+        val line = Polyline(map).apply {
+            outlinePaint.strokeWidth = 13f
+            outlinePaint.strokeCap = android.graphics.Paint.Cap.ROUND
+            outlinePaint.strokeJoin = android.graphics.Paint.Join.ROUND
+            outlinePaint.isAntiAlias = true
+        }
+        val dest = Polyline(map).apply {
+            outlinePaint.color = android.graphics.Color.WHITE
+            outlinePaint.strokeWidth = 26f
+            outlinePaint.strokeCap = android.graphics.Paint.Cap.ROUND
+        }
+        map.apply {
             setTileSource(TileSourceFactory.MAPNIK)
             setMultiTouchControls(true)
             isTilesScaledToDpi = true
@@ -130,32 +201,86 @@ private fun OsmMap(modifier: Modifier) {
             overlayManager.tilesOverlay.setLoadingBackgroundColor(android.graphics.Color.rgb(17, 22, 28))
             overlayManager.tilesOverlay.setLoadingLineColor(android.graphics.Color.rgb(29, 36, 45))
             controller.setZoom(16.0)
-            LocationRepository.location.value?.let {
-                controller.setCenter(GeoPoint(it.latitude, it.longitude))
-            }
-            val me = MyLocationNewOverlay(GpsMyLocationProvider(ctx), this)
+            LocationRepository.location.value?.let { controller.setCenter(GeoPoint(it.latitude, it.longitude)) }
             me.enableMyLocation()
             me.enableFollowLocation()
+            overlays.add(casing)
+            overlays.add(line)
+            overlays.add(dest)
             overlays.add(me)
         }
+        MapParts(map, me, casing, line, dest)
+    }
+
+    holder.line.outlinePaint.color = accent.toArgb()
+
+    // Trasa: rysowanie + podgląd całej trasy, potem powrót do śledzenia auta
+    LaunchedEffect(route?.id) {
+        val r = route
+        if (r == null || r.points.size < 2) {
+            holder.casing.setPoints(emptyList())
+            holder.line.setPoints(emptyList())
+            holder.dest.setPoints(emptyList())
+            holder.map.invalidate()
+            holder.me.enableFollowLocation()
+            return@LaunchedEffect
+        }
+        holder.casing.setPoints(r.points)
+        holder.line.setPoints(r.points)
+        holder.dest.setPoints(listOf(r.dest.point, GeoPoint(r.dest.lat + 0.000001, r.dest.lon)))
+        holder.me.disableFollowLocation()
+        holder.map.post {
+            try {
+                holder.map.zoomToBoundingBox(BoundingBox.fromGeoPoints(r.points).increaseByScale(1.25f), true)
+            } catch (_: Exception) {
+            }
+        }
+        holder.map.invalidate()
+        delay(6000)
+        holder.map.controller.setZoom(16.5)
+        holder.me.enableFollowLocation()
     }
 
     DisposableEffect(lifecycle) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
-                Lifecycle.Event.ON_RESUME -> mapView.onResume()
-                Lifecycle.Event.ON_PAUSE -> mapView.onPause()
+                Lifecycle.Event.ON_RESUME -> holder.map.onResume()
+                Lifecycle.Event.ON_PAUSE -> holder.map.onPause()
                 else -> Unit
             }
         }
         lifecycle?.addObserver(observer)
-        if (lifecycle?.currentState?.isAtLeast(Lifecycle.State.RESUMED) == true) mapView.onResume()
+        if (lifecycle?.currentState?.isAtLeast(Lifecycle.State.RESUMED) == true) holder.map.onResume()
         onDispose {
             lifecycle?.removeObserver(observer)
-            mapView.onPause()
-            mapView.onDetach()
+            holder.map.onPause()
+            holder.map.onDetach()
         }
     }
 
-    AndroidView(factory = { mapView }, modifier = modifier)
+    Box(modifier) {
+        AndroidView(factory = { holder.map }, modifier = Modifier.fillMaxSize())
+        // przycisk: wróć do auta
+        Box(
+            Modifier
+                .align(Alignment.CenterEnd)
+                .padding(end = 16.dp)
+                .size(52.dp)
+                .clip(CircleShape)
+                .background(CarColors.Overlay)
+                .clickable {
+                    holder.me.enableFollowLocation()
+                    holder.map.controller.setZoom(16.5)
+                },
+            contentAlignment = Alignment.Center,
+        ) { Icon(Icons.Rounded.MyLocation, "Moja pozycja", tint = CarColors.Text, modifier = Modifier.size(26.dp)) }
+    }
 }
+
+private class MapParts(
+    val map: MapView,
+    val me: MyLocationNewOverlay,
+    val casing: Polyline,
+    val line: Polyline,
+    val dest: Polyline,
+)
