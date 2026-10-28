@@ -1,6 +1,7 @@
 package pl.mati.carlauncher.data
 
 import android.app.Notification
+import android.app.PendingIntent
 import android.content.Context
 import android.graphics.Bitmap
 import android.service.notification.StatusBarNotification
@@ -20,6 +21,7 @@ object NavRepository {
         val extra: String?,
         val icon: Bitmap?,
         val pkg: String,
+        val actions: List<Pair<String, PendingIntent>> = emptyList(),
     )
 
     val state = MutableStateFlow<NavState?>(null)
@@ -48,7 +50,25 @@ object NavRepository {
             extra = sub,
             icon = largeIcon(context, n),
             pkg = sbn.packageName,
+            actions = n.actions.orEmpty().mapNotNull { a ->
+                val t = a.title?.toString() ?: return@mapNotNull null
+                val pi = a.actionIntent ?: return@mapNotNull null
+                t to pi
+            },
         )
+    }
+
+    private val EXIT = Regex("(zakończ|zakoncz|zamknij|wyjdź|wyjdz|zatrzymaj|exit|end|stop|close|quit|beenden)", RegexOption.IGNORE_CASE)
+
+    /** Kończy nawigację w Mapach Google / Waze przyciskiem z ich powiadomienia. true = udało się. */
+    fun stopNavigation(): Boolean {
+        val a = state.value?.actions?.firstOrNull { EXIT.containsMatchIn(it.first) } ?: return false
+        return try {
+            a.second.send()
+            true
+        } catch (_: Exception) {
+            false
+        }
     }
 
     fun onRemoved(sbn: StatusBarNotification) {

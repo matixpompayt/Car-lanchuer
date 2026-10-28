@@ -211,6 +211,20 @@ object RouteRepository {
         }
     }
 
+    /** Anulowanie przez kierowcę: kończy też nawigację w Mapach Google. */
+    fun cancel(ctx: Context) {
+        val hadGoogle = NavRepository.state.value != null
+        stop()
+        if (!hadGoogle) return
+        if (NavRepository.stopNavigation()) {
+            pl.mati.carlauncher.ui.Toaster.show("Trasa anulowana – nawigacja w Mapach Google zakończona")
+        } else {
+            pl.mati.carlauncher.ui.Toaster.show("Zakończ nawigację w Mapach Google przyciskiem X")
+            val i = ctx.packageManager.getLaunchIntentForPackage(NavRepository.state.value?.pkg ?: "com.google.android.apps.maps")
+            if (i != null) try { ctx.startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } catch (_: Exception) {}
+        }
+    }
+
     fun stop() {
         monitor?.cancel()
         route.value = null

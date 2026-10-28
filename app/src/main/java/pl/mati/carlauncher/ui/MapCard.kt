@@ -145,7 +145,7 @@ fun MapCard(modifier: Modifier) {
                         }
                     }
                     Box(
-                        Modifier.size(48.dp).clip(CircleShape).background(CarColors.Raised).clickable { RouteRepository.stop() },
+                        Modifier.size(48.dp).clip(CircleShape).background(CarColors.Raised).clickable { RouteRepository.cancel(ctx) },
                         contentAlignment = Alignment.Center,
                     ) { Icon(Icons.Rounded.Close, "Zakończ trasę", tint = CarColors.Text, modifier = Modifier.size(26.dp)) }
                 }

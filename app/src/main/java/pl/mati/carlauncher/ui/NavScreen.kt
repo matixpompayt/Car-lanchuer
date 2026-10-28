@@ -146,7 +146,7 @@ private fun ColumnScope.SearchPanel(addingStop: Boolean, onPick: (RouteRepositor
         }
     }
     if (!addingStop) {
-        if (route != null) SecondaryButton("Zakończ trasę", { RouteRepository.stop() }, Modifier.fillMaxWidth(), icon = Icons.Rounded.Close)
+        if (route != null) SecondaryButton("Zakończ trasę", { RouteRepository.cancel(ctx) }, Modifier.fillMaxWidth(), icon = Icons.Rounded.Close)
         else SecondaryButton("Otwórz Mapy Google", { Launch.navigation(ctx) }, Modifier.fillMaxWidth(), icon = Icons.Rounded.Map)
     }
 }
