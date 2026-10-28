@@ -3,6 +3,9 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
+// Numer builda z GitHub Actions (github.run_number). Lokalnie = 1.
+val buildNumber = (System.getenv("BUILD_NUMBER") ?: "1").toInt()
+
 android {
     namespace = "pl.mati.carlauncher"
     compileSdk = 34
@@ -11,15 +14,28 @@ android {
         applicationId = "pl.mati.carlauncher"
         minSdk = 29
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = buildNumber
+        versionName = "1.0.$buildNumber"
+        buildConfigField("String", "UPDATE_REPO", "\"matixpompayt/Car-lanchuer\"")
+    }
+
+    signingConfigs {
+        create("caros") {
+            // Stały klucz – wymagany, żeby aktualizacje online instalowały się na starą wersję.
+            storeFile = rootProject.file("keystore/caros.jks")
+            storePassword = "caros-2026"
+            keyAlias = "caros"
+            keyPassword = "caros-2026"
+        }
     }
 
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("caros")
+        }
         release {
             isMinifyEnabled = false
-            // Podpis debug, żeby release dało się od razu wgrać na radio.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("caros")
         }
     }
 
@@ -33,6 +49,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.14"
@@ -49,6 +66,7 @@ dependencies {
     implementation(platform("androidx.compose:compose-bom:2024.06.00"))
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.foundation:foundation")
+    implementation("androidx.compose.animation:animation")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
 

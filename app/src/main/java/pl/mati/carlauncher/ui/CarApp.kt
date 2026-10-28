@@ -1,6 +1,8 @@
 package pl.mati.carlauncher.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -22,43 +24,86 @@ import androidx.compose.material.icons.rounded.Phone
 import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-
-enum class Screen { HOME, VEHICLE, APPS, SETTINGS }
+import pl.mati.carlauncher.data.Prefs
 
 @Composable
-fun CarApp(screen: Screen, onNavigate: (Screen) -> Unit) {
-    // Launcher: wstecz zawsze wraca do ekranu głównego, nigdy nie zamyka aplikacji.
-    BackHandler(enabled = true) {
-        onNavigate(if (screen == Screen.SETTINGS) Screen.APPS else Screen.HOME)
-    }
-    Row(
-        Modifier
-            .fillMaxSize()
-            .background(if (screen == Screen.VEHICLE) CarColors.BgDeep else CarColors.Bg),
-    ) {
-        Dock(screen, onNavigate)
-        Box(Modifier.width(1.dp).fillMaxHeight().background(CarColors.Border))
-        Box(Modifier.weight(1f).fillMaxHeight()) {
-            when (screen) {
-                Screen.HOME -> HomeScreen(onNavigate)
-                Screen.VEHICLE -> VehicleScreen()
-                Screen.APPS -> AppsScreen(onNavigate)
-                Screen.SETTINGS -> SettingsScreen(onNavigate)
+fun CarApp() {
+    val phase by UiState.phase.collectAsState()
+    Box(Modifier.fillMaxSize().background(CarColors.BgDeep)) {
+        Crossfade(targetState = phase, animationSpec = tween(500), label = "phase") { p ->
+            when (p) {
+                Phase.BOOT -> BootScreen()
+                Phase.SETUP -> SetupWizard()
+                Phase.MAIN -> Shell()
             }
         }
+        NightDim()
+        ToastHost()
     }
 }
 
 @Composable
-private fun Dock(current: Screen, onNavigate: (Screen) -> Unit) {
-    val ctx = LocalContext.current
+private fun NightDim() {
+    val auto by Prefs.autoNight.collectAsState()
+    val now by Prefs.nightNow.collectAsState()
+    val time by rememberNow()
+    val night = now || (auto && isNightHour(time))
+    if (night) Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.28f)))
+}
+
+@Composable
+private fun Shell() {
+    val screen by UiState.screen.collectAsState()
+    val cc by UiState.controlCenter.collectAsState()
+    val wall by Prefs.wallpaper.collectAsState()
+    val settingsPage by UiState.settingsPage.collectAsState()
+
+    // Launcher: wstecz nigdy nie zamyka aplikacji.
+    BackHandler(enabled = true) {
+        when {
+            cc -> UiState.controlCenter.value = false
+            screen == Screen.SETTINGS && settingsPage == "update" -> UiState.settingsPage.value = "sys"
+            screen == Screen.SETTINGS -> UiState.go(Screen.APPS)
+            else -> UiState.go(Screen.HOME)
+        }
+    }
+
+    Box(Modifier.fillMaxSize().background(Wallpapers[wall.coerceIn(0, Wallpapers.lastIndex)].second)) {
+        Row(Modifier.fillMaxSize()) {
+            Dock(screen)
+            Box(Modifier.width(1.dp).fillMaxHeight().background(CarColors.Border))
+            Column(Modifier.weight(1f).fillMaxHeight()) {
+                StatusBar()
+                Box(Modifier.weight(1f).padding(start = 24.dp, end = 24.dp, bottom = 24.dp)) {
+                    Crossfade(targetState = screen, animationSpec = tween(220), label = "screen") { s ->
+                        when (s) {
+                            Screen.HOME -> HomeScreen()
+                            Screen.NAV -> NavScreen()
+                            Screen.MUSIC -> MusicScreen()
+                            Screen.PHONE -> PhoneScreen()
+                            Screen.VEHICLE -> VehicleScreen()
+                            Screen.APPS -> AppsScreen()
+                            Screen.SETTINGS -> SettingsScreen()
+                        }
+                    }
+                }
+            }
+        }
+        ControlCenter()
+        VolumeHud()
+    }
+}
+
+@Composable
+private fun Dock(current: Screen) {
     Column(
         Modifier
             .width(99.dp)
@@ -69,16 +114,15 @@ private fun Dock(current: Screen, onNavigate: (Screen) -> Unit) {
         verticalArrangement = Arrangement.SpaceBetween,
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            DockButton(Icons.Rounded.GridView, "Ekran główny", current == Screen.HOME) { onNavigate(Screen.HOME) }
-            DockButton(Icons.Rounded.Navigation, "Nawigacja", false) { Launch.navigation(ctx) }
-            DockButton(Icons.Rounded.MusicNote, "Muzyka", false) { Launch.music(ctx) }
-            DockButton(Icons.Rounded.Phone, "Telefon", false) { Launch.phone(ctx) }
-            DockButton(Icons.Rounded.Speed, "Pojazd", current == Screen.VEHICLE) { onNavigate(Screen.VEHICLE) }
+            DockButton(Icons.Rounded.GridView, "Ekran główny", current == Screen.HOME) { UiState.go(Screen.HOME) }
+            DockButton(Icons.Rounded.Navigation, "Nawigacja", current == Screen.NAV) { UiState.go(Screen.NAV) }
+            DockButton(Icons.Rounded.MusicNote, "Muzyka", current == Screen.MUSIC) { UiState.go(Screen.MUSIC) }
+            DockButton(Icons.Rounded.Phone, "Telefon", current == Screen.PHONE) { UiState.go(Screen.PHONE) }
+            DockButton(Icons.Rounded.Speed, "Pojazd", current == Screen.VEHICLE) { UiState.go(Screen.VEHICLE) }
         }
-        DockButton(
-            Icons.Rounded.Apps, "Aplikacje",
-            current == Screen.APPS || current == Screen.SETTINGS,
-        ) { onNavigate(Screen.APPS) }
+        DockButton(Icons.Rounded.Apps, "Aplikacje", current == Screen.APPS || current == Screen.SETTINGS) {
+            UiState.go(Screen.APPS)
+        }
     }
 }
 
@@ -93,11 +137,6 @@ private fun DockButton(icon: ImageVector, label: String, active: Boolean, onClic
             .clickable(onClickLabel = label, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(
-            icon,
-            contentDescription = label,
-            tint = if (active) accent else CarColors.Muted,
-            modifier = Modifier.size(34.dp),
-        )
+        Icon(icon, contentDescription = label, tint = if (active) accent else CarColors.Muted, modifier = Modifier.size(34.dp))
     }
 }

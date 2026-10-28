@@ -2,11 +2,17 @@ name: Build APK
 
 on:
   push:
+    branches: [main]
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      BUILD_NUMBER: ${{ github.run_number }}
     steps:
       - uses: actions/checkout@v4
 
@@ -17,12 +23,25 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
-      - name: Build debug APK
+      - name: Build release APK
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon --stacktrace
+          ./gradlew assembleRelease --no-daemon --stacktrace
+          mkdir -p out
+          cp app/build/outputs/apk/release/app-release.apk "out/CarOS-1.0.${BUILD_NUMBER}.apk"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: CarLauncher-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
+          name: CarOS-apk
+          path: out/*.apk
+
+      # Każdy build na main = nowe wydanie. Aplikacja sprawdza /releases/latest i aktualizuje się online.
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          MSG=$(git log -1 --pretty=%B | head -c 1500)
+          gh release create "v1.0.${BUILD_NUMBER}" out/*.apk \
+            --title "CAR OS 1.0.${BUILD_NUMBER}" \
+            --notes "$MSG" \
+            --latest

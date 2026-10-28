@@ -4,6 +4,27 @@ import android.content.Context
 import android.content.SharedPreferences
 import kotlinx.coroutines.flow.MutableStateFlow
 
+/** Profil kierowcy i auta z kreatora pierwszego uruchomienia. */
+data class Profile(
+    val name: String = "",
+    val brand: String = "Volkswagen",
+    val model: String = "",
+    val engine: String = "",
+    val year: String = "",
+    val fuel: String = "Diesel",
+    val home: String = "",
+    val work: String = "",
+    val setupDone: Boolean = false,
+) {
+    val carName: String
+        get() = listOf(brand, model, engine).filter { it.isNotBlank() }.joinToString(" ").ifBlank { "Mój samochód" }
+    val shortCar: String
+        get() = listOf(model, engine).filter { it.isNotBlank() }.joinToString(" ")
+    val isDiesel: Boolean get() = fuel == "Diesel"
+    val rpmMax: Int get() = if (isDiesel) 5000 else 7000
+    val rpmRed: Int get() = if (isDiesel) 4200 else 6200
+}
+
 object Prefs {
     const val DEFAULT_ACCENT = 0xFF2FD3F0.toInt()
 
@@ -11,6 +32,14 @@ object Prefs {
 
     val accent = MutableStateFlow(DEFAULT_ACCENT)
     val obdMac = MutableStateFlow<String?>(null)
+    val profile = MutableStateFlow(Profile())
+    val wallpaper = MutableStateFlow(0)
+    val autoNight = MutableStateFlow(true)
+    val nightNow = MutableStateFlow(false)
+    val bootAnim = MutableStateFlow(true)
+    val autoUpdate = MutableStateFlow(true)
+    val updateWifiOnly = MutableStateFlow(true)
+    val reverseCam = MutableStateFlow(true)
 
     fun init(context: Context) {
         if (sp != null) return
@@ -18,15 +47,56 @@ object Prefs {
         sp = p
         accent.value = p.getInt("accent", DEFAULT_ACCENT)
         obdMac.value = p.getString("obd_mac", null)
+        wallpaper.value = p.getInt("wallpaper", 0)
+        autoNight.value = p.getBoolean("auto_night", true)
+        nightNow.value = p.getBoolean("night_now", false)
+        bootAnim.value = p.getBoolean("boot_anim", true)
+        autoUpdate.value = p.getBoolean("auto_update", true)
+        updateWifiOnly.value = p.getBoolean("update_wifi_only", true)
+        reverseCam.value = p.getBoolean("reverse_cam", true)
+        profile.value = Profile(
+            name = p.getString("p_name", "") ?: "",
+            brand = p.getString("p_brand", "Volkswagen") ?: "Volkswagen",
+            model = p.getString("p_model", "") ?: "",
+            engine = p.getString("p_engine", "") ?: "",
+            year = p.getString("p_year", "") ?: "",
+            fuel = p.getString("p_fuel", "Diesel") ?: "Diesel",
+            home = p.getString("p_home", "") ?: "",
+            work = p.getString("p_work", "") ?: "",
+            setupDone = p.getBoolean("p_done", false),
+        )
     }
 
-    fun setAccent(color: Int) {
-        accent.value = color
-        sp?.edit()?.putInt("accent", color)?.apply()
+    private fun edit(block: SharedPreferences.Editor.() -> Unit) {
+        sp?.edit()?.apply { block(); apply() }
     }
 
-    fun setObdMac(mac: String?) {
-        obdMac.value = mac
-        sp?.edit()?.putString("obd_mac", mac)?.apply()
+    fun setAccent(color: Int) { accent.value = color; edit { putInt("accent", color) } }
+    fun setObdMac(mac: String?) { obdMac.value = mac; edit { putString("obd_mac", mac) } }
+    fun setWallpaper(i: Int) { wallpaper.value = i; edit { putInt("wallpaper", i) } }
+    fun setAutoNight(v: Boolean) { autoNight.value = v; edit { putBoolean("auto_night", v) } }
+    fun setNightNow(v: Boolean) { nightNow.value = v; edit { putBoolean("night_now", v) } }
+    fun setBootAnim(v: Boolean) { bootAnim.value = v; edit { putBoolean("boot_anim", v) } }
+    fun setAutoUpdate(v: Boolean) { autoUpdate.value = v; edit { putBoolean("auto_update", v) } }
+    fun setUpdateWifiOnly(v: Boolean) { updateWifiOnly.value = v; edit { putBoolean("update_wifi_only", v) } }
+    fun setReverseCam(v: Boolean) { reverseCam.value = v; edit { putBoolean("reverse_cam", v) } }
+
+    fun setProfile(p: Profile) {
+        profile.value = p
+        edit {
+            putString("p_name", p.name)
+            putString("p_brand", p.brand)
+            putString("p_model", p.model)
+            putString("p_engine", p.engine)
+            putString("p_year", p.year)
+            putString("p_fuel", p.fuel)
+            putString("p_home", p.home)
+            putString("p_work", p.work)
+            putBoolean("p_done", p.setupDone)
+        }
+    }
+
+    fun resetLook() {
+        setAccent(DEFAULT_ACCENT); setWallpaper(0); setAutoNight(true); setNightNow(false); setBootAnim(true)
     }
 }

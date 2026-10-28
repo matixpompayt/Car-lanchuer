@@ -36,58 +36,22 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import pl.mati.carlauncher.data.LocationRepository
 import pl.mati.carlauncher.data.ObdManager
-import pl.mati.carlauncher.data.WeatherRepository
+import pl.mati.carlauncher.data.Prefs
 
-private const val RPM_MAX = 5000
-private const val RPM_RED = 4200
 
 @Composable
 fun VehicleScreen() {
     val d by ObdManager.data.collectAsState()
-    val status by ObdManager.status.collectAsState()
-    val message by ObdManager.message.collectAsState()
+    val profile by Prefs.profile.collectAsState()
     val gps by LocationRepository.gpsSpeed.collectAsState()
-    val trip by LocationRepository.tripMeters.collectAsState()
-    val temp by WeatherRepository.temperature.collectAsState()
-    val now by rememberNow()
     val accent = LocalAccent.current
 
     Column(Modifier.fillMaxSize()) {
-        // Pasek górny
-        Row(
-            Modifier.fillMaxWidth().height(66.dp).padding(horizontal = 26.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Row(
-                Modifier.weight(1f),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Box(Modifier.size(10.dp).clip(CircleShape).background(obdColor(status)))
-                Text(
-                    when (status) {
-                        ObdManager.Status.CONNECTED -> "ELM327 · 2.0 TDI"
-                        ObdManager.Status.CONNECTING -> "Łączenie z ELM327…"
-                        ObdManager.Status.ERROR -> message ?: "Błąd OBD"
-                        ObdManager.Status.OFF -> "OBD wyłączone · prędkość z GPS"
-                    },
-                    fontSize = 19.sp, color = CarColors.Muted, maxLines = 1,
-                )
-            }
-            Text(formatTime(now), fontSize = 30.sp, fontWeight = FontWeight.SemiBold)
-            Text(
-                listOfNotNull(temp?.let { "$it°C" }, "Trasa ${(trip / 1000f).pl1()} km").joinToString(" · "),
-                fontSize = 19.sp, color = CarColors.Muted,
-                modifier = Modifier.weight(1f),
-                textAlign = androidx.compose.ui.text.style.TextAlign.End,
-            )
-        }
-
         Row(
             Modifier
                 .weight(1f)
                 .fillMaxWidth()
-                .padding(start = 26.dp, end = 26.dp, bottom = 16.dp),
+                .padding(bottom = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(18.dp),
         ) {
             Column(Modifier.width(300.dp).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -108,7 +72,7 @@ fun VehicleScreen() {
             }
 
             Box(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.Center) {
-                RpmGauge(d.rpm, Modifier.size(440.dp))
+                RpmGauge(d.rpm, profile.rpmMax, profile.rpmRed, Modifier.size(440.dp))
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         (d.speed ?: gps)?.toString() ?: "--",
@@ -124,6 +88,9 @@ fun VehicleScreen() {
                         fontSize = 24.sp,
                         modifier = Modifier.padding(top = 16.dp),
                     )
+                    if (profile.shortCar.isNotBlank()) {
+                        Text(profile.shortCar.uppercase(PL), fontSize = 15.sp, color = CarColors.Dim, letterSpacing = 1.2.sp, modifier = Modifier.padding(top = 10.dp))
+                    }
                 }
             }
 
@@ -148,10 +115,8 @@ fun VehicleScreen() {
         MiniPlayer(
             Modifier
                 .fillMaxWidth()
-                .height(84.dp)
-                .padding(start = 26.dp, end = 26.dp),
+                .height(84.dp),
         )
-        Box(Modifier.height(18.dp))
     }
 }
 
@@ -176,21 +141,21 @@ private fun GaugeTile(
     }
 }
 
-/** Łuk obrotomierza 270°, czerwone pole od RPM_RED. */
+/** Łuk obrotomierza 270°, czerwone pole od rpmRed. */
 @Composable
-private fun RpmGauge(rpm: Int?, modifier: Modifier) {
+private fun RpmGauge(rpm: Int?, rpmMax: Int, rpmRed: Int, modifier: Modifier) {
     val accent = LocalAccent.current
-    val target = (rpm ?: 0).coerceIn(0, RPM_MAX).toFloat() / RPM_MAX
+    val target = (rpm ?: 0).coerceIn(0, rpmMax).toFloat() / rpmMax
     val anim by animateFloatAsState(target, tween(250), label = "rpm")
-    val arcColor = if ((rpm ?: 0) >= RPM_RED) CarColors.Red else accent
+    val arcColor = if ((rpm ?: 0) >= rpmRed) CarColors.Red else accent
 
     Canvas(modifier) {
         val stroke = size.minDimension * 0.047f
         val inset = stroke / 2f + size.minDimension * 0.02f
         val topLeft = Offset(inset, inset)
         val arcSize = Size(size.width - inset * 2, size.height - inset * 2)
-        val redStart = 135f + 270f * RPM_RED / RPM_MAX
-        val redSweep = 270f * (RPM_MAX - RPM_RED) / RPM_MAX
+        val redStart = 135f + 270f * rpmRed / rpmMax
+        val redSweep = 270f * (rpmMax - rpmRed) / rpmMax
 
         drawArc(CarColors.Track.copy(alpha = 0.6f), 135f, 270f, false, topLeft, arcSize, style = Stroke(stroke, cap = StrokeCap.Round))
         drawArc(CarColors.RedZone, redStart, redSweep, false, topLeft, arcSize, style = Stroke(stroke, cap = StrokeCap.Butt))

@@ -143,6 +143,10 @@ object MediaRepository {
         else c.transportControls.play()
     }
 
+    fun seekTo(ms: Long) {
+        controller?.transportControls?.seekTo(ms.coerceAtLeast(0))
+    }
+
     fun next() {
         controller?.transportControls?.skipToNext() ?: sendKey(KeyEvent.KEYCODE_MEDIA_NEXT)
     }

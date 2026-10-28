@@ -48,20 +48,20 @@ private data class AppEntry(
 )
 
 @Composable
-fun AppsScreen(onNavigate: (Screen) -> Unit) {
+fun AppsScreen() {
     val ctx = LocalContext.current
     val apps by produceState<List<AppEntry>?>(null) {
         value = withContext(Dispatchers.IO) { loadApps(ctx) }
     }
 
-    Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
+    Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(20.dp)) {
         Row(Modifier.fillMaxWidth().height(56.dp), verticalAlignment = Alignment.CenterVertically) {
             Text("Aplikacje", fontSize = 34.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
             Row(
                 Modifier
                     .clip(RoundedCornerShape(16.dp))
                     .background(CarColors.Card)
-                    .clickable { onNavigate(Screen.SETTINGS) }
+                    .clickable { UiState.openSettings("look") }
                     .padding(horizontal = 18.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
