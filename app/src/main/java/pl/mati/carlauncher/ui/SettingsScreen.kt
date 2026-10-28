@@ -32,7 +32,7 @@ import androidx.compose.material.icons.rounded.DirectionsCar
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Refresh
-import androidx.compose.material.icons.rounded.SettingsDisplay
+import androidx.compose.material.icons.rounded.Brightness6
 import androidx.compose.material.icons.rounded.VolumeUp
 import androidx.compose.material.icons.rounded.WbSunny
 import androidx.compose.material3.Icon
@@ -64,7 +64,7 @@ private data class Cat(val id: String, val icon: ImageVector, val label: String)
 
 private val CATS = listOf(
     Cat("look", Icons.Rounded.Palette, "Wygląd"),
-    Cat("disp", Icons.Rounded.SettingsDisplay, "Wyświetlacz"),
+    Cat("disp", Icons.Rounded.Brightness6, "Wyświetlacz"),
     Cat("sound", Icons.Rounded.VolumeUp, "Dźwięk"),
     Cat("conn", Icons.Rounded.Bluetooth, "Połączenia"),
     Cat("car", Icons.Rounded.DirectionsCar, "Pojazd i OBD2"),
