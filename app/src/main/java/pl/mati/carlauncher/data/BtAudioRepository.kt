@@ -12,6 +12,7 @@ import android.os.Handler
 import android.os.Looper
 import android.service.media.MediaBrowserService
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
 
 /**
  * Muzyka z telefonu przez Bluetooth radia (A2DP sink + AVRCP).
@@ -36,6 +37,8 @@ object BtAudioRepository {
     val services = MutableStateFlow<List<String>>(emptyList())
 
     private val handler = Handler(Looper.getMainLooper())
+    private val io = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO)
+    private var coverKey: String? = null
     private var browser: MediaBrowser? = null
     private var controller: MediaController? = null
     private var appCtx: Context? = null
@@ -123,6 +126,24 @@ object BtAudioRepository {
             duration = md?.getLong(MediaMetadata.METADATA_KEY_DURATION) ?: 0,
             playing = playing,
         )
+        // brak okładki z telefonu → szukamy w internecie
+        val st = state.value
+        val key = "${st.artist}|${st.title}"
+        if (st.art == null && st.title != null && key != coverKey) {
+            coverKey = key
+            val ctx = appCtx
+            if (ctx != null) io.launch {
+                val bmp = CoverArtRepository.find(ctx, st.artist, st.title)
+                if (bmp != null && "${state.value.artist}|${state.value.title}" == key) state.value = state.value.copy(art = bmp)
+            }
+        } else if (st.art == null && key == coverKey) {
+            // ten sam utwór – okładka mogła już przyjść wcześniej (metadane odświeżają się co chwilę)
+            val ctx = appCtx
+            if (ctx != null) io.launch {
+                val bmp = CoverArtRepository.find(ctx, st.artist, st.title)
+                if (bmp != null && "${state.value.artist}|${state.value.title}" == key) state.value = state.value.copy(art = bmp)
+            }
+        }
         // muzyka z telefonu ruszyła → odtwarzacz CAR OS przełącza się na Bluetooth
         if (playing && !wasPlaying) MediaRepository.preferred.value = "bt"
     }
