@@ -65,13 +65,13 @@ fun AppsScreen() {
                 Modifier
                     .clip(RoundedCornerShape(16.dp))
                     .background(CarColors.Card)
-                    .clickable { UiState.openSettings("look") }
+                    .clickable { if (!Launch.start(ctx, Intent(android.provider.Settings.ACTION_SETTINGS))) Toaster.show("Nie można otworzyć ustawień Androida") }
                     .padding(horizontal = 18.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 Icon(Icons.Rounded.Settings, null, tint = CarColors.Text, modifier = Modifier.size(26.dp))
-                Text("Ustawienia", fontSize = 19.sp)
+                Text("Ustawienia Android", fontSize = 19.sp)
             }
         }
 
@@ -79,7 +79,7 @@ fun AppsScreen() {
             SysTile(Icons.Rounded.DirectionsCar, "Dziennik tras", Modifier.weight(1f)) { UiState.go(Screen.TRIPS) }
             SysTile(Icons.Rounded.Build, "Serwis", Modifier.weight(1f)) { UiState.go(Screen.SERVICE) }
             SysTile(Icons.Rounded.WbSunny, "Pogoda", Modifier.weight(1f)) { UiState.go(Screen.WEATHER) }
-            SysTile(Icons.Rounded.Settings, "Ustawienia", Modifier.weight(1f)) { UiState.openSettings("look") }
+            SysTile(Icons.Rounded.Settings, "Ustawienia CAR OS", Modifier.weight(1f)) { UiState.openSettings("look") }
         }
         Caption("Aplikacje", size = 15.sp)
         val list = apps
