@@ -44,7 +44,7 @@ import androidx.core.graphics.drawable.toBitmap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-private data class AppEntry(
+data class AppEntry(
     val label: String,
     val pkg: String,
     val activity: String,
@@ -115,7 +115,7 @@ fun AppsScreen() {
     }
 }
 
-private fun loadApps(ctx: Context): List<AppEntry> {
+fun loadApps(ctx: Context): List<AppEntry> {
     val pm = ctx.packageManager
     val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
     return pm.queryIntentActivities(intent, 0)
@@ -135,7 +135,7 @@ private fun loadApps(ctx: Context): List<AppEntry> {
         .sortedBy { it.label.lowercase() }
 }
 
-private fun launch(ctx: Context, app: AppEntry) {
+fun launch(ctx: Context, app: AppEntry) {
     val i = Intent(Intent.ACTION_MAIN)
         .addCategory(Intent.CATEGORY_LAUNCHER)
         .setClassName(app.pkg, app.activity)

@@ -48,6 +48,9 @@ object Prefs {
     val homeFrom = MutableStateFlow(14)
     val homeTo = MutableStateFlow(19)
     val homeWeekdaysOnly = MutableStateFlow(true)
+    /** Wybrane aplikacje źródeł: "pakiet/aktywność", pusto = wykrywanie automatyczne. */
+    val radioApp = MutableStateFlow("")
+    val btApp = MutableStateFlow("")
 
     /** Surowy dostęp dla repozytoriów (trasy, serwis) i kopii zapasowej. */
     val store: SharedPreferences? get() = sp
@@ -73,6 +76,8 @@ object Prefs {
         homeFrom.value = p.getInt("home_from", 14)
         homeTo.value = p.getInt("home_to", 19)
         homeWeekdaysOnly.value = p.getBoolean("home_weekdays", true)
+        radioApp.value = p.getString("radio_app", "") ?: ""
+        btApp.value = p.getString("bt_app", "") ?: ""
         profile.value = Profile(
             name = p.getString("p_name", "") ?: "",
             brand = p.getString("p_brand", "Volkswagen") ?: "Volkswagen",
@@ -104,6 +109,8 @@ object Prefs {
     fun setSuggestHome(v: Boolean) { suggestHome.value = v; edit { putBoolean("suggest_home", v) } }
     fun setHomeFrom(v: Int) { homeFrom.value = v.coerceIn(0, 23); edit { putInt("home_from", homeFrom.value) } }
     fun setHomeTo(v: Int) { homeTo.value = v.coerceIn(1, 24); edit { putInt("home_to", homeTo.value) } }
+    fun setRadioApp(v: String) { radioApp.value = v; edit { putString("radio_app", v) } }
+    fun setBtApp(v: String) { btApp.value = v; edit { putString("bt_app", v) } }
     fun setHomeWeekdaysOnly(v: Boolean) { homeWeekdaysOnly.value = v; edit { putBoolean("home_weekdays", v) } }
     fun setRoadAlerts(v: Boolean) { roadAlerts.value = v; edit { putBoolean("road_alerts", v) } }
     fun setMapsInBackground(v: Boolean) { mapsInBackground.value = v; edit { putBoolean("maps_bg", v) } }

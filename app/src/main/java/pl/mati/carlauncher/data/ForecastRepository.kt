@@ -30,6 +30,10 @@ object ForecastRepository {
     val place = MutableStateFlow<String?>(null)
     private var placeLat = 0.0
     private var placeLon = 0.0
+    /** Granice obecnej miejscowości: minLat, maxLat, minLon, maxLon. */
+    private var placeBox: DoubleArray? = null
+    private var lastReverse = 0L
+    private var lastForecast = 0L
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var started = false
@@ -41,6 +45,14 @@ object ForecastRepository {
             while (true) {
                 val ok = refreshNow()
                 delay(if (ok) 30 * 60_000L else 60_000L)
+            }
+        }
+        // Miejscowość: od razu po wyjeździe z jej granic, w zapasie co 2,5 km
+        scope.launch {
+            while (true) {
+                val loc = LocationRepository.location.value
+                if (loc != null) checkPlace(loc.latitude, loc.longitude)
+                delay(5000)
             }
         }
         scope.launch {
@@ -56,28 +68,6 @@ object ForecastRepository {
 
     private fun refreshNow(): Boolean {
         val loc = LocationRepository.location.value ?: return false
-        if (place.value == null || RouteRepository.dist(placeLat, placeLon, loc.latitude, loc.longitude) > 2500) {
-            try {
-                val j = JSONObject(
-                    get(
-                        String.format(
-                            Locale.US,
-                            "https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=12&accept-language=pl&lat=%.5f&lon=%.5f",
-                            loc.latitude, loc.longitude,
-                        ),
-                    ),
-                )
-                val a = j.optJSONObject("address")
-                val name = listOf("city", "town", "village", "municipality", "suburb", "county")
-                    .firstNotNullOfOrNull { k -> a?.optString(k)?.takeIf { it.isNotBlank() } }
-                if (name != null) {
-                    place.value = name
-                    placeLat = loc.latitude
-                    placeLon = loc.longitude
-                }
-            } catch (_: Exception) {
-            }
-        }
         return try {
             val url = String.format(
                 Locale.US,
@@ -115,12 +105,51 @@ object ForecastRepository {
             }
             val f = Forecast(cur.optDouble("temperature_2m"), cur.optInt("weather_code"), cur.optDouble("wind_speed_10m"), hours, days, now)
             forecast.value = f
+            lastForecast = System.currentTimeMillis()
             WeatherRepository.temperature.value = f.temp.roundToInt()
             error.value = null
             true
         } catch (e: Exception) {
             error.value = "Brak połączenia z serwerem pogody"
             false
+        }
+    }
+
+    private fun checkPlace(lat: Double, lon: Double) {
+        val now = System.currentTimeMillis()
+        val box = placeBox
+        val margin = 0.003 // ~300 m tolerancji na krawędzi
+        val outside = box != null && (lat < box[0] - margin || lat > box[1] + margin || lon < box[2] - margin || lon > box[3] + margin)
+        val far = RouteRepository.dist(placeLat, placeLon, lat, lon) > 2500
+        if (place.value != null && !outside && !far) return
+        if (now - lastReverse < 15_000) return // limit zapytań
+        lastReverse = now
+        try {
+            val j = JSONObject(
+                get(
+                    String.format(
+                        Locale.US,
+                        "https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=13&accept-language=pl&lat=%.5f&lon=%.5f",
+                        lat, lon,
+                    ),
+                ),
+            )
+            val a = j.optJSONObject("address")
+            val name = listOf("city", "town", "village", "hamlet", "suburb", "municipality", "county")
+                .firstNotNullOfOrNull { k -> a?.optString(k)?.takeIf { it.isNotBlank() } }
+            placeLat = lat
+            placeLon = lon
+            val bb = j.optJSONArray("boundingbox")
+            // granice tylko gdy to prawdziwy obszar (punkt miejscowości ma „pudełko” kilkudziesięciu metrów)
+            placeBox = if (bb != null && bb.length() == 4) {
+                val box = doubleArrayOf(bb.getString(0).toDouble(), bb.getString(1).toDouble(), bb.getString(2).toDouble(), bb.getString(3).toDouble())
+                if (box[1] - box[0] > 0.008 && box[3] - box[2] > 0.012) box else null
+            } else null
+            val changed = name != null && name != place.value
+            if (name != null) place.value = name
+            // nowa miejscowość → świeża pogoda (najwyżej co 5 min)
+            if ((changed || far) && now - lastForecast > 5 * 60_000) refreshNow()
+        } catch (_: Exception) {
         }
     }
 

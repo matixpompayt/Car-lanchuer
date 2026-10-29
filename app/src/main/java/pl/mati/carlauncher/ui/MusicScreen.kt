@@ -26,6 +26,7 @@ import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Radio
+import androidx.compose.material.icons.rounded.Bluetooth
 import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.SkipPrevious
 import androidx.compose.material3.Text
@@ -57,11 +58,6 @@ private val MEDIA_APPS = listOf(
     "com.google.android.apps.youtube.music",
     "com.aspiro.tidal",
     "deezer.android.app",
-    "com.syu.radio",
-    "com.android.fmradio",
-    "com.fyt.radio",
-    "com.microntek.radio",
-    "com.ts.radio",
     "com.maxmpz.audioplayer",
     "org.videolan.vlc",
     "com.android.music",
@@ -105,9 +101,23 @@ fun MusicScreen() {
     ) {
         AlbumArt(m.art, 440.dp, 28.dp)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(28.dp)) {
-            if (apps.isNotEmpty()) {
+            val radioPkg = remember { SourceApps.pkgOf(ctx, SourceApps.Kind.RADIO) }
+            val btPkg = remember { SourceApps.pkgOf(ctx, SourceApps.Kind.BT) }
+            run {
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    apps.forEach { a ->
+                    CarChip("Radio", radioPkg != null && m.pkg == radioPkg, {
+                        if (!SourceApps.open(ctx, SourceApps.Kind.RADIO)) {
+                            Toaster.show("Nie znalazłem aplikacji radia – wybierz ją w Ustawieniach → Dźwięk")
+                            UiState.openSettings("sound")
+                        }
+                    }, Icons.Rounded.Radio)
+                    CarChip("Bluetooth", btPkg != null && m.pkg == btPkg, {
+                        if (!SourceApps.open(ctx, SourceApps.Kind.BT)) {
+                            Toaster.show("Nie znalazłem muzyki Bluetooth radia – wybierz aplikację w Ustawieniach → Dźwięk")
+                            UiState.openSettings("sound")
+                        }
+                    }, Icons.Rounded.Bluetooth)
+                    apps.filter { it.pkg != radioPkg && it.pkg != btPkg }.forEach { a ->
                         CarChip(
                             a.label, m.pkg == a.pkg,
                             { if (!Launch.pkg(ctx, a.pkg)) Toaster.show("Nie można otworzyć: ${a.label}") },

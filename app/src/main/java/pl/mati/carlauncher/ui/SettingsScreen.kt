@@ -101,6 +101,7 @@ fun SettingsScreen() {
     val navKey = if (page == "update") "sys" else page
     val accent = LocalAccent.current
 
+    Box(Modifier.fillMaxSize()) {
     Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(24.dp)) {
         Column(Modifier.width(270.dp).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text("Ustawienia", fontSize = 30.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 8.dp, top = 4.dp, bottom = 12.dp))
@@ -137,6 +138,61 @@ fun SettingsScreen() {
                 else -> systemPage()
             }
             item { Box(Modifier.height(16.dp)) }
+        }
+    }
+    AppPickerOverlay()
+    }
+}
+
+object AppPicker {
+    val kind = kotlinx.coroutines.flow.MutableStateFlow<SourceApps.Kind?>(null)
+}
+
+@Composable
+private fun AppPickerOverlay() {
+    val kind by AppPicker.kind.collectAsState()
+    val k = kind ?: return
+    val ctx = LocalContext.current
+    val apps = remember { loadApps(ctx) }
+    Box(
+        Modifier.fillMaxSize().clip(RoundedCornerShape(24.dp)).background(Color(0xF00A0C0F))
+            .clickable(interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, indication = null) {},
+    ) {
+        Column(Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    if (k == SourceApps.Kind.RADIO) "Wybierz aplikację radia" else "Wybierz aplikację muzyki Bluetooth",
+                    fontSize = 26.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f),
+                )
+                SecondaryButton("Automatycznie", {
+                    if (k == SourceApps.Kind.RADIO) Prefs.setRadioApp("") else Prefs.setBtApp("")
+                    AppPicker.kind.value = null
+                }, height = 52.dp)
+                Box(Modifier.width(10.dp))
+                SecondaryButton("Anuluj", { AppPicker.kind.value = null }, height = 52.dp)
+            }
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(apps, key = { it.pkg + "/" + it.activity }) { a ->
+                    Row(
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(CarColors.Card)
+                            .clickable {
+                                val comp = a.pkg + "/" + a.activity
+                                if (k == SourceApps.Kind.RADIO) Prefs.setRadioApp(comp) else Prefs.setBtApp(comp)
+                                AppPicker.kind.value = null
+                                Toaster.show("Ustawiono: ${a.label}")
+                            }
+                            .padding(horizontal = 16.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    ) {
+                        androidx.compose.foundation.Image(a.icon, null, modifier = Modifier.size(44.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(a.label, fontSize = 19.sp, fontWeight = FontWeight.SemiBold)
+                            Text(a.pkg, fontSize = 14.sp, color = CarColors.Muted)
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -237,6 +293,27 @@ private fun LazyListScope.soundPage() {
         val max by SystemControls.volumeMax.collectAsState()
         LaunchedEffect(Unit) { SystemControls.refresh(ctx) }
         FillSlider(if (max > 0) vol.toFloat() / max else 0f, { SystemControls.setVolume(ctx, Math.round(it * max)) }, Icons.Rounded.VolumeUp, "Multimedia", "$vol / $max", Modifier.fillMaxWidth())
+    }
+    item { SectionLabel("Źródła w radiu") }
+    item {
+        val ctx = LocalContext.current
+        val chosen by Prefs.radioApp.collectAsState()
+        val comp = remember(chosen) { SourceApps.resolve(ctx, SourceApps.Kind.RADIO) }
+        SettingRow(
+            "Radio FM/AM",
+            (SourceApps.label(ctx, comp) ?: "Nie znaleziono – wybierz aplikację") + if (chosen.isBlank() && comp != null) " (wykryte)" else "",
+            onClick = { AppPicker.kind.value = SourceApps.Kind.RADIO },
+        ) { Text("Zmień", fontSize = 17.sp, fontWeight = FontWeight.SemiBold, color = LocalAccent.current) }
+    }
+    item {
+        val ctx = LocalContext.current
+        val chosen by Prefs.btApp.collectAsState()
+        val comp = remember(chosen) { SourceApps.resolve(ctx, SourceApps.Kind.BT) }
+        SettingRow(
+            "Muzyka Bluetooth (z radia)",
+            (SourceApps.label(ctx, comp) ?: "Nie znaleziono – wybierz aplikację") + if (chosen.isBlank() && comp != null) " (wykryte)" else "",
+            onClick = { AppPicker.kind.value = SourceApps.Kind.BT },
+        ) { Text("Zmień", fontSize = 17.sp, fontWeight = FontWeight.SemiBold, color = LocalAccent.current) }
     }
     item {
         val ctx = LocalContext.current
