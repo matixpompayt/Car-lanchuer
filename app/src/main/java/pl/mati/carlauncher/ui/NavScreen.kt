@@ -367,7 +367,7 @@ private fun ColumnScope.ParkingPanel(onClose: () -> Unit) {
     ) {
         if (s == null) {
             Text(
-                "Brak zapisanego miejsca. CAR OS zapisuje je sam przy dłuższym postoju po jeździe i przy wyłączeniu radia.",
+                "Brak zapisanego miejsca. Wciśnij „Zapisz teraz” albo CAR OS zapisze je sam przy dłuższym postoju po jeździe i przy wyłączeniu radia.",
                 fontSize = 17.sp, color = CarColors.Muted,
             )
         } else {
@@ -386,5 +386,16 @@ private fun ColumnScope.ParkingPanel(onClose: () -> Unit) {
             Text("Zeskanuj telefonem – otworzy to miejsce w Mapach Google", fontSize = 16.sp, color = CarColors.Text2)
         }
     }
-    if (s != null) SecondaryButton("Usuń zapisane miejsce", { ParkingRepository.clear() }, Modifier.fillMaxWidth(), icon = Icons.Rounded.Close)
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        PrimaryButton(
+            "Zapisz teraz",
+            {
+                if (ParkingRepository.saveManual()) Toaster.show("Zapisano miejsce parkowania")
+                else Toaster.show("Brak pozycji GPS – spróbuj za chwilę")
+            },
+            Modifier.weight(1f),
+            icon = Icons.Rounded.LocalParking,
+        )
+        if (s != null) SecondaryButton("Usuń", { ParkingRepository.clear() }, icon = Icons.Rounded.Close)
+    }
 }

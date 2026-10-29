@@ -69,11 +69,14 @@ object ParkingRepository {
         saveHere(System.currentTimeMillis())
     }
 
-    private fun saveHere(time: Long) {
-        val l = LocationRepository.location.value ?: return
+    /** Ręczny zapis z przycisku „Zapisz teraz”. Zwraca false, gdy brak pozycji GPS. */
+    fun saveManual(): Boolean = saveHere(System.currentTimeMillis(), manual = true)
+
+    private fun saveHere(time: Long, manual: Boolean = false): Boolean {
+        val l = LocationRepository.location.value ?: return false
         val prev = spot.value
         val same = prev != null && RouteRepository.dist(prev.lat, prev.lon, l.latitude, l.longitude) < 40
-        val s = Spot(l.latitude, l.longitude, if (same) prev!!.time else time, if (same) prev!!.address else null)
+        val s = Spot(l.latitude, l.longitude, if (same && !manual) prev!!.time else time, if (same) prev!!.address else null)
         spot.value = s
         persist(s)
         if (s.address == null) {
@@ -87,6 +90,7 @@ object ParkingRepository {
                 }
             }
         }
+        return true
     }
 
     fun clear() {
