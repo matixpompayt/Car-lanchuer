@@ -22,6 +22,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -182,7 +183,20 @@ private fun VehicleTiles(modifier: Modifier) {
                     SmallTile("Dziś", km.toFloat().pl1(), "km", m, size) { UiState.go(Screen.TRIPS) }
                 }
                 "service" -> {
-                    val next = remember(odo.toInt() / 10, svcItems) { ServiceRepository.dueList().firstOrNull { it.known } }
+                    // Kilka pozycji po terminie / wkrótce → zmieniają się co 15 s w kółko
+                    val list = remember(odo.toInt() / 10, svcItems) {
+                        val known = ServiceRepository.dueList().filter { it.known }
+                        known.filter { it.overdue || it.soon }.ifEmpty { known.take(1) }
+                    }
+                    var idx by remember { mutableIntStateOf(0) }
+                    LaunchedEffect(list.size) {
+                        idx = 0
+                        while (list.size > 1) {
+                            delay(15_000)
+                            idx = (idx + 1) % list.size
+                        }
+                    }
+                    val next = list.getOrNull(idx % list.size.coerceAtLeast(1))
                     val name = next?.item?.name?.substringBefore(" ") ?: "Serwis"
                     val useKm = next?.kmLeft != null && (next.daysLeft == null || next.kmLeft < next.daysLeft * 40)
                     val left = if (useKm) next?.kmLeft else next?.daysLeft
@@ -198,7 +212,7 @@ private fun VehicleTiles(modifier: Modifier) {
                         else -> { v = kotlin.math.abs(left).toString(); u = "dni" }
                     }
                     SmallTile(
-                        if (overdue) "$name · po terminie" else name, v, u, m, size,
+                        (if (overdue) "$name · po terminie" else name) + if (list.size > 1) "  ${idx % list.size + 1}/${list.size}" else "", v, u, m, size,
                         valueColor = if (overdue) CarColors.Red else if (next?.soon == true) CarColors.Orange else CarColors.Text,
                         labelColor = if (overdue) CarColors.Red else CarColors.Muted,
                     ) { UiState.go(Screen.SERVICE) }
