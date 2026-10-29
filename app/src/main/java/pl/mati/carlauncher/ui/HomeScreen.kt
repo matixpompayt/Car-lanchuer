@@ -41,6 +41,12 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import pl.mati.carlauncher.data.LocationRepository
 import pl.mati.carlauncher.data.MediaRepository
 import pl.mati.carlauncher.data.ObdManager
@@ -220,7 +226,7 @@ private fun SmallTile(
     }
 }
 
-/** Kafel serwisu: rotacja co 15 s między pozycjami, miga na czerwono, gdy pozycja jest po terminie. */
+/** Kafel serwisu: rotacja co 15 s z animacją, miga na czerwono, gdy pozycja jest po terminie. */
 @Composable
 private fun ServiceTile(
     m: Modifier,
@@ -240,26 +246,51 @@ private fun ServiceTile(
             idx = (idx + 1) % pool.size
         }
     }
-    val next = pool.getOrNull(idx % maxOf(1, pool.size))
-    val name = next?.item?.name?.substringBefore(" ") ?: "Serwis"
-    val useKm = next?.kmLeft != null && (next.daysLeft == null || next.kmLeft < next.daysLeft * 40)
-    val left = if (useKm) next?.kmLeft else next?.daysLeft
-    val overdue = next?.overdue == true
-    val v: String
-    val u: String
-    when {
-        next == null || left == null -> { v = "--"; u = "" }
-        useKm -> {
-            val km = kotlin.math.abs(left)
-            if (km >= 1000) { v = (km / 1000f).pl1(); u = "tys. km" } else { v = km.toString(); u = "km" }
+    val cur = pool.getOrNull(idx % maxOf(1, pool.size))
+    val overdue = cur?.overdue == true
+
+    val t = rememberInfiniteTransition(label = "blink")
+    val f by t.animateFloat(0f, 1f, infiniteRepeatable(tween(700), RepeatMode.Reverse), label = "f")
+    val bg = if (overdue) lerp(CarColors.Card, androidx.compose.ui.graphics.Color(0xFF5A1418), f) else CarColors.Card
+
+    CarCard(m.clickable { UiState.go(Screen.SERVICE) }, color = bg, radius = 20.dp) {
+        AnimatedContent(
+            targetState = cur,
+            transitionSpec = {
+                (slideInVertically(tween(450)) { it / 2 } + fadeIn(tween(450))) togetherWith
+                    (slideOutVertically(tween(350)) { -it / 2 } + fadeOut(tween(300)))
+            },
+            label = "service",
+        ) { d ->
+            Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
+                if (d == null) {
+                    Caption("Serwis")
+                    ValueText("--", "", size, Modifier.fillMaxWidth())
+                    return@Column
+                }
+                val name = d.item.name.substringBefore(" ")
+                // km zawsze, gdy pozycja je ma; dni tylko gdy nie ma km albo to termin czasowy jest pilny
+                val kmUrgent = d.kmLeft != null && d.kmLeft <= 1000
+                val daysUrgent = d.daysLeft != null && d.daysLeft <= 30
+                val useDays = d.kmLeft == null || (daysUrgent && !kmUrgent)
+                val left = if (useDays) d.daysLeft else d.kmLeft
+                val v: String
+                val u: String
+                if (left == null) { v = "--"; u = "" }
+                else if (!useDays) {
+                    val km = kotlin.math.abs(left)
+                    if (km >= 1000) { v = (km / 1000f).pl1(); u = "tys. km" } else { v = km.toString(); u = "km" }
+                } else { v = kotlin.math.abs(left).toString(); u = "dni" }
+                val counter = if (pool.size > 1) " ${pool.indexOf(d) + 1}/${pool.size}" else ""
+                Caption(
+                    (if (d.overdue) "$name · po terminie" else name) + counter,
+                    color = if (d.overdue) androidx.compose.ui.graphics.Color(0xFFFF8A8E) else CarColors.Muted,
+                )
+                ValueText(
+                    v, u, size, Modifier.fillMaxWidth(),
+                    color = if (d.overdue) CarColors.Red else if (d.soon) CarColors.Orange else CarColors.Text,
+                )
+            }
         }
-        else -> { v = kotlin.math.abs(left).toString(); u = "dni" }
     }
-    val counter = if (pool.size > 1) " ${idx % pool.size + 1}/${pool.size}" else ""
-    SmallTile(
-        (if (overdue) "$name · po terminie" else name) + counter, v, u, m, size,
-        valueColor = if (overdue) CarColors.Red else if (next?.soon == true) CarColors.Orange else CarColors.Text,
-        labelColor = if (overdue) androidx.compose.ui.graphics.Color(0xFFFF8A8E) else CarColors.Muted,
-        blink = overdue,
-    ) { UiState.go(Screen.SERVICE) }
 }
