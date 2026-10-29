@@ -78,4 +78,5 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 
     implementation("org.osmdroid:osmdroid-android:6.1.18")
+    implementation("androidx.palette:palette-ktx:1.0.0")
 }

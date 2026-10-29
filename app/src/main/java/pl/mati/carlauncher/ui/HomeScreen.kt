@@ -18,6 +18,14 @@ import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.SkipPrevious
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.material3.Icon
+import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.material.icons.rounded.MusicNote
+import androidx.compose.material.icons.rounded.Radio
+import androidx.compose.material.icons.rounded.Bluetooth
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -108,46 +116,94 @@ private fun MediaCard(modifier: Modifier) {
         }
     }
 
+    val accent = LocalAccent.current
+    // kolor tła z okładki (Palette), płynnie zmieniany
+    val artColor = remember(np.art) {
+        np.art?.let { bmp ->
+            try {
+                val p = androidx.palette.graphics.Palette.from(bmp).maximumColorCount(12).generate()
+                val sw = p.darkVibrantSwatch ?: p.vibrantSwatch ?: p.darkMutedSwatch ?: p.dominantSwatch
+                sw?.rgb?.let { androidx.compose.ui.graphics.Color(it) }
+            } catch (_: Exception) {
+                null
+            }
+        }
+    }
+    val tint by androidx.compose.animation.animateColorAsState(artColor ?: accent.copy(alpha = 0.5f), androidx.compose.animation.core.tween(700), label = "tint")
+
     CarCard(modifier) {
         if (!access) {
             NoAccessCard(Modifier.fillMaxSize())
         } else {
+            Box(
+                Modifier.fillMaxSize().background(
+                    androidx.compose.ui.graphics.Brush.verticalGradient(
+                        0f to tint.copy(alpha = 0.55f),
+                        0.65f to tint.copy(alpha = 0.12f),
+                        1f to androidx.compose.ui.graphics.Color.Transparent,
+                    ),
+                ),
+            )
             Column(
-                Modifier.fillMaxSize().padding(22.dp),
-                verticalArrangement = Arrangement.SpaceBetween,
+                Modifier.fillMaxSize().padding(horizontal = 22.dp, vertical = 18.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
+                // źródło
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { UiState.go(Screen.MUSIC) },
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.clickable { UiState.go(Screen.MUSIC) },
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    AlbumArt(np.art, 104.dp, 16.dp)
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Caption(np.appName ?: "Muzyka", size = 14.sp)
-                        Text(np.title ?: "Nic nie gra", fontSize = 25.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(np.artist ?: "", fontSize = 19.sp, color = CarColors.Text2, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    }
-                }
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    val fraction = if (np.duration > 0) pos.toFloat() / np.duration else 0f
-                    ProgressBar(fraction, LocalAccent.current, height = 5.dp)
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text(if (np.duration > 0) formatDuration(pos) else "", fontSize = 15.sp, color = CarColors.Muted)
-                        Text(if (np.duration > 0) formatDuration(np.duration) else "", fontSize = 15.sp, color = CarColors.Muted)
-                    }
-                }
-                Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    RoundIconButton(Icons.Rounded.SkipPrevious, "Poprzedni", 64.dp, { Player.previous(np) }, iconSize = 36.dp)
-                    RoundIconButton(
-                        if (np.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                        if (np.playing) "Pauza" else "Odtwórz",
-                        78.dp, { if (np.pkg == null && np.key == null) Launch.music(ctx) else Player.playPause(np) }, filled = true, iconSize = 38.dp,
+                    Icon(
+                        when (np.key) { "bt" -> Icons.Rounded.Bluetooth; "radio" -> Icons.Rounded.Radio; else -> Icons.Rounded.MusicNote },
+                        null, tint = CarColors.Text2, modifier = Modifier.size(20.dp),
                     )
-                    RoundIconButton(Icons.Rounded.SkipNext, "Następny", 64.dp, { Player.next(np) }, iconSize = 36.dp)
+                    Caption(np.appName ?: "Muzyka", size = 14.sp, color = CarColors.Text2, modifier = Modifier.weight(1f))
+                    Icon(Icons.Rounded.ChevronRight, "Otwórz odtwarzacz", tint = CarColors.Text2, modifier = Modifier.size(24.dp))
+                }
+                // okładka + tytuł
+                Row(
+                    Modifier.fillMaxWidth().weight(1f).clickable { UiState.go(Screen.MUSIC) },
+                    horizontalArrangement = Arrangement.spacedBy(18.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    BoxWithConstraints(Modifier.fillMaxHeight().aspectRatio(1f, matchHeightConstraintsFirst = true)) {
+                        AlbumArt(np.art, maxHeight.coerceAtMost(190.dp), 20.dp)
+                    }
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(np.title ?: "Nic nie gra", fontSize = 26.sp, fontWeight = FontWeight.Bold, lineHeight = 30.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        Text(np.artist ?: "Dotknij, aby wybrać źródło", fontSize = 18.sp, color = CarColors.Text2, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    }
+                }
+                // postęp
+                if (np.duration > 0) {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        ProgressBar(pos.toFloat() / np.duration, CarColors.Text, height = 4.dp)
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text(formatDuration(pos), fontSize = 14.sp, color = CarColors.Text2)
+                            Text(formatDuration(np.duration), fontSize = 14.sp, color = CarColors.Text2)
+                        }
+                    }
+                }
+                // sterowanie
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    if (np.controllable || np.key == null) {
+                        RoundIconButton(Icons.Rounded.SkipPrevious, "Poprzedni", 60.dp, { Player.previous(np) }, iconSize = 34.dp)
+                        RoundIconButton(
+                            if (np.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                            if (np.playing) "Pauza" else "Odtwórz",
+                            72.dp, { if (np.pkg == null && np.key == null) Launch.music(ctx) else Player.playPause(np) }, filled = true, iconSize = 36.dp,
+                        )
+                        RoundIconButton(Icons.Rounded.SkipNext, "Następny", 60.dp, { Player.next(np) }, iconSize = 34.dp)
+                    } else {
+                        SecondaryButton(if (np.isRadio) "Otwórz radio" else "Otwórz Bluetooth", {
+                            SourceApps.open(ctx, if (np.isRadio) SourceApps.Kind.RADIO else SourceApps.Kind.BT)
+                        }, height = 56.dp)
+                    }
                 }
             }
         }
