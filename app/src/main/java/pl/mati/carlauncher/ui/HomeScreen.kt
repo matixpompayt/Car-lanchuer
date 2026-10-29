@@ -1,6 +1,13 @@
 package pl.mati.carlauncher.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.height
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -131,22 +138,44 @@ private fun MediaCard(modifier: Modifier) {
     }
     val tint by androidx.compose.animation.animateColorAsState(artColor ?: accent.copy(alpha = 0.5f), androidx.compose.animation.core.tween(700), label = "tint")
 
+    val artImg = remember(np.art) { np.art?.asImageBitmap() }
+    val shadow = androidx.compose.ui.text.TextStyle(
+        shadow = androidx.compose.ui.graphics.Shadow(Color.Black.copy(alpha = 0.7f), androidx.compose.ui.geometry.Offset(0f, 2f), 8f),
+    )
+
     CarCard(modifier) {
         if (!access) {
             NoAccessCard(Modifier.fillMaxSize())
         } else {
+            // tło: okładka na całą kartę (albo kolor akcentu, gdy brak okładki)
+            androidx.compose.animation.Crossfade(artImg, androidx.compose.animation.core.tween(600), label = "bg", modifier = Modifier.fillMaxSize()) { img ->
+                if (img != null) {
+                    Image(img, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+                } else {
+                    Box(
+                        Modifier.fillMaxSize().background(
+                            Brush.verticalGradient(listOf(tint.copy(alpha = 0.55f), Color.Transparent)),
+                        ),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(Icons.Rounded.MusicNote, null, tint = CarColors.Text.copy(alpha = 0.08f), modifier = Modifier.size(200.dp))
+                    }
+                }
+            }
+            // przyciemnienie: lekko u góry, mocno na dole pod napisami i przyciskami
             Box(
                 Modifier.fillMaxSize().background(
-                    androidx.compose.ui.graphics.Brush.verticalGradient(
-                        0f to tint.copy(alpha = 0.55f),
-                        0.65f to tint.copy(alpha = 0.12f),
-                        1f to androidx.compose.ui.graphics.Color.Transparent,
+                    Brush.verticalGradient(
+                        0f to Color.Black.copy(alpha = 0.35f),
+                        0.25f to Color.Black.copy(alpha = 0.05f),
+                        0.5f to tint.copy(alpha = 0.35f).compositeOver(Color.Black.copy(alpha = 0.35f)),
+                        0.72f to CarColors.Card.copy(alpha = 0.92f),
+                        1f to CarColors.Card,
                     ),
                 ),
             )
             Column(
-                Modifier.fillMaxSize().padding(horizontal = 22.dp, vertical = 18.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp),
+                Modifier.fillMaxSize().padding(horizontal = 24.dp, vertical = 18.dp),
             ) {
                 // źródło
                 Row(
@@ -154,27 +183,30 @@ private fun MediaCard(modifier: Modifier) {
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Icon(
-                        when (np.key) { "bt" -> Icons.Rounded.Bluetooth; "radio" -> Icons.Rounded.Radio; else -> Icons.Rounded.MusicNote },
-                        null, tint = CarColors.Text2, modifier = Modifier.size(20.dp),
-                    )
-                    Caption(np.appName ?: "Muzyka", size = 14.sp, color = CarColors.Text2, modifier = Modifier.weight(1f))
-                    Icon(Icons.Rounded.ChevronRight, "Otwórz odtwarzacz", tint = CarColors.Text2, modifier = Modifier.size(24.dp))
-                }
-                // okładka + tytuł
-                Row(
-                    Modifier.fillMaxWidth().weight(1f).clickable { UiState.go(Screen.MUSIC) },
-                    horizontalArrangement = Arrangement.spacedBy(18.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    BoxWithConstraints(Modifier.fillMaxHeight().aspectRatio(1f, matchHeightConstraintsFirst = true)) {
-                        AlbumArt(np.art, maxHeight.coerceAtMost(190.dp), 20.dp)
+                    Row(
+                        Modifier.clip(RoundedCornerShape(50)).background(Color.Black.copy(alpha = 0.45f)).padding(horizontal = 12.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        Icon(
+                            when (np.key) { "bt" -> Icons.Rounded.Bluetooth; "radio" -> Icons.Rounded.Radio; else -> Icons.Rounded.MusicNote },
+                            null, tint = CarColors.Text, modifier = Modifier.size(18.dp),
+                        )
+                        Caption(np.appName ?: "Muzyka", size = 13.sp, color = CarColors.Text)
                     }
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text(np.title ?: "Nic nie gra", fontSize = 26.sp, fontWeight = FontWeight.Bold, lineHeight = 30.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                        Text(np.artist ?: "Dotknij, aby wybrać źródło", fontSize = 18.sp, color = CarColors.Text2, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    Box(Modifier.weight(1f))
+                    Box(Modifier.clip(RoundedCornerShape(50)).background(Color.Black.copy(alpha = 0.45f)).padding(6.dp)) {
+                        Icon(Icons.Rounded.ChevronRight, "Otwórz odtwarzacz", tint = CarColors.Text, modifier = Modifier.size(22.dp))
                     }
                 }
+                // wolne miejsce – tu widać okładkę
+                Box(Modifier.fillMaxWidth().weight(1f).clickable { UiState.go(Screen.MUSIC) })
+                // tytuł i wykonawca nad paskiem postępu
+                Column(Modifier.fillMaxWidth().clickable { UiState.go(Screen.MUSIC) }, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(np.title ?: "Nic nie gra", style = shadow, fontSize = 30.sp, fontWeight = FontWeight.Bold, lineHeight = 34.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(np.artist ?: "Dotknij, aby wybrać źródło", style = shadow, fontSize = 19.sp, color = CarColors.Text.copy(alpha = 0.8f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+                Box(Modifier.height(12.dp))
                 // postęp
                 if (np.duration > 0) {
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -184,6 +216,7 @@ private fun MediaCard(modifier: Modifier) {
                             Text(formatDuration(np.duration), fontSize = 14.sp, color = CarColors.Text2)
                         }
                     }
+                    Box(Modifier.height(6.dp))
                 }
                 // sterowanie
                 Row(
