@@ -69,11 +69,13 @@ object BackupManager {
 
     // ---------- ręczna kopia ----------
 
-    fun export(ctx: Context, uri: Uri): Boolean = try {
-        val json = buildJson() ?: return false
-        ctx.contentResolver.openOutputStream(uri, "wt")?.use { it.write(json.toByteArray()) } != null
-    } catch (_: Exception) {
-        false
+    fun export(ctx: Context, uri: Uri): Boolean {
+        return try {
+            val json = buildJson() ?: return false
+            ctx.contentResolver.openOutputStream(uri, "wt")?.use { it.write(json.toByteArray()) } != null
+        } catch (_: Exception) {
+            false
+        }
     }
 
     /** Wczytuje kopię. Po sukcesie aplikacja powinna się zrestartować. */
