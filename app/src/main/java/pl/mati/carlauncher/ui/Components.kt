@@ -552,7 +552,7 @@ fun ToastHost(modifier: Modifier = Modifier) {
 /** Mały pasek odtwarzacza (ekran Pojazd). */
 @Composable
 fun MiniPlayer(modifier: Modifier = Modifier) {
-    val m by MediaRepository.state.collectAsState()
+    val m = rememberNowPlaying()
     CarCard(modifier, color = CarColors.Card2, radius = 20.dp) {
         Row(
             Modifier.fillMaxSize().padding(horizontal = 14.dp),
@@ -564,13 +564,13 @@ fun MiniPlayer(modifier: Modifier = Modifier) {
                 Text(m.title ?: "Nic nie gra", fontSize = 19.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(m.artist ?: m.appName ?: "", fontSize = 16.sp, color = CarColors.Muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            RoundIconButton(Icons.Rounded.SkipPrevious, "Poprzedni", 56.dp, MediaRepository::previous)
+            RoundIconButton(Icons.Rounded.SkipPrevious, "Poprzedni", 56.dp, { Player.previous(m) })
             RoundIconButton(
                 if (m.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
                 if (m.playing) "Pauza" else "Odtwórz",
-                56.dp, MediaRepository::playPause, filled = true, iconSize = 28.dp,
+                56.dp, { Player.playPause(m) }, filled = true, iconSize = 28.dp,
             )
-            RoundIconButton(Icons.Rounded.SkipNext, "Następny", 56.dp, MediaRepository::next)
+            RoundIconButton(Icons.Rounded.SkipNext, "Następny", 56.dp, { Player.next(m) })
         }
     }
 }

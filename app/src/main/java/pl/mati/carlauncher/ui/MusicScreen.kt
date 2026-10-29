@@ -86,9 +86,9 @@ fun MusicScreen() {
     val apps = remember { installedMediaApps(ctx) }
     val np = rememberNowPlaying()
     var pos by remember { mutableLongStateOf(0L) }
-    LaunchedEffect(m) {
+    LaunchedEffect(m, np.key, np.title) {
         while (true) {
-            pos = MediaRepository.position()
+            pos = Player.position(np)
             delay(500)
         }
     }
@@ -153,23 +153,23 @@ fun MusicScreen() {
                     SecondaryButton("Wróć do ${m.appName ?: "poprzedniego"}", { MediaRepository.prefer(m.pkg) })
                 }
                 Text("Stację i utwory zmieniasz w aplikacji radia albo przyciskami na kierownicy.", fontSize = 16.sp, color = CarColors.Muted)
-            } else if (m.duration > 0) {
+            } else if (np.duration > 0) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    SeekBar(pos.toFloat() / m.duration) { f -> MediaRepository.seekTo((f * m.duration).toLong()) }
+                    SeekBar(pos.toFloat() / np.duration) { f -> if (np.key != "bt") MediaRepository.seekTo((f * np.duration).toLong()) }
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Text(formatDuration(pos), fontSize = 16.sp, color = CarColors.Muted)
-                        Text(formatDuration(m.duration), fontSize = 16.sp, color = CarColors.Muted)
+                        Text(formatDuration(np.duration), fontSize = 16.sp, color = CarColors.Muted)
                     }
                 }
             }
             if (np.controllable || np.pkg == null) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(22.dp)) {
-                RoundIconButton(Icons.Rounded.SkipPrevious, "Poprzedni", 72.dp, MediaRepository::previous, iconSize = 40.dp)
+                RoundIconButton(Icons.Rounded.SkipPrevious, "Poprzedni", 72.dp, { Player.previous(np) }, iconSize = 40.dp)
                 RoundIconButton(
-                    if (m.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                    if (m.playing) "Pauza" else "Odtwórz",
-                    92.dp, { if (m.pkg == null) Launch.music(ctx) else MediaRepository.playPause() }, filled = true, iconSize = 44.dp,
+                    if (np.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                    if (np.playing) "Pauza" else "Odtwórz",
+                    92.dp, { if (np.pkg == null && np.key == null) Launch.music(ctx) else Player.playPause(np) }, filled = true, iconSize = 44.dp,
                 )
-                RoundIconButton(Icons.Rounded.SkipNext, "Następny", 72.dp, MediaRepository::next, iconSize = 40.dp)
+                RoundIconButton(Icons.Rounded.SkipNext, "Następny", 72.dp, { Player.next(np) }, iconSize = 40.dp)
                 Spacer(Modifier.weight(1f))
                 RoundIconButton(Icons.Rounded.Equalizer, "Korektor", 60.dp, { Launch.equalizer(ctx) }, iconSize = 30.dp)
             }

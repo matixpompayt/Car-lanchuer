@@ -338,6 +338,10 @@ private fun LazyListScope.soundPage() {
             Text("Sesje multimediów:", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
             if (sessions.isEmpty()) Text("brak", fontSize = 15.sp, color = CarColors.Muted)
             sessions.forEach { Text("• $it", fontSize = 15.sp, color = CarColors.Text2) }
+            val btSt by pl.mati.carlauncher.data.BtAudioRepository.state.collectAsState()
+            val btSvc by pl.mati.carlauncher.data.BtAudioRepository.services.collectAsState()
+            Text("Muzyka BT (AVRCP): " + if (btSt.connected) "połączono z ${btSt.service} · ${btSt.title ?: "—"} / ${btSt.artist ?: "—"}" else "nie połączono", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+            Text("Usługi multimediów w systemie: " + btSvc.joinToString(", ").ifBlank { "brak" }, fontSize = 14.sp, color = CarColors.Text2)
             Text("Odczytane dane radia/BT:", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
             if (infos.isEmpty()) Text("brak", fontSize = 15.sp, color = CarColors.Muted)
             infos.values.forEach { Text("• ${it.key}: ${it.title} | ${it.text} | ${it.sub}", fontSize = 15.sp, color = CarColors.Text2) }

@@ -133,7 +133,7 @@ fun StatusBar() {
                 temp?.let { BarIcon(Icons.Rounded.Thermostat, "$it°C") }
                 BarIcon(if (bt) Icons.Rounded.Bluetooth else Icons.Rounded.BluetoothDisabled, null)
                 BarIcon(if (wifi) Icons.Rounded.Wifi else Icons.Rounded.WifiOff, null)
-                BarIcon(Icons.Rounded.SignalCellularAlt, null)
+                PhoneSignal()
                 BarIcon(if (vol == 0) Icons.Rounded.VolumeOff else Icons.Rounded.VolumeUp, vol.toString())
             }
         }
@@ -540,6 +540,36 @@ fun ServiceAlertOverlay() {
                     SecondaryButton("Zamknij", { AutostartManager.serviceAlert.value = false })
                 }
             }
+        }
+    }
+}
+
+
+/** Operator, zasięg i bateria telefonu połączonego przez Bluetooth (HFP). */
+@Composable
+private fun PhoneSignal() {
+    val st by pl.mati.carlauncher.data.PhoneStatusRepository.status.collectAsState()
+    val sig = st.signal
+    if (sig == null) {
+        BarIcon(Icons.Rounded.SignalCellularAlt, null)
+        return
+    }
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        st.operator?.let { Text(it, fontSize = 18.sp, color = CarColors.Muted, maxLines = 1) }
+        androidx.compose.foundation.Canvas(Modifier.size(22.dp, 18.dp)) {
+            val bars = 5
+            val w = size.width / (bars * 1.6f)
+            for (i in 0 until bars) {
+                val h = size.height * (i + 1) / bars
+                drawRect(
+                    color = if (i < sig) CarColors.Muted else CarColors.Muted.copy(alpha = 0.25f),
+                    topLeft = androidx.compose.ui.geometry.Offset(i * w * 1.6f, size.height - h),
+                    size = androidx.compose.ui.geometry.Size(w, h),
+                )
+            }
+        }
+        st.battery?.let { b ->
+            Text("${(b.coerceIn(0, 5) * 20)}%", fontSize = 16.sp, color = if (b <= 1) CarColors.Red else CarColors.Muted)
         }
     }
 }

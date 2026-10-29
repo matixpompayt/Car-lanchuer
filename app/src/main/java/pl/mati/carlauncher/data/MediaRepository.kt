@@ -100,7 +100,12 @@ object MediaRepository {
             }
             "${it.packageName} · $st · ${it.metadata?.getString(MediaMetadata.METADATA_KEY_TITLE) ?: "—"}"
         }
-        val pref = preferred.value
+        var pref = preferred.value
+        val anyPlaying = sessions.firstOrNull { it.playbackState?.state == PlaybackState.STATE_PLAYING }
+        if (anyPlaying != null && (pref == "radio" || pref == "bt") && !(pref == "bt" && BtAudioRepository.state.value.playing)) {
+            pref = anyPlaying.packageName
+            preferred.value = pref
+        }
         val best = sessions.firstOrNull { pref != null && it.packageName == pref }
             ?: sessions.firstOrNull { it.playbackState?.state == PlaybackState.STATE_PLAYING }
             ?: controller?.takeIf { c -> sessions.any { it.sessionToken == c.sessionToken } }

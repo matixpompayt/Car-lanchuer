@@ -101,9 +101,9 @@ private fun MediaCard(modifier: Modifier) {
     val access by MediaRepository.access.collectAsState()
     val ctx = LocalContext.current
     var pos by remember { mutableLongStateOf(0L) }
-    LaunchedEffect(m) {
+    LaunchedEffect(m, np.key, np.title) {
         while (true) {
-            pos = MediaRepository.position()
+            pos = Player.position(np)
             delay(500)
         }
     }
@@ -129,11 +129,11 @@ private fun MediaCard(modifier: Modifier) {
                     }
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    val fraction = if (m.duration > 0) pos.toFloat() / m.duration else 0f
+                    val fraction = if (np.duration > 0) pos.toFloat() / np.duration else 0f
                     ProgressBar(fraction, LocalAccent.current, height = 5.dp)
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text(if (m.duration > 0) formatDuration(pos) else "", fontSize = 15.sp, color = CarColors.Muted)
-                        Text(if (m.duration > 0) formatDuration(m.duration) else "", fontSize = 15.sp, color = CarColors.Muted)
+                        Text(if (np.duration > 0) formatDuration(pos) else "", fontSize = 15.sp, color = CarColors.Muted)
+                        Text(if (np.duration > 0) formatDuration(np.duration) else "", fontSize = 15.sp, color = CarColors.Muted)
                     }
                 }
                 Row(
@@ -141,13 +141,13 @@ private fun MediaCard(modifier: Modifier) {
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    RoundIconButton(Icons.Rounded.SkipPrevious, "Poprzedni", 64.dp, MediaRepository::previous, iconSize = 36.dp)
+                    RoundIconButton(Icons.Rounded.SkipPrevious, "Poprzedni", 64.dp, { Player.previous(np) }, iconSize = 36.dp)
                     RoundIconButton(
-                        if (m.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                        if (m.playing) "Pauza" else "Odtwórz",
-                        78.dp, { if (m.pkg == null) Launch.music(ctx) else MediaRepository.playPause() }, filled = true, iconSize = 38.dp,
+                        if (np.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                        if (np.playing) "Pauza" else "Odtwórz",
+                        78.dp, { if (np.pkg == null && np.key == null) Launch.music(ctx) else Player.playPause(np) }, filled = true, iconSize = 38.dp,
                     )
-                    RoundIconButton(Icons.Rounded.SkipNext, "Następny", 64.dp, MediaRepository::next, iconSize = 36.dp)
+                    RoundIconButton(Icons.Rounded.SkipNext, "Następny", 64.dp, { Player.next(np) }, iconSize = 36.dp)
                 }
             }
         }

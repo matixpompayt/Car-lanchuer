@@ -37,6 +37,9 @@ object BroadcastProbe {
         "android.bluetooth.avrcp-controller.profile.action.TRACK_EVENT",
         "com.microntek.radio.report", "com.microntek.music.report", "com.microntek.bt.report",
         "com.syu.radio.Info", "com.tw.radio.info",
+        "android.bluetooth.headsetclient.profile.action.AG_EVENT",
+        "android.bluetooth.headsetclient.profile.action.CONNECTION_STATE_CHANGED",
+        "android.bluetooth.a2dp-sink.profile.action.PLAYING_STATE_CHANGED",
     )
 
     private val INTEREST = Regex("(radio|rds|fm|freq|band|bt|blue|a2dp|avrcp|music|media|track|song|id3|play|meta|info|report|station)", RegexOption.IGNORE_CASE)
@@ -120,6 +123,20 @@ object BroadcastProbe {
         val line = formatTime(System.currentTimeMillis()) + " " + action +
             if (pairs.isEmpty()) "" else " → " + pairs.entries.joinToString(", ") { "${it.key}=${it.value}" }.take(300)
         log.value = (listOf(line) + log.value).take(40)
+        if (action.endsWith("headsetclient.profile.action.AG_EVENT")) {
+            PhoneStatusRepository.onAgEvent(pairs)
+            return
+        }
+        if (action.endsWith("headsetclient.profile.action.CONNECTION_STATE_CHANGED")) {
+            val st = pairs.entries.firstOrNull { it.key.endsWith("extra.STATE") }?.value
+            if (st == "0") PhoneStatusRepository.onDisconnected()
+            appCtx?.let { BtAudioRepository.connect(it) }
+            return
+        }
+        if (action.startsWith("android.bluetooth.a2dp-sink")) {
+            appCtx?.let { BtAudioRepository.connect(it) }
+            return
+        }
         interpret(action, pairs)
     }
 
