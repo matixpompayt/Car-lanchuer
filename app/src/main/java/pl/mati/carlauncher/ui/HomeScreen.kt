@@ -148,7 +148,7 @@ private fun MediaCard(modifier: Modifier) {
             NoAccessCard(Modifier.fillMaxSize())
         } else {
             // tło: okładka na całą kartę (albo kolor akcentu, gdy brak okładki)
-            androidx.compose.animation.Crossfade(artImg, androidx.compose.animation.core.tween(600), label = "bg", modifier = Modifier.fillMaxSize()) { img ->
+            androidx.compose.animation.Crossfade(targetState = artImg, modifier = Modifier.fillMaxSize(), animationSpec = androidx.compose.animation.core.tween(600), label = "bg") { img ->
                 if (img != null) {
                     Image(img, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
                 } else {
