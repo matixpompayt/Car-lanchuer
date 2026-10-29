@@ -68,6 +68,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -236,19 +237,29 @@ fun Caption(text: String, modifier: Modifier = Modifier, size: TextUnit = 13.sp,
     )
 }
 
+/** Duża liczba + jednostka. Sama zmniejsza czcionkę, gdy tekst nie mieści się w kafelku. */
 @Composable
-fun ValueText(value: String, unit: String, size: TextUnit, modifier: Modifier = Modifier) {
+fun ValueText(value: String, unit: String, size: TextUnit, modifier: Modifier = Modifier, color: Color = CarColors.Text) {
+    var scale by remember(value, unit, size) { mutableStateOf(1f) }
+    var ready by remember(value, unit, size) { mutableStateOf(false) }
+    val s = size * scale
     Text(
         buildAnnotatedString {
-            withStyle(SpanStyle(fontFamily = Condensed, fontWeight = FontWeight.Bold, fontSize = size, color = CarColors.Text)) {
+            withStyle(SpanStyle(fontFamily = Condensed, fontWeight = FontWeight.Bold, fontSize = s, color = color)) {
                 append(value)
             }
-            withStyle(SpanStyle(fontSize = size * 0.36f, color = CarColors.Muted, fontWeight = FontWeight.Medium)) {
-                append(" $unit")
+            if (unit.isNotBlank()) {
+                withStyle(SpanStyle(fontSize = s * 0.36f, color = CarColors.Muted, fontWeight = FontWeight.Medium)) {
+                    append(" $unit")
+                }
             }
         },
-        modifier = modifier,
+        modifier = modifier.drawWithContent { if (ready) drawContent() },
         maxLines = 1,
+        softWrap = false,
+        onTextLayout = { r ->
+            if (r.didOverflowWidth && scale > 0.4f) scale *= 0.9f else ready = true
+        },
     )
 }
 

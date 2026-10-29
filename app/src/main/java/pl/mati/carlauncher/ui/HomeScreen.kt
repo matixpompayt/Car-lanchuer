@@ -183,14 +183,25 @@ private fun VehicleTiles(modifier: Modifier) {
                 }
                 "service" -> {
                     val next = remember(odo.toInt() / 10, svcItems) { ServiceRepository.dueList().firstOrNull { it.known } }
-                    val (v, u) = when {
-                        next == null -> "--" to ""
-                        next.kmLeft != null && (next.daysLeft == null || next.kmLeft < next.daysLeft * 40) ->
-                            (if (next.kmLeft >= 1000) (next.kmLeft / 1000f).pl1() else next.kmLeft.toString()) to (if (next.kmLeft >= 1000) "tys. km" else "km")
-                        next.daysLeft != null -> next.daysLeft.toString() to "dni"
-                        else -> "--" to ""
+                    val name = next?.item?.name?.substringBefore(" ") ?: "Serwis"
+                    val useKm = next?.kmLeft != null && (next.daysLeft == null || next.kmLeft < next.daysLeft * 40)
+                    val left = if (useKm) next?.kmLeft else next?.daysLeft
+                    val overdue = next?.overdue == true
+                    val v: String
+                    val u: String
+                    when {
+                        next == null || left == null -> { v = "--"; u = "" }
+                        useKm -> {
+                            val km = kotlin.math.abs(left)
+                            if (km >= 1000) { v = (km / 1000f).pl1(); u = "tys. km" } else { v = km.toString(); u = "km" }
+                        }
+                        else -> { v = kotlin.math.abs(left).toString(); u = "dni" }
                     }
-                    SmallTile(next?.item?.name?.substringBefore(" ") ?: "Serwis", v, u, m, size) { UiState.go(Screen.SERVICE) }
+                    SmallTile(
+                        if (overdue) "$name · po terminie" else name, v, u, m, size,
+                        valueColor = if (overdue) CarColors.Red else if (next?.soon == true) CarColors.Orange else CarColors.Text,
+                        labelColor = if (overdue) CarColors.Red else CarColors.Muted,
+                    ) { UiState.go(Screen.SERVICE) }
                 }
             }
         }
@@ -198,11 +209,20 @@ private fun VehicleTiles(modifier: Modifier) {
 }
 
 @Composable
-private fun SmallTile(label: String, value: String, unit: String, modifier: Modifier, size: androidx.compose.ui.unit.TextUnit, onClick: () -> Unit) {
+private fun SmallTile(
+    label: String,
+    value: String,
+    unit: String,
+    modifier: Modifier,
+    size: androidx.compose.ui.unit.TextUnit,
+    valueColor: androidx.compose.ui.graphics.Color = CarColors.Text,
+    labelColor: androidx.compose.ui.graphics.Color = CarColors.Muted,
+    onClick: () -> Unit,
+) {
     CarCard(modifier.clickable(onClick = onClick), radius = 20.dp) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
-            Caption(label)
-            ValueText(value, unit, size)
+            Caption(label, color = labelColor)
+            ValueText(value, unit, size, Modifier.fillMaxWidth(), color = valueColor)
         }
     }
 }
