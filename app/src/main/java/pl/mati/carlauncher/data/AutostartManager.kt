@@ -28,7 +28,8 @@ object AutostartManager {
     val screenReceiver = object : BroadcastReceiver() {
         override fun onReceive(ctx: Context, intent: Intent) {
             when (intent.action) {
-                Intent.ACTION_SCREEN_OFF -> lastOff = System.currentTimeMillis()
+                Intent.ACTION_SCREEN_OFF -> { lastOff = System.currentTimeMillis(); ParkingRepository.saveNow() }
+                Intent.ACTION_SHUTDOWN -> ParkingRepository.saveNow()
                 Intent.ACTION_SCREEN_ON -> if (lastOff > 0 && System.currentTimeMillis() - lastOff > 3 * 60_000) run(ctx)
             }
         }

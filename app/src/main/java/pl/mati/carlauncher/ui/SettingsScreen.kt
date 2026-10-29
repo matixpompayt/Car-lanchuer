@@ -132,7 +132,7 @@ fun SettingsScreen() {
                 "disp" -> displayPage()
                 "sound" -> soundPage()
                 "conn" -> connPage()
-                "car" -> { carPage(); alertsSection() }
+                "car" -> { carPage(); speedSection(); alertsSection() }
                 "auto" -> autostartPage()
                 "update" -> updatePage()
                 else -> systemPage()
@@ -462,6 +462,26 @@ private fun LazyListScope.carPage() {
                 }
             }
         }
+    }
+}
+
+private fun LazyListScope.speedSection() {
+    item { SectionLabel("Ograniczenia prędkości") }
+    item {
+        val v by Prefs.speedLimits.collectAsState()
+        SettingRow("Pokazuj ograniczenia", "Znak z limitem na mapie (dane OpenStreetMap, wymaga internetu)", onClick = { Prefs.setSpeedLimits(!v) }) { CarSwitch(v) }
+    }
+    item {
+        val t by Prefs.speedTolerance.collectAsState()
+        SettingRow("Tolerancja", "Ostrzegaj powyżej limitu o $t km/h") {
+            RoundIconButton(Icons.Rounded.Remove, "Mniej", 44.dp, { Prefs.setSpeedTolerance(t - 5) })
+            Text("+$t", fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+            RoundIconButton(Icons.Rounded.Add, "Więcej", 44.dp, { Prefs.setSpeedTolerance(t + 5) })
+        }
+    }
+    item {
+        val v by Prefs.speedBeep.collectAsState()
+        SettingRow("Dźwięk przy przekroczeniu", "Krótki sygnał, gdy przekroczysz limit + tolerancję", onClick = { Prefs.setSpeedBeep(!v) }) { CarSwitch(v) }
     }
 }
 

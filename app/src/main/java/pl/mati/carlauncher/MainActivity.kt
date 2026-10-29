@@ -67,11 +67,15 @@ class MainActivity : ComponentActivity() {
         ServiceRepository.load()
         TripRepository.start()
         ForecastRepository.start()
+        pl.mati.carlauncher.data.SpeedLimitRepository.start()
+        pl.mati.carlauncher.data.ParkingRepository.start()
+        pl.mati.carlauncher.data.PlacesRepository.load()
         ContextCompat.registerReceiver(
             this, AutostartManager.screenReceiver,
             IntentFilter().apply {
                 addAction(Intent.ACTION_SCREEN_ON)
                 addAction(Intent.ACTION_SCREEN_OFF)
+                addAction(Intent.ACTION_SHUTDOWN)
             },
             ContextCompat.RECEIVER_NOT_EXPORTED,
         )

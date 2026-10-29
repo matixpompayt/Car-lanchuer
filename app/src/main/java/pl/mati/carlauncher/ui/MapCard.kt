@@ -57,6 +57,11 @@ import pl.mati.carlauncher.data.ForecastRepository
 import pl.mati.carlauncher.data.LocationRepository
 import pl.mati.carlauncher.data.NavRepository
 import pl.mati.carlauncher.data.RouteRepository
+import pl.mati.carlauncher.data.Prefs
+import pl.mati.carlauncher.data.SpeedLimitRepository
+import androidx.compose.foundation.border
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.animation.core.animateFloat
 import java.util.Calendar
 import kotlin.math.roundToInt
 
@@ -113,6 +118,9 @@ fun MapCard(modifier: Modifier) {
                 }
             }
         }
+
+        // Ograniczenie prędkości (OSM) + aktualna prędkość
+        SpeedLimitBadge(Modifier.align(Alignment.TopStart).padding(top = if (nav != null) 112.dp else 16.dp, start = 16.dp))
 
         // Pogoda na trasie
         val rw by ForecastRepository.routeWeather.collectAsState()
@@ -180,6 +188,41 @@ fun MapCard(modifier: Modifier) {
                     Text("Dokąd jedziemy?", fontSize = 20.sp, color = CarColors.Muted, modifier = Modifier.weight(1f).padding(vertical = 12.dp))
                     Icon(Icons.Rounded.Navigation, "Nawigacja", tint = accent, modifier = Modifier.padding(end = 10.dp).size(28.dp))
                 }
+            }
+        }
+    }
+}
+
+/** Znak ograniczenia prędkości jak na drodze; pod nim prędkość auta (czerwona po przekroczeniu). */
+@Composable
+fun SpeedLimitBadge(modifier: Modifier) {
+    val on by Prefs.speedLimits.collectAsState()
+    val lim by SpeedLimitRepository.limit.collectAsState()
+    val over by SpeedLimitRepository.over.collectAsState()
+    val gps by LocationRepository.gpsSpeed.collectAsState()
+    if (!on || lim == null) return
+    val pulse = if (over) {
+        val t = androidx.compose.animation.core.rememberInfiniteTransition(label = "sl")
+        val f by t.animateFloat(1f, 1.12f, androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(450), androidx.compose.animation.core.RepeatMode.Reverse), label = "slf")
+        f
+    } else 1f
+    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Box(
+            Modifier
+                .size(74.dp)
+                .graphicsLayer { scaleX = pulse; scaleY = pulse }
+                .clip(CircleShape)
+                .background(Color.White)
+                .border(9.dp, Color(0xFFE0262B), CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(lim.toString(), color = Color(0xFF111111), fontWeight = FontWeight.Bold, fontSize = if (lim!! >= 100) 26.sp else 30.sp)
+        }
+        gps?.let { v ->
+            Box(
+                Modifier.clip(RoundedCornerShape(12.dp)).background(if (over) Color(0xFFE0262B) else CarColors.Overlay).padding(horizontal = 10.dp, vertical = 4.dp),
+            ) {
+                Text("$v km/h", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
             }
         }
     }

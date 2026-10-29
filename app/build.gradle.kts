@@ -79,4 +79,5 @@ dependencies {
 
     implementation("org.osmdroid:osmdroid-android:6.1.18")
     implementation("androidx.palette:palette-ktx:1.0.0")
+    implementation("com.google.zxing:core:3.5.3")
 }

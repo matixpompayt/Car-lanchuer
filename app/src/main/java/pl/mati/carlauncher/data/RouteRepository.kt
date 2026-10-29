@@ -212,6 +212,7 @@ object RouteRepository {
         val r = p.chosen ?: return
         plan.value = null
         route.value = r
+        PlacesRepository.addRecent(p.dest)
         offRouteCount = 0
         startMonitor()
 

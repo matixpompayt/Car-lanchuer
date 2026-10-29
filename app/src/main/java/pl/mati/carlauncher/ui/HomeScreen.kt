@@ -274,7 +274,15 @@ private fun VehicleTiles(modifier: Modifier) {
         keys.forEach { k ->
             val m = Modifier.weight(1f)
             when (k) {
-                "speed" -> SmallTile("Prędkość", (d.speed ?: gps)?.toString() ?: "--", "km/h", m, size) { UiState.go(Screen.VEHICLE) }
+                "speed" -> {
+                    val over by pl.mati.carlauncher.data.SpeedLimitRepository.over.collectAsState()
+                    val lim by pl.mati.carlauncher.data.SpeedLimitRepository.limit.collectAsState()
+                    SmallTile(
+                        if (lim != null) "Prędkość · max $lim" else "Prędkość", (d.speed ?: gps)?.toString() ?: "--", "km/h", m, size,
+                        valueColor = if (over) androidx.compose.ui.graphics.Color(0xFFFF4D4F) else CarColors.Text,
+                        labelColor = if (over) androidx.compose.ui.graphics.Color(0xFFFF4D4F) else CarColors.Muted,
+                    ) { UiState.go(Screen.VEHICLE) }
+                }
                 "coolant" -> SmallTile("Płyn chł.", d.coolant?.toString() ?: "--", "°C", m, size) { UiState.go(Screen.VEHICLE) }
                 "boost" -> SmallTile("Doład.", d.boostBar?.pl1() ?: "--", "bar", m, size) { UiState.go(Screen.VEHICLE) }
                 "voltage" -> SmallTile("Napięcie", d.voltage?.pl1() ?: "--", "V", m, size) { UiState.go(Screen.VEHICLE) }
