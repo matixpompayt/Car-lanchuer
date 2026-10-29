@@ -99,7 +99,13 @@ class MainActivity : ComponentActivity() {
             pl.mati.carlauncher.ui.SourceApps.pkgOf(this, pl.mati.carlauncher.ui.SourceApps.Kind.BT),
         )
         pl.mati.carlauncher.data.NotificationRepository.rescan(this)
+        if (!probeStarted) {
+            probeStarted = true
+            pl.mati.carlauncher.data.BroadcastProbe.start(this, pl.mati.carlauncher.ui.SourceApps.pkgOf(this, pl.mati.carlauncher.ui.SourceApps.Kind.RADIO))
+        }
     }
+
+    private var probeStarted = false
 
     override fun onResume() {
         super.onResume()

@@ -117,15 +117,15 @@ fun MusicScreen() {
             val btPkg = remember { SourceApps.pkgOf(ctx, SourceApps.Kind.BT) }
             run {
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    CarChip("Radio", radioPkg != null && np.pkg == radioPkg, {
-                        MediaRepository.prefer(radioPkg)
+                    CarChip("Radio", np.key == "radio", {
+                        MediaRepository.prefer("radio")
                         if (!SourceApps.open(ctx, SourceApps.Kind.RADIO)) {
                             Toaster.show("Nie znalazłem aplikacji radia – wybierz ją w Ustawieniach → Dźwięk")
                             UiState.openSettings("sound")
                         }
                     }, Icons.Rounded.Radio)
-                    CarChip("Bluetooth", btPkg != null && np.pkg == btPkg, {
-                        MediaRepository.prefer(btPkg)
+                    CarChip("Bluetooth", np.key == "bt", {
+                        MediaRepository.prefer("bt")
                         if (!SourceApps.open(ctx, SourceApps.Kind.BT)) {
                             Toaster.show("Nie znalazłem muzyki Bluetooth radia – wybierz aplikację w Ustawieniach → Dźwięk")
                             UiState.openSettings("sound")
@@ -133,7 +133,7 @@ fun MusicScreen() {
                     }, Icons.Rounded.Bluetooth)
                     apps.filter { it.pkg != radioPkg && it.pkg != btPkg }.forEach { a ->
                         CarChip(
-                            a.label, np.pkg == a.pkg,
+                            a.label, np.key == a.pkg,
                             { MediaRepository.prefer(a.pkg); if (!Launch.pkg(ctx, a.pkg)) Toaster.show("Nie można otworzyć: ${a.label}") },
                             if (a.radio) Icons.Rounded.Radio else Icons.Rounded.MusicNote,
                         )
@@ -147,7 +147,9 @@ fun MusicScreen() {
             }
             if (!np.controllable && np.pkg != null) {
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    PrimaryButton("Otwórz ${np.appName ?: "aplikację"}", { Launch.pkg(ctx, np.pkg) }, icon = if (np.isRadio) Icons.Rounded.Radio else Icons.Rounded.Bluetooth)
+                    PrimaryButton(if (np.isRadio) "Otwórz radio" else "Otwórz Bluetooth", {
+                        SourceApps.open(ctx, if (np.isRadio) SourceApps.Kind.RADIO else SourceApps.Kind.BT)
+                    }, icon = if (np.isRadio) Icons.Rounded.Radio else Icons.Rounded.Bluetooth)
                     SecondaryButton("Wróć do ${m.appName ?: "poprzedniego"}", { MediaRepository.prefer(m.pkg) })
                 }
                 Text("Stację i utwory zmieniasz w aplikacji radia albo przyciskami na kierownicy.", fontSize = 16.sp, color = CarColors.Muted)

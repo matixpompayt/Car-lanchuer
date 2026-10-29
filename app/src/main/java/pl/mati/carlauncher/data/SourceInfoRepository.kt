@@ -8,17 +8,16 @@ import androidx.core.graphics.drawable.toBitmap
 import kotlinx.coroutines.flow.MutableStateFlow
 
 /**
- * Informacje z powiadomień fabrycznych aplikacji radia (tuner / muzyka BT),
- * które nie udostępniają sesji multimediów. Zbiera też surowe powiadomienia do diagnostyki.
+ * Informacje o fabrycznym radiu / muzyce BT, które nie mają sesji multimediów.
+ * Klucze: "radio", "bt" (z nasłuchu komunikatów) albo nazwa pakietu (z powiadomień).
  */
 object SourceInfoRepository {
 
-    data class Info(val pkg: String, val title: String, val text: String, val sub: String, val icon: Bitmap?, val time: Long)
+    data class Info(val key: String, val title: String, val text: String, val sub: String, val icon: Bitmap?, val time: Long)
 
-    /** Ostatnie powiadomienie każdej obserwowanej aplikacji. */
-    val byPkg = MutableStateFlow<Map<String, Info>>(emptyMap())
+    val byKey = MutableStateFlow<Map<String, Info>>(emptyMap())
 
-    /** Pakiety do obserwowania (ustawiane przez UI po wykryciu aplikacji radia/BT). */
+    /** Pakiety, których powiadomienia obserwujemy. */
     @Volatile
     var watched: Set<String> = emptySet()
 
@@ -31,10 +30,29 @@ object SourceInfoRepository {
         val sub = ex.getCharSequence(Notification.EXTRA_SUB_TEXT)?.toString().orEmpty().trim()
         if (title.isBlank() && text.isBlank()) return
         val icon = try { n.getLargeIcon()?.loadDrawable(ctx)?.toBitmap() } catch (_: Exception) { null }
-        byPkg.value = byPkg.value + (sbn.packageName to Info(sbn.packageName, title, text, sub, icon, System.currentTimeMillis()))
+        put(Info(sbn.packageName, title, text, sub, icon, System.currentTimeMillis()))
     }
 
     fun onRemoved(sbn: StatusBarNotification) {
-        if (sbn.packageName in byPkg.value) byPkg.value = byPkg.value - sbn.packageName
+        if (sbn.packageName in byKey.value) byKey.value = byKey.value - sbn.packageName
+    }
+
+    /** Aktualizacja z nasłuchu komunikatów (puste pola nie nadpisują znanych). */
+    fun update(key: String, title: String?, text: String?, sub: String?) {
+        val old = byKey.value[key]
+        put(
+            Info(
+                key,
+                title?.takeIf { it.isNotBlank() } ?: old?.title.orEmpty(),
+                text?.takeIf { it.isNotBlank() } ?: old?.text.orEmpty(),
+                sub?.takeIf { it.isNotBlank() } ?: old?.sub.orEmpty(),
+                old?.icon,
+                System.currentTimeMillis(),
+            ),
+        )
+    }
+
+    private fun put(i: Info) {
+        byKey.value = byKey.value + (i.key to i)
     }
 }

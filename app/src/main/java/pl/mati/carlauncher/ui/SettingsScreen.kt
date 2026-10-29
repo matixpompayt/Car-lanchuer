@@ -323,7 +323,10 @@ private fun LazyListScope.soundPage() {
     item {
         val ctx = LocalContext.current
         val sessions by MediaRepository.sessionsDebug.collectAsState()
-        val infos by pl.mati.carlauncher.data.SourceInfoRepository.byPkg.collectAsState()
+        val infos by pl.mati.carlauncher.data.SourceInfoRepository.byKey.collectAsState()
+        val probeActions by pl.mati.carlauncher.data.BroadcastProbe.actions.collectAsState()
+        val probeLog by pl.mati.carlauncher.data.BroadcastProbe.log.collectAsState()
+        val probeScan by pl.mati.carlauncher.data.BroadcastProbe.scanning.collectAsState()
         LaunchedEffect(Unit) { MediaRepository.refresh(); pl.mati.carlauncher.data.NotificationRepository.rescan(ctx) }
         Column(
             Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(CarColors.Card).padding(horizontal = 20.dp, vertical = 14.dp),
@@ -335,9 +338,15 @@ private fun LazyListScope.soundPage() {
             Text("Sesje multimediów:", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
             if (sessions.isEmpty()) Text("brak", fontSize = 15.sp, color = CarColors.Muted)
             sessions.forEach { Text("• $it", fontSize = 15.sp, color = CarColors.Text2) }
-            Text("Powiadomienia aplikacji radia/BT:", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+            Text("Odczytane dane radia/BT:", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
             if (infos.isEmpty()) Text("brak", fontSize = 15.sp, color = CarColors.Muted)
-            infos.values.forEach { Text("• ${it.pkg}: ${it.title} | ${it.text} | ${it.sub}", fontSize = 15.sp, color = CarColors.Text2) }
+            infos.values.forEach { Text("• ${it.key}: ${it.title} | ${it.text} | ${it.sub}", fontSize = 15.sp, color = CarColors.Text2) }
+            Text(
+                "Nasłuch komunikatów: " + if (probeScan) "skanuję aplikację radia…" else "${probeActions.size} nazw",
+                fontSize = 16.sp, fontWeight = FontWeight.SemiBold,
+            )
+            if (probeLog.isEmpty()) Text("nic jeszcze nie przyszło – przełącz stację / utwór i odśwież ten ekran", fontSize = 15.sp, color = CarColors.Muted)
+            probeLog.take(15).forEach { Text(it, fontSize = 14.sp, color = CarColors.Text2) }
         }
     }
     item {

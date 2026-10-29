@@ -30,8 +30,8 @@ object MediaRepository {
     )
 
     val state = MutableStateFlow(MediaState())
-    /** Źródło wybrane w odtwarzaczu CAR OS (pakiet) – ma pierwszeństwo przy wyborze sesji. */
-    val preferredPkg = MutableStateFlow<String?>(null)
+    /** Źródło wybrane w odtwarzaczu CAR OS: "radio", "bt" albo pakiet aplikacji. */
+    val preferred = MutableStateFlow<String?>(null)
     /** Diagnostyka: wszystkie aktywne sesje multimediów. */
     val sessionsDebug = MutableStateFlow<List<String>>(emptyList())
     val access = MutableStateFlow(false)
@@ -100,7 +100,7 @@ object MediaRepository {
             }
             "${it.packageName} · $st · ${it.metadata?.getString(MediaMetadata.METADATA_KEY_TITLE) ?: "—"}"
         }
-        val pref = preferredPkg.value
+        val pref = preferred.value
         val best = sessions.firstOrNull { pref != null && it.packageName == pref }
             ?: sessions.firstOrNull { it.playbackState?.state == PlaybackState.STATE_PLAYING }
             ?: controller?.takeIf { c -> sessions.any { it.sessionToken == c.sessionToken } }
@@ -159,8 +159,8 @@ object MediaRepository {
         else c.transportControls.play()
     }
 
-    fun prefer(pkg: String?) {
-        preferredPkg.value = pkg
+    fun prefer(key: String?) {
+        preferred.value = key
         refresh()
     }
 

@@ -9,7 +9,7 @@ import androidx.compose.ui.platform.LocalContext
 import pl.mati.carlauncher.data.MediaRepository
 import pl.mati.carlauncher.data.SourceInfoRepository
 
-/** Co pokazać jako „teraz gra”: sesja multimediów albo fabryczna aplikacja radia/BT. */
+/** Co pokazać jako „teraz gra”: sesja multimediów albo fabryczne radio / BT. */
 data class NowPlaying(
     val title: String?,
     val artist: String?,
@@ -20,33 +20,39 @@ data class NowPlaying(
     val playing: Boolean,
     val duration: Long,
     val isRadio: Boolean,
+    val key: String?,          // "radio", "bt" albo pakiet
 )
 
 @Composable
 fun rememberNowPlaying(): NowPlaying {
     val ctx = LocalContext.current
     val m by MediaRepository.state.collectAsState()
-    val pref by MediaRepository.preferredPkg.collectAsState()
-    val infos by SourceInfoRepository.byPkg.collectAsState()
-    val radioPkg = remember { SourceApps.pkgOf(ctx, SourceApps.Kind.RADIO) }
-    val btPkg = remember { SourceApps.pkgOf(ctx, SourceApps.Kind.BT) }
+    val pref by MediaRepository.preferred.collectAsState()
+    val infos by SourceInfoRepository.byKey.collectAsState()
 
     val p = pref
-    if (p != null && m.pkg != p && (p == radioPkg || p == btPkg)) {
-        val info = infos[p]
-        val isRadio = p == radioPkg
-        val label = SourceApps.label(ctx, p) ?: if (isRadio) "Radio" else "Bluetooth"
+    if (p == "radio" || p == "bt") {
+        val kind = if (p == "radio") SourceApps.Kind.RADIO else SourceApps.Kind.BT
+        val pkg = remember(p) { SourceApps.pkgOf(ctx, kind) }
+        // gdy fabryczna aplikacja ma jednak sesję multimediów – używamy jej
+        if (pkg != null && m.pkg == pkg && m.title != null) {
+            return NowPlaying(m.title, m.artist, m.art, m.appName, m.pkg, true, m.playing, m.duration, p == "radio", p)
+        }
+        val info = infos[p] ?: pkg?.let { infos[it] }
+        val isRadio = p == "radio"
         return NowPlaying(
             title = info?.title?.ifBlank { null } ?: if (isRadio) "Radio" else "Muzyka Bluetooth",
-            artist = listOfNotNull(info?.text?.ifBlank { null }, info?.sub?.ifBlank { null }).joinToString(" · ").ifBlank { "Gra w aplikacji: $label" },
+            artist = listOfNotNull(info?.text?.ifBlank { null }, info?.sub?.ifBlank { null }).joinToString(" · ")
+                .ifBlank { if (isRadio) "Radio FM/AM" else "Z telefonu przez Bluetooth radia" },
             art = info?.icon,
-            appName = label,
-            pkg = p,
+            appName = if (isRadio) "Radio" else "Bluetooth",
+            pkg = pkg,
             controllable = false,
             playing = true,
             duration = 0,
             isRadio = isRadio,
+            key = p,
         )
     }
-    return NowPlaying(m.title, m.artist, m.art, m.appName, m.pkg, m.pkg != null, m.playing, m.duration, m.pkg == radioPkg)
+    return NowPlaying(m.title, m.artist, m.art, m.appName, m.pkg, m.pkg != null, m.playing, m.duration, false, m.pkg)
 }
