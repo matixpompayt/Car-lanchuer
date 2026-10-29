@@ -64,6 +64,14 @@ object NotificationRepository {
         items.value = items.value.filter { it.key != "caros:$key" }
     }
 
+    /** Ponowne przejrzenie aktywnych powiadomień (np. po zmianie obserwowanych aplikacji). */
+    fun rescan(ctx: Context) {
+        try {
+            service?.get()?.activeNotifications?.forEach { SourceInfoRepository.onPosted(ctx, it) }
+        } catch (_: Exception) {
+        }
+    }
+
     fun clearAll() {
         try { service?.get()?.cancelAllNotifications() } catch (_: Exception) {}
         items.value = emptyList()

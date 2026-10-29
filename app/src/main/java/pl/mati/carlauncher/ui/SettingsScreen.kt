@@ -319,6 +319,27 @@ private fun LazyListScope.soundPage() {
         val ctx = LocalContext.current
         SettingRow("Korektor", "Systemowy korektor dźwięku", onClick = { Launch.equalizer(ctx) }) { Chevron() }
     }
+    item { SectionLabel("Diagnostyka źródeł") }
+    item {
+        val ctx = LocalContext.current
+        val sessions by MediaRepository.sessionsDebug.collectAsState()
+        val infos by pl.mati.carlauncher.data.SourceInfoRepository.byPkg.collectAsState()
+        LaunchedEffect(Unit) { MediaRepository.refresh(); pl.mati.carlauncher.data.NotificationRepository.rescan(ctx) }
+        Column(
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(CarColors.Card).padding(horizontal = 20.dp, vertical = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text("Włącz radio albo muzykę BT, wróć tutaj i zrób zdjęcie tej listy.", fontSize = 15.sp, color = CarColors.Muted)
+            Text("Radio: " + (SourceApps.resolve(ctx, SourceApps.Kind.RADIO) ?: "nie wykryto"), fontSize = 15.sp, color = CarColors.Text2)
+            Text("Bluetooth: " + (SourceApps.resolve(ctx, SourceApps.Kind.BT) ?: "nie wykryto"), fontSize = 15.sp, color = CarColors.Text2)
+            Text("Sesje multimediów:", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+            if (sessions.isEmpty()) Text("brak", fontSize = 15.sp, color = CarColors.Muted)
+            sessions.forEach { Text("• $it", fontSize = 15.sp, color = CarColors.Text2) }
+            Text("Powiadomienia aplikacji radia/BT:", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+            if (infos.isEmpty()) Text("brak", fontSize = 15.sp, color = CarColors.Muted)
+            infos.values.forEach { Text("• ${it.pkg}: ${it.title} | ${it.text} | ${it.sub}", fontSize = 15.sp, color = CarColors.Text2) }
+        }
+    }
     item {
         val ctx = LocalContext.current
         val access by MediaRepository.access.collectAsState()

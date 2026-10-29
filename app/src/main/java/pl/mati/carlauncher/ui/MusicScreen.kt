@@ -31,6 +31,9 @@ import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.SkipPrevious
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.material3.Icon
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -81,6 +84,7 @@ fun MusicScreen() {
     val m by MediaRepository.state.collectAsState()
     val access by MediaRepository.access.collectAsState()
     val apps = remember { installedMediaApps(ctx) }
+    val np = rememberNowPlaying()
     var pos by remember { mutableLongStateOf(0L) }
     LaunchedEffect(m) {
         while (true) {
@@ -99,19 +103,29 @@ fun MusicScreen() {
         horizontalArrangement = Arrangement.spacedBy(36.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        AlbumArt(m.art, 440.dp, 28.dp)
+        if (np.art == null && !np.controllable) {
+            Box(
+                Modifier.size(440.dp).clip(RoundedCornerShape(28.dp))
+                    .background(Brush.linearGradient(listOf(LocalAccent.current, Color(0xFF1C2530)))),
+                contentAlignment = Alignment.Center,
+            ) { Icon(if (np.isRadio) Icons.Rounded.Radio else Icons.Rounded.Bluetooth, null, tint = CarColors.Text.copy(alpha = 0.8f), modifier = Modifier.size(150.dp)) }
+        } else {
+            AlbumArt(np.art, 440.dp, 28.dp)
+        }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(28.dp)) {
             val radioPkg = remember { SourceApps.pkgOf(ctx, SourceApps.Kind.RADIO) }
             val btPkg = remember { SourceApps.pkgOf(ctx, SourceApps.Kind.BT) }
             run {
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    CarChip("Radio", radioPkg != null && m.pkg == radioPkg, {
+                    CarChip("Radio", radioPkg != null && np.pkg == radioPkg, {
+                        MediaRepository.prefer(radioPkg)
                         if (!SourceApps.open(ctx, SourceApps.Kind.RADIO)) {
                             Toaster.show("Nie znalazłem aplikacji radia – wybierz ją w Ustawieniach → Dźwięk")
                             UiState.openSettings("sound")
                         }
                     }, Icons.Rounded.Radio)
-                    CarChip("Bluetooth", btPkg != null && m.pkg == btPkg, {
+                    CarChip("Bluetooth", btPkg != null && np.pkg == btPkg, {
+                        MediaRepository.prefer(btPkg)
                         if (!SourceApps.open(ctx, SourceApps.Kind.BT)) {
                             Toaster.show("Nie znalazłem muzyki Bluetooth radia – wybierz aplikację w Ustawieniach → Dźwięk")
                             UiState.openSettings("sound")
@@ -119,19 +133,25 @@ fun MusicScreen() {
                     }, Icons.Rounded.Bluetooth)
                     apps.filter { it.pkg != radioPkg && it.pkg != btPkg }.forEach { a ->
                         CarChip(
-                            a.label, m.pkg == a.pkg,
-                            { if (!Launch.pkg(ctx, a.pkg)) Toaster.show("Nie można otworzyć: ${a.label}") },
+                            a.label, np.pkg == a.pkg,
+                            { MediaRepository.prefer(a.pkg); if (!Launch.pkg(ctx, a.pkg)) Toaster.show("Nie można otworzyć: ${a.label}") },
                             if (a.radio) Icons.Rounded.Radio else Icons.Rounded.MusicNote,
                         )
                     }
                 }
             }
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Caption((if (m.playing) "Teraz gra" else "Pauza") + (m.appName?.let { " · $it" } ?: ""), size = 15.sp)
-                Text(m.title ?: "Nic nie gra", fontSize = 44.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(m.artist ?: "Wybierz źródło powyżej", fontSize = 24.sp, color = CarColors.Text2, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Caption((if (np.playing) "Teraz gra" else "Pauza") + (np.appName?.let { " · $it" } ?: ""), size = 15.sp)
+                Text(np.title ?: "Nic nie gra", fontSize = 44.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(np.artist ?: "Wybierz źródło powyżej", fontSize = 24.sp, color = CarColors.Text2, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            if (m.duration > 0) {
+            if (!np.controllable && np.pkg != null) {
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    PrimaryButton("Otwórz ${np.appName ?: "aplikację"}", { Launch.pkg(ctx, np.pkg) }, icon = if (np.isRadio) Icons.Rounded.Radio else Icons.Rounded.Bluetooth)
+                    SecondaryButton("Wróć do ${m.appName ?: "poprzedniego"}", { MediaRepository.prefer(m.pkg) })
+                }
+                Text("Stację i utwory zmieniasz w aplikacji radia albo przyciskami na kierownicy.", fontSize = 16.sp, color = CarColors.Muted)
+            } else if (m.duration > 0) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     SeekBar(pos.toFloat() / m.duration) { f -> MediaRepository.seekTo((f * m.duration).toLong()) }
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -140,7 +160,7 @@ fun MusicScreen() {
                     }
                 }
             }
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(22.dp)) {
+            if (np.controllable || np.pkg == null) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(22.dp)) {
                 RoundIconButton(Icons.Rounded.SkipPrevious, "Poprzedni", 72.dp, MediaRepository::previous, iconSize = 40.dp)
                 RoundIconButton(
                     if (m.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,

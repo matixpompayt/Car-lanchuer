@@ -93,8 +93,17 @@ class MainActivity : ComponentActivity() {
         super.onDestroy()
     }
 
+    private fun watchSources() {
+        pl.mati.carlauncher.data.SourceInfoRepository.watched = setOfNotNull(
+            pl.mati.carlauncher.ui.SourceApps.pkgOf(this, pl.mati.carlauncher.ui.SourceApps.Kind.RADIO),
+            pl.mati.carlauncher.ui.SourceApps.pkgOf(this, pl.mati.carlauncher.ui.SourceApps.Kind.BT),
+        )
+        pl.mati.carlauncher.data.NotificationRepository.rescan(this)
+    }
+
     override fun onResume() {
         super.onResume()
+        watchSources()
         hideSystemBars()
         MediaRepository.attach(this)
         SystemControls.refresh(this)

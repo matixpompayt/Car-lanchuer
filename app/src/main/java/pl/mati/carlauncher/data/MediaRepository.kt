@@ -30,6 +30,10 @@ object MediaRepository {
     )
 
     val state = MutableStateFlow(MediaState())
+    /** Źródło wybrane w odtwarzaczu CAR OS (pakiet) – ma pierwszeństwo przy wyborze sesji. */
+    val preferredPkg = MutableStateFlow<String?>(null)
+    /** Diagnostyka: wszystkie aktywne sesje multimediów. */
+    val sessionsDebug = MutableStateFlow<List<String>>(emptyList())
     val access = MutableStateFlow(false)
 
     private var appContext: Context? = null
@@ -86,7 +90,19 @@ object MediaRepository {
 
     private fun pick(list: List<MediaController>?) {
         val sessions = list.orEmpty()
-        val best = sessions.firstOrNull { it.playbackState?.state == PlaybackState.STATE_PLAYING }
+        sessionsDebug.value = sessions.map {
+            val st = when (it.playbackState?.state) {
+                PlaybackState.STATE_PLAYING -> "gra"
+                PlaybackState.STATE_PAUSED -> "pauza"
+                PlaybackState.STATE_STOPPED -> "stop"
+                null -> "brak stanu"
+                else -> "stan ${it.playbackState?.state}"
+            }
+            "${it.packageName} · $st · ${it.metadata?.getString(MediaMetadata.METADATA_KEY_TITLE) ?: "—"}"
+        }
+        val pref = preferredPkg.value
+        val best = sessions.firstOrNull { pref != null && it.packageName == pref }
+            ?: sessions.firstOrNull { it.playbackState?.state == PlaybackState.STATE_PLAYING }
             ?: controller?.takeIf { c -> sessions.any { it.sessionToken == c.sessionToken } }
             ?: sessions.firstOrNull()
         if (best?.sessionToken != controller?.sessionToken) {
@@ -141,6 +157,11 @@ object MediaRepository {
         val c = controller ?: return sendKey(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE)
         if (c.playbackState?.state == PlaybackState.STATE_PLAYING) c.transportControls.pause()
         else c.transportControls.play()
+    }
+
+    fun prefer(pkg: String?) {
+        preferredPkg.value = pkg
+        refresh()
     }
 
     fun play() {

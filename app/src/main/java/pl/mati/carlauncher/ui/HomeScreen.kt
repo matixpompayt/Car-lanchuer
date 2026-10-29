@@ -97,6 +97,7 @@ fun NoAccessCard(modifier: Modifier = Modifier) {
 @Composable
 private fun MediaCard(modifier: Modifier) {
     val m by MediaRepository.state.collectAsState()
+    val np = rememberNowPlaying()
     val access by MediaRepository.access.collectAsState()
     val ctx = LocalContext.current
     var pos by remember { mutableLongStateOf(0L) }
@@ -120,11 +121,11 @@ private fun MediaCard(modifier: Modifier) {
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.clickable { UiState.go(Screen.MUSIC) },
                 ) {
-                    AlbumArt(m.art, 104.dp, 16.dp)
+                    AlbumArt(np.art, 104.dp, 16.dp)
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Caption(m.appName ?: "Muzyka", size = 14.sp)
-                        Text(m.title ?: "Nic nie gra", fontSize = 25.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(m.artist ?: "", fontSize = 19.sp, color = CarColors.Text2, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Caption(np.appName ?: "Muzyka", size = 14.sp)
+                        Text(np.title ?: "Nic nie gra", fontSize = 25.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(np.artist ?: "", fontSize = 19.sp, color = CarColors.Text2, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {

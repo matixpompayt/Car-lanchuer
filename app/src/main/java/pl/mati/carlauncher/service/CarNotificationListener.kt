@@ -6,6 +6,7 @@ import pl.mati.carlauncher.data.AlertRepository
 import pl.mati.carlauncher.data.MediaRepository
 import pl.mati.carlauncher.data.NavRepository
 import pl.mati.carlauncher.data.NotificationRepository
+import pl.mati.carlauncher.data.SourceInfoRepository
 
 /** Daje dostęp do sesji multimediów, powiadomień nawigacji i listy powiadomień. */
 class CarNotificationListener : NotificationListenerService() {
@@ -19,6 +20,7 @@ class CarNotificationListener : NotificationListenerService() {
                 NavRepository.onPosted(this, it)
                 NotificationRepository.onPosted(this, it)
                 AlertRepository.onPosted(it)
+                SourceInfoRepository.onPosted(this, it)
             }
         } catch (_: Exception) {
         }
@@ -28,11 +30,13 @@ class CarNotificationListener : NotificationListenerService() {
         NavRepository.onPosted(this, sbn)
         NotificationRepository.onPosted(this, sbn)
         AlertRepository.onPosted(sbn)
+        SourceInfoRepository.onPosted(this, sbn)
     }
 
     override fun onNotificationRemoved(sbn: StatusBarNotification) {
         NavRepository.onRemoved(sbn)
         NotificationRepository.onRemoved(sbn)
         AlertRepository.onRemoved(sbn)
+        SourceInfoRepository.onRemoved(sbn)
     }
 }
