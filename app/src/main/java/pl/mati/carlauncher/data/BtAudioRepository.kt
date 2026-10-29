@@ -113,35 +113,43 @@ object BtAudioRepository {
         }
     }
 
+    // okładka z internetu dla bieżącego utworu – trzymana osobno, żeby odświeżenia metadanych jej nie kasowały
+    private var fetchedKey: String? = null
+    private var fetchedArt: Bitmap? = null
+
     private fun publish() {
         val c = controller ?: return
         val md = c.metadata
         val playing = c.playbackState?.state == PlaybackState.STATE_PLAYING
         val wasPlaying = state.value.playing
-        state.value = state.value.copy(
-            title = md?.getString(MediaMetadata.METADATA_KEY_TITLE),
-            artist = md?.getString(MediaMetadata.METADATA_KEY_ARTIST),
+        val title = md?.getString(MediaMetadata.METADATA_KEY_TITLE)
+        val artist = md?.getString(MediaMetadata.METADATA_KEY_ARTIST)
+        val key = "$artist|$title"
+        val phoneArt = md?.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART) ?: md?.getBitmap(MediaMetadata.METADATA_KEY_ART)
+        val art = phoneArt ?: if (key == fetchedKey) fetchedArt else null
+
+        val old = state.value
+        val new = old.copy(
+            title = title,
+            artist = artist,
             album = md?.getString(MediaMetadata.METADATA_KEY_ALBUM),
-            art = md?.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART) ?: md?.getBitmap(MediaMetadata.METADATA_KEY_ART),
+            art = art,
             duration = md?.getLong(MediaMetadata.METADATA_KEY_DURATION) ?: 0,
             playing = playing,
         )
-        // brak okładki z telefonu → szukamy w internecie
-        val st = state.value
-        val key = "${st.artist}|${st.title}"
-        if (st.art == null && st.title != null && key != coverKey) {
+        if (new != old) state.value = new
+
+        // brak okładki z telefonu → jedno wyszukiwanie w internecie na utwór
+        if (phoneArt == null && title != null && key != coverKey) {
             coverKey = key
             val ctx = appCtx
             if (ctx != null) io.launch {
-                val bmp = CoverArtRepository.find(ctx, st.artist, st.title)
-                if (bmp != null && "${state.value.artist}|${state.value.title}" == key) state.value = state.value.copy(art = bmp)
-            }
-        } else if (st.art == null && key == coverKey) {
-            // ten sam utwór – okładka mogła już przyjść wcześniej (metadane odświeżają się co chwilę)
-            val ctx = appCtx
-            if (ctx != null) io.launch {
-                val bmp = CoverArtRepository.find(ctx, st.artist, st.title)
-                if (bmp != null && "${state.value.artist}|${state.value.title}" == key) state.value = state.value.copy(art = bmp)
+                val bmp = CoverArtRepository.find(ctx, artist, title)
+                handler.post {
+                    fetchedKey = key
+                    fetchedArt = bmp
+                    if ("${state.value.artist}|${state.value.title}" == key && bmp != null) state.value = state.value.copy(art = bmp)
+                }
             }
         }
         // muzyka z telefonu ruszyła → odtwarzacz CAR OS przełącza się na Bluetooth

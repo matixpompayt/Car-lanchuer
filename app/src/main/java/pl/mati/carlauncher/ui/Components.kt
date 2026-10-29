@@ -310,22 +310,16 @@ fun AlbumArt(art: Bitmap?, size: Dp, radius: Dp, modifier: Modifier = Modifier) 
     val accent = LocalAccent.current
     val shape = RoundedCornerShape(radius)
     val image = remember(art) { art?.asImageBitmap() }
-    if (image != null) {
-        Image(
-            image,
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = modifier.size(size).clip(shape),
-        )
-    } else {
-        Box(
-            modifier
-                .size(size)
-                .clip(shape)
-                .background(Brush.linearGradient(listOf(accent, Color(0xFF1C2530)))),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(Icons.Rounded.MusicNote, null, tint = CarColors.Text.copy(alpha = 0.75f), modifier = Modifier.size(size * 0.35f))
+    androidx.compose.animation.Crossfade(targetState = image, animationSpec = tween(400), label = "art", modifier = modifier.size(size).clip(shape)) { img ->
+        if (img != null) {
+            Image(img, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+        } else {
+            Box(
+                Modifier.fillMaxSize().background(Brush.linearGradient(listOf(accent, Color(0xFF1C2530)))),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.Rounded.MusicNote, null, tint = CarColors.Text.copy(alpha = 0.75f), modifier = Modifier.size(size * 0.35f))
+            }
         }
     }
 }
