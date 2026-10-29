@@ -76,10 +76,16 @@ class MainActivity : ComponentActivity() {
             ContextCompat.RECEIVER_NOT_EXPORTED,
         )
         if (savedInstanceState == null) AutostartManager.run(this)
+        pl.mati.carlauncher.data.BackupManager.autoBackup(this)
 
         setContent {
             CarRoot { CarApp() }
         }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        pl.mati.carlauncher.data.BackupManager.autoBackup(this)
     }
 
     override fun onDestroy() {

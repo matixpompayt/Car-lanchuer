@@ -38,6 +38,14 @@ import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material.icons.rounded.SystemUpdate
 import androidx.compose.material.icons.rounded.Thermostat
 import androidx.compose.material.icons.rounded.Warning
+import androidx.compose.material.icons.rounded.Build
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.draw.alpha
+import pl.mati.carlauncher.data.ServiceRepository
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.VolumeOff
@@ -121,6 +129,7 @@ fun StatusBar() {
                         Text("OBD", fontSize = 18.sp, color = CarColors.Muted)
                     }
                 }
+                ServiceBarIcon()
                 temp?.let { BarIcon(Icons.Rounded.Thermostat, "$it°C") }
                 BarIcon(if (bt) Icons.Rounded.Bluetooth else Icons.Rounded.BluetoothDisabled, null)
                 BarIcon(if (wifi) Icons.Rounded.Wifi else Icons.Rounded.WifiOff, null)
@@ -434,6 +443,102 @@ fun HomeSuggestionBanner() {
                     Toaster.show("Wyznaczam trasę do domu…")
                 })
                 SecondaryButton("Nie", { AutostartManager.homeSuggestion.value = false })
+            }
+        }
+    }
+}
+
+
+/** Ikona serwisu na pasku: czerwona mrugająca = po terminie, pomarańczowa = wkrótce. */
+@Composable
+private fun ServiceBarIcon() {
+    val items by ServiceRepository.items.collectAsState()
+    val odo by ServiceRepository.odometerKm.collectAsState()
+    val now by rememberNow()
+    val state = remember(items, odo.toInt(), now / 60_000) {
+        val list = ServiceRepository.dueList()
+        when {
+            list.any { it.overdue } -> 2
+            list.any { it.soon } -> 1
+            else -> 0
+        }
+    }
+    if (state == 0) return
+    val t = rememberInfiniteTransition(label = "svc")
+    val a by t.animateFloat(1f, 0.15f, infiniteRepeatable(tween(650), RepeatMode.Reverse), label = "a")
+    Box(
+        Modifier.size(40.dp).clip(CircleShape)
+            .background(if (state == 2) CarColors.Red.copy(alpha = 0.18f) else Color.Transparent)
+            .clickable { UiState.go(Screen.SERVICE) },
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            Icons.Rounded.Build, "Serwis",
+            tint = if (state == 2) CarColors.Red else CarColors.Orange,
+            modifier = Modifier.size(22.dp).alpha(if (state == 2) a else 1f),
+        )
+    }
+}
+
+/** Prawie pełnoekranowy alert serwisowy – znika dopiero po X. */
+@Composable
+fun ServiceAlertOverlay() {
+    val show by AutostartManager.serviceAlert.collectAsState()
+    AnimatedVisibility(show, enter = fadeIn(), exit = fadeOut()) {
+        val list = remember(show) { ServiceRepository.overdue() }
+        val t = rememberInfiniteTransition(label = "alert")
+        val a by t.animateFloat(1f, 0.35f, infiniteRepeatable(tween(700), RepeatMode.Reverse), label = "a")
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(Color(0xE6050608))
+                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {},
+            contentAlignment = Alignment.Center,
+        ) {
+            Column(
+                Modifier
+                    .padding(horizontal = 70.dp, vertical = 40.dp)
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(32.dp))
+                    .background(Color(0xFF1A0B0C))
+                    .border(3.dp, CarColors.Red.copy(alpha = a), RoundedCornerShape(32.dp))
+                    .padding(horizontal = 44.dp, vertical = 30.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+                    Box(Modifier.size(84.dp).clip(CircleShape).background(CarColors.Red.copy(alpha = 0.2f)), contentAlignment = Alignment.Center) {
+                        Icon(Icons.Rounded.Warning, null, tint = CarColors.Red, modifier = Modifier.size(52.dp).alpha(a))
+                    }
+                    Column(Modifier.weight(1f)) {
+                        Text("Przekroczony termin serwisu", fontSize = 40.sp, fontWeight = FontWeight.Bold)
+                        Text("Zaplanuj wizytę w warsztacie albo zaktualizuj dane w Serwisie.", fontSize = 20.sp, color = CarColors.Text2)
+                    }
+                    Box(
+                        Modifier.size(72.dp).clip(CircleShape).background(CarColors.Raised).clickable { AutostartManager.serviceAlert.value = false },
+                        contentAlignment = Alignment.Center,
+                    ) { Icon(Icons.Rounded.Close, "Zamknij alert", tint = CarColors.Text, modifier = Modifier.size(40.dp)) }
+                }
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    list.take(5).forEach { d ->
+                        Row(
+                            Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Color(0xFF2A1214)).padding(horizontal = 22.dp, vertical = 14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        ) {
+                            Icon(Icons.Rounded.Build, null, tint = CarColors.Red, modifier = Modifier.size(28.dp))
+                            Text(d.item.name, fontSize = 24.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                            Text(ServiceRepository.describe(d), fontSize = 20.sp, color = Color(0xFFFF8A8E))
+                        }
+                    }
+                    if (list.size > 5) Text("i jeszcze ${list.size - 5}…", fontSize = 18.sp, color = CarColors.Muted)
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                    PrimaryButton("Przejdź do serwisu", {
+                        AutostartManager.serviceAlert.value = false
+                        UiState.go(Screen.SERVICE)
+                    })
+                    SecondaryButton("Zamknij", { AutostartManager.serviceAlert.value = false })
+                }
             }
         }
     }

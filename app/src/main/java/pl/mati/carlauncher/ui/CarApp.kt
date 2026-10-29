@@ -104,6 +104,7 @@ private fun Shell() {
         HomeSuggestionBanner()
         ControlCenter()
         VolumeHud()
+        ServiceAlertOverlay()
     }
 }
 

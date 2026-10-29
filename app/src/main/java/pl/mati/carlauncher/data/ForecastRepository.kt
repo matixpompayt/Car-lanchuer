@@ -26,6 +26,10 @@ object ForecastRepository {
     val forecast = MutableStateFlow<Forecast?>(null)
     val routeWeather = MutableStateFlow<RouteWeather?>(null)
     val error = MutableStateFlow<String?>(null)
+    /** Nazwa miejscowości dla prognozy (Nominatim reverse). */
+    val place = MutableStateFlow<String?>(null)
+    private var placeLat = 0.0
+    private var placeLon = 0.0
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var started = false
@@ -52,6 +56,28 @@ object ForecastRepository {
 
     private fun refreshNow(): Boolean {
         val loc = LocationRepository.location.value ?: return false
+        if (place.value == null || RouteRepository.dist(placeLat, placeLon, loc.latitude, loc.longitude) > 2500) {
+            try {
+                val j = JSONObject(
+                    get(
+                        String.format(
+                            Locale.US,
+                            "https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=12&accept-language=pl&lat=%.5f&lon=%.5f",
+                            loc.latitude, loc.longitude,
+                        ),
+                    ),
+                )
+                val a = j.optJSONObject("address")
+                val name = listOf("city", "town", "village", "municipality", "suburb", "county")
+                    .firstNotNullOfOrNull { k -> a?.optString(k)?.takeIf { it.isNotBlank() } }
+                if (name != null) {
+                    place.value = name
+                    placeLat = loc.latitude
+                    placeLon = loc.longitude
+                }
+            } catch (_: Exception) {
+            }
+        }
         return try {
             val url = String.format(
                 Locale.US,
@@ -145,6 +171,7 @@ object ForecastRepository {
 
     private fun get(url: String): String {
         val c = URL(url).openConnection() as HttpURLConnection
+        c.setRequestProperty("User-Agent", "CarOS/1.1 (Android head unit launcher; pl.mati.carlauncher)")
         c.connectTimeout = 10_000
         c.readTimeout = 15_000
         try {

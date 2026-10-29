@@ -18,6 +18,8 @@ import java.util.Calendar
 object AutostartManager {
 
     val homeSuggestion = MutableStateFlow(false)
+    /** Duży alert o przekroczonym terminie serwisu (zamykany tylko przyciskiem X). */
+    val serviceAlert = MutableStateFlow(false)
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var lastOff = 0L
@@ -59,7 +61,9 @@ object AutostartManager {
             }
         }
 
+        ServiceRepository.load()
         ServiceRepository.checkReminders()
+        if (ServiceRepository.overdue().isNotEmpty()) serviceAlert.value = true
     }
 
     fun inHomeWindow(): Boolean {

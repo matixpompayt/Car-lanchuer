@@ -1,6 +1,14 @@
 package pl.mati.carlauncher.ui
 
+import android.Manifest
 import android.annotation.SuppressLint
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import androidx.compose.material.icons.rounded.Restore
 import android.bluetooth.BluetoothAdapter
 import android.content.Intent
 import android.provider.Settings
@@ -66,6 +74,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import pl.mati.carlauncher.data.BackupManager
 import pl.mati.carlauncher.data.ObdManager
 import pl.mati.carlauncher.data.Prefs
 import pl.mati.carlauncher.data.Profile
@@ -95,6 +104,7 @@ fun SetupWizard() {
         UiState.phase.value = Phase.MAIN
         Toaster.show(if (draft.name.isNotBlank()) "Witaj, ${draft.name}! System gotowy." else "System gotowy.")
         if (Prefs.autoUpdate.value) UpdateManager.check(ctx, silent = true)
+        BackupManager.autoBackup(ctx, force = true)
     }
 
     Row(Modifier.fillMaxSize().background(Color(0xFF07090C))) {
@@ -181,7 +191,57 @@ private fun Title(text: String) = Text(text, fontSize = 44.sp, fontWeight = Font
 private fun Lead(text: String) = Text(text, fontSize = 21.sp, color = CarColors.Text2, lineHeight = 28.sp, modifier = Modifier.widthIn(max = 700.dp))
 
 @Composable
+private fun RestoreCard() {
+    val ctx = LocalContext.current
+    var found by remember { mutableStateOf<BackupManager.Found?>(null) }
+    var attempt by remember { mutableStateOf(0) }
+    var asked by remember { mutableStateOf(false) }
+    val needPerm = android.os.Build.VERSION.SDK_INT <= 32
+    val perm = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { attempt++ }
+    LaunchedEffect(attempt) {
+        val granted = !needPerm || ContextCompat.checkSelfPermission(ctx, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
+        if (!granted) {
+            if (!asked) {
+                asked = true
+                perm.launch(Manifest.permission.READ_EXTERNAL_STORAGE)
+            }
+            return@LaunchedEffect
+        }
+        found = withContext(Dispatchers.IO) { BackupManager.findAutoBackup(ctx) }
+    }
+    val f = found ?: return
+    Row(
+        Modifier.widthIn(max = 860.dp).fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(LocalAccent.current.copy(alpha = 0.14f))
+            .border(1.dp, LocalAccent.current.copy(alpha = 0.5f), RoundedCornerShape(20.dp)).padding(horizontal = 22.dp, vertical = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        IconBadge(Icons.Rounded.Restore, 52.dp)
+        Column(Modifier.weight(1f)) {
+            Text("Znaleziono kopię ustawień", fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+            Text(
+                listOf(f.name, f.car, if (f.created > 0) "z " + java.text.SimpleDateFormat("d.MM.yyyy HH:mm", PL).format(java.util.Date(f.created)) else "")
+                    .filter { it.isNotBlank() }.joinToString(" · "),
+                fontSize = 16.sp, color = CarColors.Text2,
+            )
+        }
+        PrimaryButton("Przywróć", {
+            if (BackupManager.import(ctx, f.uri)) {
+                Toaster.show("Przywrócono – uruchamiam ponownie")
+                val i = ctx.packageManager.getLaunchIntentForPackage(ctx.packageName)
+                if (i != null) {
+                    i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                    ctx.startActivity(i)
+                }
+                Runtime.getRuntime().exit(0)
+            } else Toaster.show("Nie udało się wczytać kopii")
+        })
+    }
+}
+
+@Composable
 private fun WelcomeStep() {
+    if (!Prefs.profile.value.setupDone) RestoreCard()
     Title("Witaj w CAR OS")
     Lead("Twój samochód, Twój system. Skonfigurujemy wszystko w minutę – każdą rzecz możesz później zmienić w Ustawieniach.")
     Row(horizontalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.padding(top = 10.dp)) {

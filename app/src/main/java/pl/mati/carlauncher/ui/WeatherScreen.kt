@@ -17,6 +17,7 @@ import androidx.compose.material.icons.rounded.Air
 import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.Cloud
 import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material.icons.rounded.WaterDrop
 import androidx.compose.material.icons.rounded.WbCloudy
 import androidx.compose.material.icons.rounded.WbSunny
@@ -71,6 +72,7 @@ fun WeatherScreen() {
     val f by ForecastRepository.forecast.collectAsState()
     val err by ForecastRepository.error.collectAsState()
     val rw by ForecastRepository.routeWeather.collectAsState()
+    val place by ForecastRepository.place.collectAsState()
     val accent = LocalAccent.current
     LaunchedEffect(Unit) { if (f == null || System.currentTimeMillis() - (f?.fetched ?: 0) > 15 * 60_000) ForecastRepository.refresh() }
 
@@ -92,6 +94,10 @@ fun WeatherScreen() {
         Column(Modifier.width(420.dp).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             CarCard(Modifier.fillMaxWidth().weight(1f)) {
                 Column(Modifier.padding(28.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Icon(Icons.Rounded.LocationOn, null, tint = accent, modifier = Modifier.size(26.dp))
+                        Text(place ?: "Twoja okolica", fontSize = 26.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                    }
                     Caption("Teraz")
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(18.dp)) {
                         Icon(weatherIcon(fc.code), null, tint = accent, modifier = Modifier.size(84.dp))

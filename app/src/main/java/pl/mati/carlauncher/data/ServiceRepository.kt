@@ -114,6 +114,8 @@ object ServiceRepository {
     fun dueList(): List<Due> = items.value.map { due(it) }
         .sortedWith(compareByDescending<Due> { it.overdue }.thenByDescending { it.soon }.thenByDescending { it.fraction })
 
+    fun overdue(): List<Due> = dueList().filter { it.overdue }
+
     /** Wywoływane przy starcie: przypomnienie w centrum sterowania. */
     fun checkReminders() {
         load()

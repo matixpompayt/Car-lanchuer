@@ -141,6 +141,7 @@ object UpdateManager {
     /** Uruchamia systemowy instalator. Na Androidzie 10 trzeba raz zezwolić na instalację z tej aplikacji. */
     fun install(ctx: Context): Boolean {
         val s = state.value as? State.Ready ?: return false
+        BackupManager.autoBackup(ctx, force = true)
         if (!ctx.packageManager.canRequestPackageInstalls()) {
             val i = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:" + ctx.packageName))
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
