@@ -1,5 +1,9 @@
 package pl.mati.carlauncher.ui
 
+import androidx.compose.foundation.layout.widthIn
+
+import androidx.compose.material.icons.rounded.Work
+
 import android.app.Activity
 import android.content.Intent
 import android.provider.Settings
@@ -418,11 +422,14 @@ fun RoadAlertBanner() {
 /** „Jedziesz do domu?” – po zapłonie w ustawionych godzinach. */
 @Composable
 fun HomeSuggestionBanner() {
-    val show by AutostartManager.homeSuggestion.collectAsState()
+    val sug by AutostartManager.suggestion.collectAsState()
     val ctx = LocalContext.current
     val accent = LocalAccent.current
+    var last by remember { mutableStateOf<pl.mati.carlauncher.data.WorkSchedule.Suggestion?>(null) }
+    sug?.let { last = it }
     Box(Modifier.fillMaxSize().padding(start = 124.dp, end = 24.dp, bottom = 28.dp), contentAlignment = Alignment.BottomCenter) {
-        AnimatedVisibility(show, enter = fadeIn() + slideInVertically { it }, exit = fadeOut() + slideOutVertically { it }) {
+        AnimatedVisibility(sug != null, enter = fadeIn() + slideInVertically { it }, exit = fadeOut() + slideOutVertically { it }) {
+            val s = last ?: return@AnimatedVisibility
             Row(
                 Modifier
                     .clip(RoundedCornerShape(24.dp))
@@ -432,17 +439,20 @@ fun HomeSuggestionBanner() {
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(18.dp),
             ) {
-                IconBadge(Icons.Rounded.Home, 56.dp)
-                Column {
-                    Text("Jedziesz do domu?", fontSize = 22.sp, fontWeight = FontWeight.Bold)
-                    Text(P2.profile.value.home, fontSize = 16.sp, color = CarColors.Muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                IconBadge(if (s.work) Icons.Rounded.Work else Icons.Rounded.Home, 56.dp)
+                Column(Modifier.widthIn(max = 520.dp)) {
+                    Text(s.title, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                    Text(
+                        "Zmiana ${s.shift.name.lowercase()} ${s.shift.hours} · ${s.address}",
+                        fontSize = 16.sp, color = CarColors.Muted, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    )
                 }
                 PrimaryButton("Jedź", {
-                    AutostartManager.homeSuggestion.value = false
-                    RouteRepository.quickStart(ctx, P2.profile.value.home, "Dom")
-                    Toaster.show("Wyznaczam trasę do domu…")
+                    AutostartManager.suggestion.value = null
+                    RouteRepository.quickStart(ctx, s.address, s.target)
+                    Toaster.show(if (s.work) "Wyznaczam trasę do pracy…" else "Wyznaczam trasę do domu…")
                 })
-                SecondaryButton("Nie", { AutostartManager.homeSuggestion.value = false })
+                SecondaryButton("Nie", { AutostartManager.suggestion.value = null })
             }
         }
     }

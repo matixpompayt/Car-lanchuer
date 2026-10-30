@@ -1,5 +1,7 @@
 package pl.mati.carlauncher.ui
 
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.foundation.border
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.bluetooth.BluetoothAdapter
@@ -32,6 +34,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.mutableIntStateOf
 import pl.mati.carlauncher.data.ConnectRepository
+import pl.mati.carlauncher.data.WorkSchedule
 import pl.mati.carlauncher.data.ParkingRepository
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.ChevronLeft
@@ -541,22 +544,110 @@ private fun LazyListScope.autostartPage() {
         val v by Prefs.suggestHome.collectAsState()
         val p by Prefs.profile.collectAsState()
         SettingRow(
-            "Proponuj trasę do domu",
-            if (p.home.isBlank()) "Najpierw dodaj adres domu (System → Ulubione miejsca)" else "Okienko „Jedziesz do domu?” w wybranych godzinach",
+            "Jedziesz do pracy? / do domu?",
+            if (p.home.isBlank() && p.work.isBlank()) "Najpierw dodaj adresy domu i pracy (System → Ulubione miejsca)"
+            else "Propozycja trasy według grafiku: 2 h przed zmianą do pracy, po zmianie do domu",
             onClick = { Prefs.setSuggestHome(!v) },
         ) { CarSwitch(v) }
     }
+    workScheduleSection()
+}
+
+private fun LazyListScope.workScheduleSection() {
+    item { SectionLabel("Grafik pracy") }
     item {
-        val from by Prefs.homeFrom.collectAsState()
-        val to by Prefs.homeTo.collectAsState()
-        SettingRow("Godziny", "Od $from:00 do $to:00") {
-            HourStepper("od", from, { Prefs.setHomeFrom(it) })
-            HourStepper("do", to, { Prefs.setHomeTo(it) })
+        val mode by WorkSchedule.mode.collectAsState()
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            ChoiceChip("Tesla (zmiana Silver)", mode == "tesla", Modifier.weight(1f)) { WorkSchedule.setMode("tesla") }
+            ChoiceChip("Niestandardowy", mode == "custom", Modifier.weight(1f)) { WorkSchedule.setMode("custom") }
         }
     }
     item {
-        val v by Prefs.homeWeekdaysOnly.collectAsState()
-        SettingRow("Tylko w dni robocze", "Pon–pt", onClick = { Prefs.setHomeWeekdaysOnly(!v) }) { CarSwitch(v) }
+        val mode by WorkSchedule.mode.collectAsState()
+        val custom by WorkSchedule.custom.collectAsState()
+        val days by WorkSchedule.days.collectAsState()
+        val monday = remember { WorkSchedule.mondayOf(java.time.LocalDate.now()) }
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            if (mode == "tesla") {
+                Text("Rotacja co tydzień: nocna 22–6 → pierwsza 6–14 → popołudniowa 14–22", fontSize = 16.sp, color = CarColors.Muted)
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    listOf("Ten tydzień" to monday, "Następny" to monday.plusWeeks(1), "Za 2 tygodnie" to monday.plusWeeks(2)).forEach { (label, m) ->
+                        WeekCard(label, m, WorkSchedule.shiftFor(m), Modifier.weight(1f))
+                    }
+                }
+            } else {
+                // odczyt custom, żeby karta odświeżała się po zmianie
+                custom.size
+                WeekPicker("Ten tydzień", monday)
+                WeekPicker("Następny tydzień", monday.plusWeeks(1))
+                Text("Nieustawiony tydzień = taka sama zmiana jak ostatnio ustawiona.", fontSize = 15.sp, color = CarColors.Muted)
+            }
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Dni pracy", fontSize = 17.sp, color = CarColors.Text2, modifier = Modifier.width(110.dp))
+                listOf("Pn", "Wt", "Śr", "Cz", "Pt", "So", "Nd").forEachIndexed { i, d ->
+                    ChoiceChip(d, (i + 1) in days, Modifier.weight(1f)) { WorkSchedule.toggleDay(i + 1) }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun WeekCard(label: String, monday: java.time.LocalDate, s: WorkSchedule.Shift?, modifier: Modifier) {
+    Column(modifier.clip(RoundedCornerShape(16.dp)).background(CarColors.Card).padding(horizontal = 16.dp, vertical = 12.dp)) {
+        Caption("$label · ${WorkSchedule.weekRange(monday)}")
+        Text(s?.name ?: "—", fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
+        Text(s?.hours ?: "", fontSize = 16.sp, color = CarColors.Muted)
+    }
+}
+
+@Composable
+private fun WeekPicker(label: String, monday: java.time.LocalDate) {
+    val custom by WorkSchedule.custom.collectAsState()
+    val cur = custom[monday.toEpochDay()]
+    val shown = cur ?: WorkSchedule.shiftFor(monday)
+    Column(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(CarColors.Card).padding(horizontal = 18.dp, vertical = 14.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("$label · ${WorkSchedule.weekRange(monday)}", fontSize = 18.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+            Text(
+                if (cur == null) (shown?.let { "jak ostatnio: ${it.label}" } ?: "nieustawiony") else cur.label,
+                fontSize = 16.sp, color = if (cur == null) CarColors.Muted else LocalAccent.current,
+            )
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            WorkSchedule.PRESETS.forEach { p ->
+                ChoiceChip(if (p.off) "Wolne" else "${p.name} ${p.hours}", cur?.kind == p.kind, Modifier.weight(1f)) { WorkSchedule.setCustom(monday, p) }
+            }
+            ChoiceChip("Własna", cur?.kind == WorkSchedule.CUSTOM, Modifier.weight(0.7f)) {
+                WorkSchedule.setCustom(monday, WorkSchedule.Shift(WorkSchedule.CUSTOM, cur?.start ?: 7 * 60, cur?.end ?: 15 * 60))
+            }
+        }
+        if (cur?.kind == WorkSchedule.CUSTOM) {
+            Row(horizontalArrangement = Arrangement.spacedBy(24.dp), verticalAlignment = Alignment.CenterVertically) {
+                HourStepper("od", cur.start / 60, { h -> WorkSchedule.setCustom(monday, cur.copy(start = ((h + 24) % 24) * 60)) })
+                HourStepper("do", cur.end / 60, { h -> WorkSchedule.setCustom(monday, cur.copy(end = ((h + 24) % 24) * 60)) })
+            }
+        }
+    }
+}
+
+@Composable
+private fun ChoiceChip(text: String, on: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    val accent = LocalAccent.current
+    Box(
+        modifier
+            .height(52.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(if (on) accent.copy(alpha = 0.18f) else CarColors.Card)
+            .border(2.dp, if (on) accent else Color.Transparent, RoundedCornerShape(14.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 8.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(text, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = if (on) accent else CarColors.Text2, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 

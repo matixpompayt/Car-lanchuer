@@ -17,7 +17,8 @@ import java.util.Calendar
  */
 object AutostartManager {
 
-    val homeSuggestion = MutableStateFlow(false)
+    /** „Jedziesz do pracy?” / „Jedziesz do domu?” według grafiku pracy. */
+    val suggestion = MutableStateFlow<WorkSchedule.Suggestion?>(null)
     /** Duży alert o przekroczonym terminie serwisu (zamykany tylko przyciskiem X). */
     val serviceAlert = MutableStateFlow(false)
 
@@ -53,12 +54,14 @@ object AutostartManager {
             }
         }
 
-        if (Prefs.suggestHome.value && Prefs.profile.value.home.isNotBlank() && inHomeWindow() && RouteRepository.route.value == null) {
-            scope.launch {
-                delay(3500)
-                homeSuggestion.value = true
-                delay(25_000)
-                homeSuggestion.value = false
+        if (Prefs.suggestHome.value && RouteRepository.route.value == null) {
+            WorkSchedule.suggestion()?.let { sug ->
+                scope.launch {
+                    delay(3500)
+                    suggestion.value = sug
+                    delay(25_000)
+                    if (suggestion.value == sug) suggestion.value = null
+                }
             }
         }
 
