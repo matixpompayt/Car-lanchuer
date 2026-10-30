@@ -16,3 +16,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "CarLauncher"
 include(":app")
+include(":phone")

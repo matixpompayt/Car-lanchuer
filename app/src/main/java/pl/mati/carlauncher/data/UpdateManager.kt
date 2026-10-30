@@ -179,7 +179,7 @@ object UpdateManager {
             for (i in 0 until assets.length()) {
                 val a = assets.getJSONObject(i)
                 val name = a.optString("name")
-                if (name.endsWith(".apk")) {
+                if (name.endsWith(".apk") && !name.contains("Parking")) {
                     return Release(
                         code = code,
                         name = tag.removePrefix("v"),

@@ -342,6 +342,8 @@ private fun StarButton(place: RouteRepository.Place) {
     }
 }
 
+private const val APP_URL = "https://github.com/matixpompayt/Car-lanchuer/releases/latest"
+
 fun agoText(t: Long): String {
     val min = ((System.currentTimeMillis() - t) / 60_000).toInt()
     return when {
@@ -355,6 +357,7 @@ fun agoText(t: Long): String {
 @Composable
 private fun ColumnScope.ParkingPanel(onClose: () -> Unit) {
     val spot by ParkingRepository.spot.collectAsState()
+    var appQr by remember { mutableStateOf(false) }
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text("Gdzie zaparkowałem", fontSize = 24.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
         CloseButton(onClose)
@@ -377,13 +380,36 @@ private fun ColumnScope.ParkingPanel(onClose: () -> Unit) {
                 Text(s.address ?: String.format(java.util.Locale.US, "%.5f, %.5f", s.lat, s.lon), fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
                 Text("od ${formatTime(s.time)} · ${agoText(s.time)}", fontSize = 15.sp, color = CarColors.Muted)
             }
-            val qr = remember(s.lat, s.lon) { ParkingRepository.qr(s.mapsUrl)?.asImageBitmap() }
+            val qr = remember(s.lat, s.lon, appQr) { ParkingRepository.qr(if (appQr) APP_URL else s.mapsUrl)?.asImageBitmap() }
             if (qr != null) {
                 Box(Modifier.size(230.dp).clip(RoundedCornerShape(18.dp)).background(Color.White).padding(12.dp)) {
                     androidx.compose.foundation.Image(qr, "Kod QR", modifier = Modifier.fillMaxSize())
                 }
             }
-            Text("Zeskanuj telefonem – otworzy to miejsce w Mapach Google", fontSize = 16.sp, color = CarColors.Text2)
+            Text(
+                if (appQr) "Zeskanuj telefonem i pobierz plik CarOS-Parking…apk – telefon sam zapamięta miejsce po zgaszeniu auta"
+                else "Zeskanuj telefonem – otworzy to miejsce w Mapach Google",
+                fontSize = 16.sp, color = CarColors.Text2,
+            )
+        }
+        if (s == null || !appQr) {
+            Text(
+                if (s == null) "Aplikacja na telefon: CAR OS Parking" else "Pokaż kod do pobrania aplikacji na telefon",
+                fontSize = 16.sp, color = LocalAccent.current, fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.clip(RoundedCornerShape(12.dp)).clickable { appQr = true }.padding(10.dp),
+            )
+        } else {
+            Text(
+                "Pokaż kod miejsca parkowania", fontSize = 16.sp, color = LocalAccent.current, fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.clip(RoundedCornerShape(12.dp)).clickable { appQr = false }.padding(10.dp),
+            )
+        }
+        if (s == null && appQr) {
+            val q = remember { ParkingRepository.qr(APP_URL)?.asImageBitmap() }
+            if (q != null) Box(Modifier.size(230.dp).clip(RoundedCornerShape(18.dp)).background(Color.White).padding(12.dp)) {
+                androidx.compose.foundation.Image(q, "Kod QR", modifier = Modifier.fillMaxSize())
+            }
+            Text("Zeskanuj telefonem i pobierz plik CarOS-Parking…apk", fontSize = 16.sp, color = CarColors.Text2)
         }
     }
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
