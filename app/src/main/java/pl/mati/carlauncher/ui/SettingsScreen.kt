@@ -27,6 +27,12 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Bluetooth
+import androidx.compose.material.icons.rounded.PhoneAndroid
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.runtime.mutableIntStateOf
+import pl.mati.carlauncher.data.ConnectRepository
+import pl.mati.carlauncher.data.ParkingRepository
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.ChevronLeft
 import androidx.compose.material.icons.rounded.ChevronRight
@@ -98,7 +104,7 @@ private fun bondedDevices(): List<BtDevice> = try {
 @Composable
 fun SettingsScreen() {
     val page by UiState.settingsPage.collectAsState()
-    val navKey = if (page == "update") "sys" else page
+    val navKey = when (page) { "update" -> "sys"; "connect" -> "conn"; else -> page }
     val accent = LocalAccent.current
 
     Box(Modifier.fillMaxSize()) {
@@ -135,6 +141,7 @@ fun SettingsScreen() {
                 "car" -> { carPage(); speedSection(); alertsSection() }
                 "auto" -> autostartPage()
                 "update" -> updatePage()
+                "connect" -> connectPage()
                 else -> systemPage()
             }
             item { Box(Modifier.height(16.dp)) }
@@ -365,6 +372,16 @@ private fun LazyListScope.soundPage() {
 }
 
 private fun LazyListScope.connPage() {
+    item { SectionLabel("Telefon") }
+    item {
+        val paired by ConnectRepository.paired.collectAsState()
+        SettingRow(
+            "CAR OS Connect",
+            if (paired) "Aplikacja na telefon połączona – pokaż kod, aby dodać kolejny telefon" else "Aplikacja na telefon: gdzie zaparkowałem – połącz kodem QR",
+            leading = Icons.Rounded.PhoneAndroid,
+            onClick = { UiState.settingsPage.value = "connect" },
+        ) { Chevron() }
+    }
     item { SectionLabel("Sieci") }
     item {
         val ctx = LocalContext.current
@@ -629,6 +646,63 @@ private fun LazyListScope.systemPage() {
     }
     backupSection()
     item { SettingRow("Wersja", "CAR OS ${UpdateManager.currentVersion} · Android 10") {} }
+}
+
+private fun LazyListScope.connectPage() {
+    item {
+        Row(
+            Modifier.clip(RoundedCornerShape(14.dp)).clickable { UiState.settingsPage.value = "conn" }.padding(end = 12.dp, top = 4.dp, bottom = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(Icons.Rounded.ChevronLeft, null, tint = CarColors.Text2, modifier = Modifier.size(30.dp))
+            Text("Połączenia", fontSize = 19.sp, color = CarColors.Text2)
+        }
+    }
+    item {
+        var gen by remember { mutableIntStateOf(0) }
+        val sent by ConnectRepository.lastSent.collectAsState()
+        val qr = remember(gen) { ParkingRepository.qr(ConnectRepository.payload(), 520)?.asImageBitmap() }
+        CarCard(Modifier.fillMaxWidth()) {
+            Row(Modifier.padding(24.dp), horizontalArrangement = Arrangement.spacedBy(28.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(300.dp).clip(RoundedCornerShape(20.dp)).background(Color.White).padding(14.dp)) {
+                    if (qr != null) androidx.compose.foundation.Image(qr, "Kod QR CAR OS Connect", modifier = Modifier.fillMaxSize())
+                }
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("CAR OS Connect", fontSize = 30.sp, fontWeight = FontWeight.Bold)
+                    Text("Aplikacja na telefon: gdzie zaparkowałeś, kompas i prowadzenie do auta.", fontSize = 17.sp, color = CarColors.Text2)
+                    ConnectStep(1, "Nie masz aplikacji? Zeskanuj kod zwykłym aparatem i pobierz plik CarOS-Connect…apk")
+                    ConnectStep(2, "W aplikacji dotknij „Skanuj kod z CAR OS” i zeskanuj ten kod")
+                    ConnectStep(3, "Telefon musi być sparowany z radiem przez Bluetooth")
+                    Text(
+                        if (sent > 0) "Ostatnio wysłano do telefonu: ${formatTime(sent)}" else "Miejsce parkowania wyślę do telefonu po pierwszym postoju",
+                        fontSize = 15.sp, color = CarColors.Muted,
+                    )
+                }
+            }
+        }
+    }
+    item {
+        var ask by remember { mutableStateOf(false) }
+        SettingRow(
+            if (ask) "Na pewno? Telefony trzeba będzie połączyć od nowa" else "Nowy kod parowania",
+            if (ask) "Dotknij ponownie, aby potwierdzić" else "Odłącza wszystkie telefony połączone starym kodem",
+            leading = Icons.Rounded.Refresh,
+            onClick = {
+                if (ask) { ConnectRepository.resetKey(); UiState.settingsPage.value = "conn"; Toaster.show("Utworzono nowy kod – połącz telefon ponownie") }
+                else ask = true
+            },
+        ) {}
+    }
+}
+
+@Composable
+private fun ConnectStep(n: Int, text: String) {
+    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Top) {
+        Box(Modifier.size(30.dp).clip(CircleShape).background(CarColors.Raised), contentAlignment = Alignment.Center) {
+            Text("$n", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = LocalAccent.current)
+        }
+        Text(text, fontSize = 17.sp, color = CarColors.Text2, modifier = Modifier.weight(1f).padding(top = 3.dp))
+    }
 }
 
 private fun LazyListScope.updatePage() {

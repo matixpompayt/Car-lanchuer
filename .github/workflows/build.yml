@@ -35,7 +35,6 @@ jobs:
           VER=$(grep "^carosVersion=" gradle.properties | cut -d= -f2)
           echo "VER=$VER" >> "$GITHUB_ENV"
           cp app/build/outputs/apk/release/app-release.apk "out/CarOS-$VER.${BUILD_NUMBER}.apk"
-          cp phone/build/outputs/apk/release/phone-release.apk "out/CarOS-Parking-$VER.${BUILD_NUMBER}.apk"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -48,7 +47,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           MSG=$(git log -1 --pretty=%B | head -c 1500)
-          gh release create "v${VER}.${BUILD_NUMBER}" "out/CarOS-${VER}.${BUILD_NUMBER}.apk" "out/CarOS-Parking-${VER}.${BUILD_NUMBER}.apk" \
+          gh release create "v${VER}.${BUILD_NUMBER}" out/*.apk \
             --title "CAR OS ${VER}.${BUILD_NUMBER}" \
             --notes "$MSG" \
             --latest

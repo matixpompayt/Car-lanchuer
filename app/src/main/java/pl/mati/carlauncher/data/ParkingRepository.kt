@@ -101,6 +101,7 @@ object ParkingRepository {
     private fun persist(s: Spot) {
         val o = JSONObject().put("lat", s.lat).put("lon", s.lon).put("t", s.time).put("a", s.address ?: "")
         Prefs.store?.edit()?.putString("parking", o.toString())?.apply()
+        ConnectRepository.publishPark(s)
     }
 
     private fun load() {

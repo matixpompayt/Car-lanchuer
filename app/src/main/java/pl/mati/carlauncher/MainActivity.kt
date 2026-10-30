@@ -68,6 +68,7 @@ class MainActivity : ComponentActivity() {
         TripRepository.start()
         ForecastRepository.start()
         pl.mati.carlauncher.data.SpeedLimitRepository.start()
+        pl.mati.carlauncher.data.ConnectRepository.init()
         pl.mati.carlauncher.data.ParkingRepository.start()
         pl.mati.carlauncher.data.PlacesRepository.load()
         ContextCompat.registerReceiver(
