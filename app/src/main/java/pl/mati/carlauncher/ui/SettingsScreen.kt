@@ -569,7 +569,7 @@ private fun LazyListScope.workScheduleSection() {
         val monday = remember { WorkSchedule.mondayOf(java.time.LocalDate.now()) }
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             if (mode == "tesla") {
-                Text("Rotacja co tydzień: nocna 22–6 → pierwsza 6–14 → popołudniowa 14–22", fontSize = 16.sp, color = CarColors.Muted)
+                Text("Rotacja co tydzień: nocna 22–6 (nd–czw) → pierwsza 6–14 (pn–pt) → popołudniowa 14–22 (pn–pt)", fontSize = 16.sp, color = CarColors.Muted)
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     listOf("Ten tydzień" to monday, "Następny" to monday.plusWeeks(1), "Za 2 tygodnie" to monday.plusWeeks(2)).forEach { (label, m) ->
                         WeekCard(label, m, WorkSchedule.shiftFor(m), Modifier.weight(1f))
@@ -582,7 +582,7 @@ private fun LazyListScope.workScheduleSection() {
                 WeekPicker("Następny tydzień", monday.plusWeeks(1))
                 Text("Nieustawiony tydzień = taka sama zmiana jak ostatnio ustawiona.", fontSize = 15.sp, color = CarColors.Muted)
             }
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (mode == "custom") Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Dni pracy", fontSize = 17.sp, color = CarColors.Text2, modifier = Modifier.width(110.dp))
                 listOf("Pn", "Wt", "Śr", "Cz", "Pt", "So", "Nd").forEachIndexed { i, d ->
                     ChoiceChip(d, (i + 1) in days, Modifier.weight(1f)) { WorkSchedule.toggleDay(i + 1) }
@@ -595,7 +595,7 @@ private fun LazyListScope.workScheduleSection() {
 @Composable
 private fun WeekCard(label: String, monday: java.time.LocalDate, s: WorkSchedule.Shift?, modifier: Modifier) {
     Column(modifier.clip(RoundedCornerShape(16.dp)).background(CarColors.Card).padding(horizontal = 16.dp, vertical = 12.dp)) {
-        Caption("$label · ${WorkSchedule.weekRange(monday)}")
+        Caption("$label · ${WorkSchedule.startDays(monday, s)}")
         Text(s?.name ?: "—", fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
         Text(s?.hours ?: "", fontSize = 16.sp, color = CarColors.Muted)
     }

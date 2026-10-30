@@ -12,7 +12,7 @@ import java.util.Locale
 
 /**
  * Grafik pracy → „Jedziesz do pracy?” (2 h przed zmianą) i „Jedziesz do domu?” (od końca zmiany).
- *  - Tesla (Silver): rotacja co tydzień nocna → pierwsza → popołudniowa (tydzień od 2.11.2026 = nocna),
+ *  - Tesla (Silver): rotacja co tydzień nocna → pierwsza → popołudniowa (nocki 1.11–5.11.2026, nd–czw),
  *  - niestandardowy: kierowca sam ustawia zmianę na ten i następny tydzień.
  */
 object WorkSchedule {
@@ -122,30 +122,55 @@ object WorkSchedule {
     /** Czy [monday] ma zmianę ustawioną wprost (tryb niestandardowy). */
     fun isSet(monday: LocalDate) = custom.value.containsKey(monday.toEpochDay())
 
+    /**
+     * Zmiana, która ZACZYNA SIĘ danego dnia (albo null).
+     * Tesla: nocki od niedzieli do czwartku (np. 1.11–5.11), pierwsza i popołudniowa pn–pt.
+     * Niestandardowy: wybrane dni; nocka w niedzielę liczy się do następnego tygodnia.
+     */
+    fun shiftStartingOn(d: LocalDate): Shift? {
+        load()
+        val dow = d.dayOfWeek.value // 1 = pon … 7 = nd
+        val week = shiftFor(mondayOf(d))
+        val nextWeek = shiftFor(mondayOf(d).plusWeeks(1))
+        if (mode.value == "tesla") {
+            return when (dow) {
+                7 -> nextWeek?.takeIf { it.kind == NIGHT }
+                in 1..4 -> week
+                5 -> week?.takeIf { it.kind != NIGHT }
+                else -> null
+            }
+        }
+        if (dow !in days.value) return null
+        if (dow == 7 && nextWeek?.overnight == true) return nextWeek
+        return week?.takeIf { !it.off }
+    }
+
+    /** Dni rozpoczęcia zmian w tygodniu [monday] – do wyświetlenia (np. „1.11–5.11”). */
+    fun startDays(monday: LocalDate, s: Shift?): String {
+        if (s == null || s.off) return weekRange(monday)
+        return if (mode.value == "tesla" && s.kind == NIGHT) "${monday.minusDays(1).format(DM)}–${monday.plusDays(3).format(DM)}"
+        else if (mode.value == "tesla") "${monday.format(DM)}–${monday.plusDays(4).format(DM)}"
+        else weekRange(monday)
+    }
+
     /** Propozycja trasy teraz (przy „zapłonie”), albo null. */
     fun suggestion(now: LocalDateTime = LocalDateTime.now()): Suggestion? {
         load()
         val p = Prefs.profile.value
         val today = now.toLocalDate()
         val nowMin = now.hour * 60 + now.minute
+        val s = shiftStartingOn(today)
 
         // do pracy: 2 h przed początkiem dzisiejszej zmiany
-        if (p.work.isNotBlank() && today.dayOfWeek.value in days.value) {
-            val s = shiftFor(mondayOf(today))
-            if (s != null && !s.off && nowMin in (s.start - BEFORE_WORK_MIN) until s.start) return Suggestion(true, p.work, s)
+        if (p.work.isNotBlank() && s != null && !s.off && nowMin in (s.start - BEFORE_WORK_MIN) until s.start) {
+            return Suggestion(true, p.work, s)
         }
         if (p.home.isBlank()) return null
         // do domu po zmianie dziennej
-        if (today.dayOfWeek.value in days.value) {
-            val s = shiftFor(mondayOf(today))
-            if (s != null && !s.off && !s.overnight && nowMin in s.end until (s.end + AFTER_WORK_MIN)) return Suggestion(false, p.home, s)
-        }
-        // do domu po zmianie nocnej (zaczętej wczoraj)
-        val y = today.minusDays(1)
-        if (y.dayOfWeek.value in days.value) {
-            val s = shiftFor(mondayOf(y))
-            if (s != null && s.overnight && nowMin in s.end until (s.end + AFTER_WORK_MIN)) return Suggestion(false, p.home, s)
-        }
+        if (s != null && !s.off && !s.overnight && nowMin in s.end until (s.end + AFTER_WORK_MIN)) return Suggestion(false, p.home, s)
+        // do domu po nocce zaczętej wczoraj
+        val y = shiftStartingOn(today.minusDays(1))
+        if (y != null && y.overnight && nowMin in y.end until (y.end + AFTER_WORK_MIN)) return Suggestion(false, p.home, y)
         return null
     }
 
