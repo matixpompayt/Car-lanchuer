@@ -61,6 +61,7 @@ object PlacesRepository {
             ?.putString("fav_places", encode(favorites.value))
             ?.putString("recent_places", encode(recents.value))
             ?.apply()
+        ConnectRepository.publishStatusSoon()
     }
 
     private fun encode(list: List<RouteRepository.Place>): String {

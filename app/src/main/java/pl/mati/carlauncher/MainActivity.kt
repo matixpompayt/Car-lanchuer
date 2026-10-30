@@ -65,6 +65,7 @@ class MainActivity : ComponentActivity() {
         }
         if (Prefs.autoUpdate.value && Prefs.profile.value.setupDone) UpdateManager.check(this, silent = true)
         ServiceRepository.load()
+        TripRepository.dir = File(filesDir, "trips")
         TripRepository.start()
         ForecastRepository.start()
         pl.mati.carlauncher.data.SpeedLimitRepository.start()

@@ -21,12 +21,12 @@ object BackupManager {
 
     // ---------- JSON ----------
 
-    fun buildJson(): String? {
+    fun buildJson(exclude: Set<String> = emptySet()): String? {
         val sp = Prefs.store ?: return null
         ServiceRepository.save()
         val data = JSONObject()
         for ((k, v) in sp.all) {
-            if (k == "trip_current" || k == "auto_backup_at") continue
+            if (k == "trip_current" || k == "trip_current_path" || k == "auto_backup_at" || k in exclude || k.startsWith("connect_")) continue
             val e = JSONObject()
             when (v) {
                 is Boolean -> e.put("t", "b").put("v", v)
@@ -51,10 +51,22 @@ object BackupManager {
         val root = JSONObject(text)
         if (root.optString("app") != "CAR OS") return false
         val data = root.getJSONObject("prefs")
+        // połączenie z telefonem (CAR OS Connect) zostaje – kopia nie może go nadpisać
+        val keep = sp.all.filterKeys { it.startsWith("connect_") }
         val ed = sp.edit().clear()
+        keep.forEach { (k, v) ->
+            when (v) {
+                is String -> ed.putString(k, v)
+                is Long -> ed.putLong(k, v)
+                is Int -> ed.putInt(k, v)
+                is Boolean -> ed.putBoolean(k, v)
+                is Float -> ed.putFloat(k, v)
+            }
+        }
         val keys = data.keys()
         while (keys.hasNext()) {
             val k = keys.next()
+            if (k.startsWith("connect_")) continue
             val e = data.getJSONObject(k)
             when (e.getString("t")) {
                 "b" -> ed.putBoolean(k, e.getBoolean("v"))
@@ -65,6 +77,13 @@ object BackupManager {
             }
         }
         return ed.commit()
+    }
+
+    /** Przywrócenie z tekstu kopii (np. przysłanej z telefonu). */
+    fun restoreText(text: String): Boolean = try {
+        restoreJson(text)
+    } catch (_: Exception) {
+        false
     }
 
     // ---------- ręczna kopia ----------

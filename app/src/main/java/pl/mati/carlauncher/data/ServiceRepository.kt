@@ -87,17 +87,20 @@ object ServiceRepository {
         odometerKm.value = km.toDouble()
         odometerSet.value = true
         save()
+        ConnectRepository.publishStatusSoon()
     }
 
     fun update(item: Item) {
         items.value = items.value.map { if (it.id == item.id) item else it }
         save()
+        ConnectRepository.publishStatusSoon()
     }
 
     fun markDone(id: String) {
         val km = if (odometerSet.value) odometerKm.value.roundToInt() else -1
         items.value = items.value.map { if (it.id == id) it.copy(lastKm = km, lastDate = System.currentTimeMillis()) else it }
         save()
+        ConnectRepository.publishStatusSoon()
     }
 
     fun due(item: Item, now: Long = System.currentTimeMillis()): Due {

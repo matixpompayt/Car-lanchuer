@@ -45,6 +45,7 @@ fun CarApp() {
                 Phase.MAIN -> Shell()
             }
         }
+        ConnectRestoreOverlay()
         NightDim()
         ToastHost()
     }

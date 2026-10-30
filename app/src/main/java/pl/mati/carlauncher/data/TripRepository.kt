@@ -49,6 +49,34 @@ object TripRepository {
     private var started = false
     private const val MAX_TRIPS = 300
 
+    /** Folder na ślady GPS tras (ustawiany w MainActivity). */
+    var dir: java.io.File? = null
+    /** Ślad bieżącej jazdy: [lat, lon]. */
+    private val path = ArrayList<DoubleArray>()
+
+    /** Ślad zapisanej trasy (kodowany) albo null. */
+    fun pathOf(t: Trip): String? = try {
+        dir?.let { java.io.File(it, "${t.start}.pl") }?.takeIf { it.exists() }?.readText()
+    } catch (_: Exception) {
+        null
+    }
+
+    private fun recordPoint(reset: Boolean) {
+        val l = LocationRepository.location.value ?: return
+        if (reset) synchronized(path) { path.clear() }
+        if (l.provider != android.location.LocationManager.GPS_PROVIDER || l.accuracy > 35f) return
+        if (System.currentTimeMillis() - l.time > 10_000) return
+        synchronized(path) {
+            val last = path.lastOrNull()
+            if (last != null) {
+                val out = FloatArray(1)
+                android.location.Location.distanceBetween(last[0], last[1], l.latitude, l.longitude, out)
+                if (out[0] < 20f) return
+            }
+            path += doubleArrayOf(l.latitude, l.longitude)
+        }
+    }
+
     fun start() {
         if (started) return
         started = true
@@ -78,6 +106,7 @@ object TripRepository {
                 if (movingCount >= 2) {
                     current.value = Trip(now, now, 0.0, 0, spd, obd.coolant)
                     stillSince = 0L
+                    recordPoint(reset = true)
                 }
                 continue
             }
@@ -90,6 +119,7 @@ object TripRepository {
                 maxCoolant = listOfNotNull(cur.maxCoolant, obd.coolant).maxOrNull(),
             )
             if (moving) ServiceRepository.addMeters(delta)
+            recordPoint(reset = false)
             if (!moving) {
                 if (stillSince == 0L) stillSince = now
                 if (now - stillSince > 180_000) {
@@ -114,8 +144,25 @@ object TripRepository {
         if (cur.distanceM >= 300) {
             trips.value = (listOf(cur) + trips.value).take(MAX_TRIPS)
             saveTrips()
+            val pts = synchronized(path) { ArrayList(path) }
+            val enc = if (pts.size >= 2) Polyline.compact(pts) else null
+            if (enc != null) {
+                try {
+                    dir?.let { d ->
+                        d.mkdirs()
+                        java.io.File(d, "${cur.start}.pl").writeText(enc)
+                        // stare ślady (poza listą tras) – usuń
+                        val keep = trips.value.map { "${it.start}.pl" }.toSet()
+                        d.listFiles()?.forEach { f -> if (f.name !in keep) f.delete() }
+                    }
+                } catch (_: Exception) {
+                }
+            }
+            ConnectRepository.publishTrip(cur, enc)
+            ConnectRepository.publishStatusSoon()
         }
-        Prefs.store?.edit()?.remove("trip_current")?.apply()
+        synchronized(path) { path.clear() }
+        Prefs.store?.edit()?.remove("trip_current")?.remove("trip_current_path")?.apply()
         ServiceRepository.save()
     }
 
@@ -157,6 +204,9 @@ object TripRepository {
         // jazda przerwana zgaszeniem radia
         val curStr = sp.getString("trip_current", null) ?: return
         try {
+            sp.getString("trip_current_path", null)?.let { p ->
+                synchronized(path) { path.clear(); path.addAll(Polyline.decode(p)) }
+            }
             val t = Trip.from(JSONObject(curStr))
             if (System.currentTimeMillis() - t.end < 10 * 60_000) {
                 current.value = t // krótki postój (np. stacja) – kontynuujemy tę samą jazdę
@@ -177,6 +227,10 @@ object TripRepository {
 
     private fun saveCurrent() {
         val c = current.value ?: return
-        Prefs.store?.edit()?.putString("trip_current", c.toJson().toString())?.apply()
+        val pts = synchronized(path) { ArrayList(path) }
+        Prefs.store?.edit()
+            ?.putString("trip_current", c.toJson().toString())
+            ?.putString("trip_current_path", Polyline.encode(pts))
+            ?.apply()
     }
 }

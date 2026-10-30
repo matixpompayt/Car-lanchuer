@@ -241,7 +241,10 @@ private fun RestoreCard() {
 
 @Composable
 private fun WelcomeStep() {
-    if (!Prefs.profile.value.setupDone) RestoreCard()
+    if (!Prefs.profile.value.setupDone) {
+        RestoreCard()
+        ConnectRestoreCard()
+    }
     Title("Witaj w CAR OS")
     Lead("Twój samochód, Twój system. Skonfigurujemy wszystko w minutę – każdą rzecz możesz później zmienić w Ustawieniach.")
     Row(horizontalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.padding(top = 10.dp)) {
