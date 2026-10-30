@@ -157,6 +157,8 @@ object ConnectRepository {
                         .put("x", ServiceRepository.describe(d)).put("f", d.fraction.toDouble()),
                 )
             }
+            val items = JSONArray()
+            ServiceRepository.items.value.forEach { items.put(it.toJson()) }
             val trips = JSONArray()
             TripRepository.trips.value.take(12).forEach { trips.put(it.toJson()) }
             val favs = JSONArray()
@@ -171,7 +173,8 @@ object ConnectRepository {
                 .put("today", TripRepository.summary(TripRepository.startOfDay()).distanceM)
                 .put("week", TripRepository.summary(TripRepository.startOfWeek()).distanceM)
                 .put("month", TripRepository.summary(TripRepository.startOfMonth()).distanceM)
-                .put("svc", svc).put("trips", trips).put("favs", favs)
+                .put("odoSet", ServiceRepository.odometerSet.value)
+                .put("svc", svc).put("items", items).put("trips", trips).put("favs", favs)
                 .put("ver", BuildConfig.VERSION_NAME)
             send(o)
         } catch (_: Exception) {
@@ -307,6 +310,32 @@ object ConnectRepository {
                 PlacesRepository.load()
                 PlacesRepository.removeFavorite(place(o))
                 publishStatusSoon()
+            }
+            // serwis edytowany w telefonie
+            "svc_item" -> {
+                ServiceRepository.load()
+                val it = ServiceRepository.Item.from(o.getJSONObject("item"))
+                val cur = ServiceRepository.items.value.firstOrNull { x -> x.id == it.id } ?: return
+                ServiceRepository.update(cur.copy(intervalKm = it.intervalKm, intervalMonths = it.intervalMonths, lastKm = it.lastKm, lastDate = it.lastDate))
+                ServiceRepository.checkReminders()
+                Toaster.show("Serwis zmieniony z telefonu: ${cur.name}")
+            }
+            "svc_done" -> {
+                ServiceRepository.load()
+                val id = o.getString("id")
+                val cur = ServiceRepository.items.value.firstOrNull { x -> x.id == id } ?: return
+                ServiceRepository.markDone(id)
+                ServiceRepository.checkReminders()
+                Toaster.show("Z telefonu: ${cur.name} – wykonano")
+            }
+            "svc_odo" -> {
+                ServiceRepository.load()
+                val km = o.getInt("km")
+                if (km > 0) {
+                    ServiceRepository.setOdometer(km)
+                    ServiceRepository.checkReminders()
+                    Toaster.show("Przebieg z telefonu: $km km")
+                }
             }
             "sync" -> {
                 publishStatus()
