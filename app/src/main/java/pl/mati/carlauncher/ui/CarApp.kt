@@ -62,7 +62,6 @@ fun CarApp() {
             }
         }
         ConnectRestoreOverlay()
-        NightDim()
         ToastHost()
     }
 }

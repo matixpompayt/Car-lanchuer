@@ -41,6 +41,7 @@ object AutostartManager {
         if (now - ranAt < 60_000) return
         ranAt = now
         if (!Prefs.profile.value.setupDone) return
+        ThemeManager.clearOverride()
 
         Prefs.obdMac.value?.let { mac ->
             val s = ObdManager.status.value

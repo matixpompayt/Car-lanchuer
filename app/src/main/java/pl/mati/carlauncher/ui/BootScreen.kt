@@ -59,10 +59,10 @@ fun BootScreen() {
         UiState.bootFinished()
     }
 
-    Box(Modifier.fillMaxSize().background(Color.Black), contentAlignment = Alignment.Center) {
+    Box(Modifier.fillMaxSize().background(if (CarColors.isLight) CarColors.Bg else Color.Black), contentAlignment = Alignment.Center) {
         Box(
             Modifier.size(900.dp).background(
-                Brush.radialGradient(listOf(accent.copy(alpha = 0.13f), Color.Transparent)),
+                Brush.radialGradient(listOf(accent.copy(alpha = if (CarColors.isLight) 0.18f else 0.13f), Color.Transparent)),
             ),
         )
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(28.dp)) {

@@ -200,8 +200,9 @@ private fun ControlsColumn(modifier: Modifier, activity: Activity?) {
     val ctx = LocalContext.current
     val wifi by SystemControls.wifiOn.collectAsState()
     val bt by SystemControls.bluetoothOn.collectAsState()
-    val night by Prefs.nightNow.collectAsState()
-    val autoNight by Prefs.autoNight.collectAsState()
+    val light by pl.mati.carlauncher.data.ThemeManager.light.collectAsState()
+    val manual by pl.mati.carlauncher.data.ThemeManager.override.collectAsState()
+    val night = !light
     val obd by ObdManager.status.collectAsState()
     val mac by Prefs.obdMac.collectAsState()
     val bri by SystemControls.brightness.collectAsState()
@@ -223,9 +224,9 @@ private fun ControlsColumn(modifier: Modifier, activity: Activity?) {
         Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             QuickTile(
                 Icons.Rounded.DarkMode, "Tryb nocny",
-                if (night) "Włączony" else if (autoNight) "Auto o zmroku" else "Wyłączony",
+                (if (night) "Ciemny, przygaszony" else "Wyłączony – jasny") + (if (manual == null) " · auto" else ""),
                 night, Modifier.weight(1f),
-            ) { Prefs.setNightNow(!night) }
+            ) { pl.mati.carlauncher.data.ThemeManager.toggleNight() }
             QuickTile(
                 Icons.Rounded.Speed, "OBD2",
                 when (obd) {

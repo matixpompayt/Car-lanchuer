@@ -56,10 +56,17 @@ object SystemControls {
         try { ctx.startActivity(i) } catch (_: Exception) {}
     }
 
-    /** Ustawia jasność: systemową (gdy jest zgoda) i zawsze okna launchera. */
-    fun setBrightness(activity: Activity?, ctx: Context, percent: Int) {
+    private var activityRef: java.lang.ref.WeakReference<Activity>? = null
+    fun attach(a: Activity) { activityRef = java.lang.ref.WeakReference(a) }
+    fun activity(): Activity? = activityRef?.get()
+
+    /** Ustawia jasność: systemową (gdy jest zgoda) i zawsze okna launchera. Zapamiętuje ją dla dnia albo nocy. */
+    fun setBrightness(activity: Activity?, ctx: Context, percent: Int, remember: Boolean = true) {
         val p = percent.coerceIn(5, 100)
         brightness.value = p
+        if (remember) {
+            if (ThemeManager.light.value) Prefs.setBriDay(p) else Prefs.setBriNight(p)
+        }
         if (Settings.System.canWrite(ctx)) {
             try {
                 Settings.System.putInt(ctx.contentResolver, Settings.System.SCREEN_BRIGHTNESS_MODE, Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL)

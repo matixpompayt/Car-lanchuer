@@ -56,6 +56,9 @@ object Prefs {
     val themeMode = MutableStateFlow("lights")
     /** Jasny wariant: "perla", "piasek", "mgla". */
     val lightVariant = MutableStateFlow("perla")
+    /** Jasność ekranu (%) w dzień i w nocy (-1 = jeszcze nie zapamiętana). */
+    val briDay = MutableStateFlow(-1)
+    val briNight = MutableStateFlow(35)
     /** Mapa: "vector" = OpenFreeMap 3D (MapLibre), "osm" = klasyczne kafelki OSM. */
     val mapEngine = MutableStateFlow("vector")
     val map3d = MutableStateFlow(true)
@@ -96,6 +99,8 @@ object Prefs {
         animations.value = p.getBoolean("animations", true)
         themeMode.value = p.getString("theme_mode", "lights") ?: "lights"
         lightVariant.value = p.getString("light_variant", "perla") ?: "perla"
+        briDay.value = p.getInt("bri_day", -1)
+        briNight.value = p.getInt("bri_night", 35)
         mapEngine.value = p.getString("map_engine", "vector") ?: "vector"
         map3d.value = p.getBoolean("map_3d", true)
         mapHeadingUp.value = p.getBoolean("map_heading_up", true)
@@ -145,6 +150,8 @@ object Prefs {
     fun setMap3d(v: Boolean) { map3d.value = v; edit { putBoolean("map_3d", v) } }
     fun setMapHeadingUp(v: Boolean) { mapHeadingUp.value = v; edit { putBoolean("map_heading_up", v) } }
     fun setThemeMode(v: String) { themeMode.value = v; edit { putString("theme_mode", v) } }
+    fun setBriDay(v: Int) { briDay.value = v; edit { putInt("bri_day", v) } }
+    fun setBriNight(v: Int) { briNight.value = v.coerceIn(5, 100); edit { putInt("bri_night", briNight.value) } }
     fun setLightVariant(v: String) { lightVariant.value = v; edit { putString("light_variant", v) } }
     fun setAnimations(v: Boolean) { animations.value = v; edit { putBoolean("animations", v) } }
     fun setSpeedLimits(v: Boolean) { speedLimits.value = v; edit { putBoolean("speed_limits", v) } }

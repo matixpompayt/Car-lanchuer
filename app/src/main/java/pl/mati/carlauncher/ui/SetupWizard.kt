@@ -388,7 +388,7 @@ private fun PlacesStep(p: Profile, onChange: (Profile) -> Unit) {
 private fun LookStep() {
     val accent by Prefs.accent.collectAsState()
     val wall by Prefs.wallpaper.collectAsState()
-    val autoNight by Prefs.autoNight.collectAsState()
+    val themeMode by Prefs.themeMode.collectAsState()
     Title("Wybierz wygląd")
     SectionLabel("Kolor akcentu")
     Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -398,9 +398,12 @@ private fun LookStep() {
     Row(horizontalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.widthIn(max = 820.dp)) {
         Wallpapers.forEachIndexed { i, w -> WallpaperCard(w.first, w.second, wall == i, { Prefs.setWallpaper(i) }, Modifier.weight(1f)) }
     }
-    SettingRow("Tryb nocny automatycznie", "Ciemniejszy ekran od 19:00 do 6:00", Modifier.widthIn(max = 820.dp), onClick = { Prefs.setAutoNight(!autoNight) }) {
-        CarSwitch(autoNight)
-    }
+    SettingRow(
+        "Jasny w dzień, ciemny w nocy",
+        "Jak w fabrycznym radiu: światła wyłączone = jasny, włączone = ciemny i przygaszony ekran",
+        Modifier.widthIn(max = 820.dp),
+        onClick = { Prefs.setThemeMode(if (themeMode == "dark") "lights" else "dark") },
+    ) { CarSwitch(themeMode != "dark") }
 }
 
 @Composable

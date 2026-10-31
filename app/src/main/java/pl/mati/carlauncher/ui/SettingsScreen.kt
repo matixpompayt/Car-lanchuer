@@ -1,5 +1,6 @@
 package pl.mati.carlauncher.ui
 
+import androidx.compose.material.icons.rounded.DarkMode
 import pl.mati.carlauncher.data.HeadlightDetector
 import pl.mati.carlauncher.data.ThemeManager
 import androidx.compose.ui.text.style.TextOverflow
@@ -295,12 +296,21 @@ private fun LazyListScope.lookPage() {
     }
     item { SectionLabel("Tryb") }
     item {
-        val v by Prefs.autoNight.collectAsState()
-        SettingRow("Tryb nocny automatycznie", "Ciemniejszy ekran od 19:00 do 6:00", onClick = { Prefs.setAutoNight(!v) }) { CarSwitch(v) }
+        val light by ThemeManager.light.collectAsState()
+        SettingRow(
+            "Tryb nocny",
+            "Włączony = ciemny wygląd i przygaszony ekran, wyłączony = jasny. Automat: Wygląd → Dzień / noc",
+            onClick = { ThemeManager.toggleNight() },
+        ) { CarSwitch(!light) }
     }
     item {
-        val v by Prefs.nightNow.collectAsState()
-        SettingRow("Tryb nocny teraz", "Przyciemnia cały interfejs", onClick = { Prefs.setNightNow(!v) }) { CarSwitch(v) }
+        val ctx = LocalContext.current
+        val bn by Prefs.briNight.collectAsState()
+        FillSlider(bn / 100f, {
+            val p = (it * 100).toInt()
+            Prefs.setBriNight(p)
+            if (!ThemeManager.light.value) SystemControls.setBrightness(ctx as? Activity, ctx, p, remember = false)
+        }, Icons.Rounded.DarkMode, "Jasność ekranu w nocy", "$bn%", Modifier.fillMaxWidth())
     }
     item {
         val v by Prefs.bootAnim.collectAsState()

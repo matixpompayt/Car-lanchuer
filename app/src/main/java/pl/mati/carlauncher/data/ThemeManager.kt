@@ -30,16 +30,29 @@ import kotlin.math.sin
 object ThemeManager {
 
     val light = MutableStateFlow(false)
+    /** Ręcznie z centrum sterowania („Tryb nocny”): true = noc, false = dzień, null = automatycznie. */
+    val override = MutableStateFlow<Boolean?>(null)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var started = false
+    private var appCtx: Context? = null
+    private var lastAuto: Boolean? = null
 
     fun start(ctx: Context) {
         if (started) return
         started = true
+        appCtx = ctx.applicationContext
         HeadlightDetector.start(ctx)
         update()
+        // noc = ciemny motyw + przygaszony ekran, dzień = jasny motyw + jasność dzienna
         scope.launch {
-            combine(Prefs.themeMode, HeadlightDetector.on, HeadlightDetector.learned) { _, _, _ -> }.collect { update() }
+            var prev: Boolean? = null
+            light.collect { l ->
+                if (prev != null && prev != l) applyBrightness(l)
+                prev = l
+            }
+        }
+        scope.launch {
+            combine(Prefs.themeMode, HeadlightDetector.on, HeadlightDetector.learned, override) { _, _, _, _ -> }.collect { update() }
         }
         scope.launch {
             while (true) {
@@ -50,16 +63,45 @@ object ThemeManager {
     }
 
     fun update() {
-        light.value = when (Prefs.themeMode.value) {
+        val auto = when (Prefs.themeMode.value) {
             "light" -> true
             "dark" -> false
             "sun" -> Sun.isDay()
             else -> HeadlightDetector.on.value?.let { !it } ?: Sun.isDay()
         }
+        // ręczne przełączenie trwa, dopóki automat sam nie zmieni trybu (np. włączysz światła)
+        if (lastAuto != null && lastAuto != auto) override.value = null
+        lastAuto = auto
+        light.value = override.value?.let { !it } ?: auto
+    }
+
+    /** Kafelek „Tryb nocny”: przełącza dzień ↔ noc od razu. */
+    fun toggleNight() {
+        override.value = light.value // jasny → noc (true), ciemny → dzień (false)
+        update()
+    }
+
+    /** „Zapłon” – znowu automatycznie. */
+    fun clearOverride() {
+        override.value = null
+        update()
+    }
+
+    private fun applyBrightness(light: Boolean) {
+        val ctx = appCtx ?: return
+        SystemControls.refresh(ctx)
+        if (light) {
+            val day = Prefs.briDay.value
+            if (day > 0) SystemControls.setBrightness(SystemControls.activity(), ctx, day, remember = false)
+        } else {
+            // pierwszy raz: zapamiętaj obecną jasność jako dzienną
+            if (Prefs.briDay.value <= 0) Prefs.setBriDay(SystemControls.brightness.value)
+            SystemControls.setBrightness(SystemControls.activity(), ctx, Prefs.briNight.value, remember = false)
+        }
     }
 
     /** Opis bieżącego stanu do ustawień. */
-    fun describe(): String = when (Prefs.themeMode.value) {
+    fun describe(): String = if (override.value != null) (if (light.value) "Ręcznie: dzień (do zmiany świateł)" else "Ręcznie: noc (do zmiany świateł)") else when (Prefs.themeMode.value) {
         "light" -> "Zawsze jasny"
         "dark" -> "Zawsze ciemny"
         "sun" -> if (Sun.isDay()) "Dzień – jasny (wschód ${Sun.hm(true)}, zachód ${Sun.hm(false)})" else "Noc – ciemny (wschód ${Sun.hm(true)})"
