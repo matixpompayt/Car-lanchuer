@@ -130,7 +130,10 @@ object ConnectRepository {
         val sig = "${s.lat},${s.lon},${s.time},${s.address}"
         if (!force && sig == lastParkSig) return
         lastParkSig = sig
-        send(JSONObject().put("type", "park").put("lat", s.lat).put("lon", s.lon).put("t", s.time).put("a", s.address ?: ""))
+        send(
+            JSONObject().put("type", "park").put("lat", s.lat).put("lon", s.lon).put("t", s.time).put("a", s.address ?: "")
+                .put("body", Prefs.carBody.value).put("paint", Prefs.carPaint.value),
+        )
     }
 
     /** Stan auta po krótkiej zwłoce (łączy kilka zmian w jedną wiadomość). */
