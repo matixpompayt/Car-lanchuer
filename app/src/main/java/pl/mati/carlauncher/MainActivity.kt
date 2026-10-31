@@ -145,9 +145,29 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /**
+     * Systemowy pasek / zasłona powiadomień nad CAR OS: od razu je zamykamy.
+     * Gdy okno traci fokus, a CAR OS dalej jest na wierzchu (nie otwarto innej aplikacji),
+     * to znaczy, że ktoś wysunął systemową zasłonę – zamykamy ją (Android 10 na to pozwala).
+     */
+    private val closeShade = Runnable {
+        if (!Prefs.blockStatusBar.value) return@Runnable
+        if (hasWindowFocus() || !lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED)) return@Runnable
+        try {
+            @Suppress("DEPRECATION")
+            sendBroadcast(Intent(Intent.ACTION_CLOSE_SYSTEM_DIALOGS))
+        } catch (_: Exception) {
+        }
+        hideSystemBars()
+    }
+
+    private val rehide = Runnable { if (Prefs.blockStatusBar.value) hideSystemBars() }
+
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
+        window.decorView.removeCallbacks(closeShade)
         if (hasFocus) hideSystemBars()
+        else window.decorView.postDelayed(closeShade, 120)
     }
 
     private fun requestMissingPermissions() {
@@ -162,11 +182,24 @@ class MainActivity : ComponentActivity() {
         if (missing.isNotEmpty()) permissionLauncher.launch(missing.toTypedArray())
     }
 
+    private var barsListener = false
+
     private fun hideSystemBars() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
         WindowInsetsControllerCompat(window, window.decorView).apply {
             hide(WindowInsetsCompat.Type.systemBars())
             systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        }
+        // pasek wysunięty gestem z krawędzi – schowaj go od razu (zamiast po kilku sekundach)
+        if (!barsListener) {
+            barsListener = true
+            @Suppress("DEPRECATION")
+            window.decorView.setOnSystemUiVisibilityChangeListener { vis ->
+                if (vis and android.view.View.SYSTEM_UI_FLAG_FULLSCREEN == 0) {
+                    window.decorView.removeCallbacks(rehide)
+                    window.decorView.postDelayed(rehide, 250)
+                }
+            }
         }
     }
 }

@@ -296,6 +296,14 @@ private fun LazyListScope.lookPage() {
     }
     item { SectionLabel("Tryb") }
     item {
+        val v by Prefs.blockStatusBar.collectAsState()
+        SettingRow(
+            "Blokuj systemowy pasek",
+            "Pasek i zasłona powiadomień Androida nie wysuwają się nad CAR OS (powiadomienia są w centrum sterowania CAR OS)",
+            onClick = { Prefs.setBlockStatusBar(!v) },
+        ) { CarSwitch(v) }
+    }
+    item {
         val light by ThemeManager.light.collectAsState()
         SettingRow(
             "Tryb nocny",

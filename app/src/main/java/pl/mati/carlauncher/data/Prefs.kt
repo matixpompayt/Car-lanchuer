@@ -52,6 +52,8 @@ object Prefs {
     val radioApp = MutableStateFlow("")
     val btApp = MutableStateFlow("")
     val animations = MutableStateFlow(true)
+    /** Nie pozwalaj wysuwać systemowego paska / zasłony powiadomień nad CAR OS. */
+    val blockStatusBar = MutableStateFlow(true)
     /** Tryb dzień/noc: "lights" (światła auta), "sun", "light", "dark". */
     val themeMode = MutableStateFlow("lights")
     /** Jasny wariant: "perla", "piasek", "mgla". */
@@ -97,6 +99,7 @@ object Prefs {
         radioApp.value = p.getString("radio_app", "") ?: ""
         btApp.value = p.getString("bt_app", "") ?: ""
         animations.value = p.getBoolean("animations", true)
+        blockStatusBar.value = p.getBoolean("block_status_bar", true)
         themeMode.value = p.getString("theme_mode", "lights") ?: "lights"
         lightVariant.value = p.getString("light_variant", "perla") ?: "perla"
         briDay.value = p.getInt("bri_day", -1)
@@ -153,6 +156,7 @@ object Prefs {
     fun setBriDay(v: Int) { briDay.value = v; edit { putInt("bri_day", v) } }
     fun setBriNight(v: Int) { briNight.value = v.coerceIn(5, 100); edit { putInt("bri_night", briNight.value) } }
     fun setLightVariant(v: String) { lightVariant.value = v; edit { putString("light_variant", v) } }
+    fun setBlockStatusBar(v: Boolean) { blockStatusBar.value = v; edit { putBoolean("block_status_bar", v) } }
     fun setAnimations(v: Boolean) { animations.value = v; edit { putBoolean("animations", v) } }
     fun setSpeedLimits(v: Boolean) { speedLimits.value = v; edit { putBoolean("speed_limits", v) } }
     fun setSpeedTolerance(v: Int) { speedTolerance.value = v.coerceIn(0, 20); edit { putInt("speed_tol", speedTolerance.value) } }
