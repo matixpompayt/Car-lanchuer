@@ -98,7 +98,6 @@ private class VectorHolder(ctx: Context) {
     @SuppressLint("MissingPermission")
     private fun onStyle(ctx: Context, m: MapLibreMap, st: Style) {
         CarMapStyle.applyDark(st)
-        st.addImage(IMG_CAR, carBitmap())
         st.addImage(IMG_EMPTY, android.graphics.Bitmap.createBitmap(1, 1, android.graphics.Bitmap.Config.ARGB_8888))
         val below = CarMapStyle.firstSymbolId(st)
         CarMapStyle.add3dBuildings(st, below)
@@ -138,6 +137,18 @@ private class VectorHolder(ctx: Context) {
                 PropertyFactory.circleStrokeWidth(4f),
             ),
         )
+        // auto 3D na wierzchu (zawsze przodem do kamery – wybierana klatka z modelu)
+        st.addSource(GeoJsonSource(SRC_ME))
+        st.addLayer(
+            org.maplibre.android.style.layers.SymbolLayer(L_ME, SRC_ME).withProperties(
+                PropertyFactory.iconImage(org.maplibre.android.style.expressions.Expression.get("img")),
+                PropertyFactory.iconAllowOverlap(true),
+                PropertyFactory.iconIgnorePlacement(true),
+                PropertyFactory.iconPitchAlignment(Property.ICON_PITCH_ALIGNMENT_VIEWPORT),
+                PropertyFactory.iconRotationAlignment(Property.ICON_ROTATION_ALIGNMENT_VIEWPORT),
+            ),
+        )
+        m.addOnCameraMoveListener { updateMe() }
         CarMapStyle.set3d(st, Prefs.map3d.value)
         try {
             val lc = m.locationComponent
@@ -154,15 +165,16 @@ private class VectorHolder(ctx: Context) {
         }
         style = st
         ready = true
+        renderCar()
         follow()
     }
 
     /** Ikona auta (typ nadwozia + kolor z ustawień) zamiast kropki pozycji. */
     fun locOptions(ctx: Context, @Suppress("UNUSED_PARAMETER") accent: Int = 0): LocationComponentOptions =
         LocationComponentOptions.builder(ctx)
-            .gpsName(IMG_CAR)
-            .foregroundName(IMG_CAR)
-            .foregroundStaleName(IMG_CAR)
+            .gpsName(IMG_EMPTY)
+            .foregroundName(IMG_EMPTY)
+            .foregroundStaleName(IMG_EMPTY)
             .backgroundName(IMG_EMPTY)
             .backgroundStaleName(IMG_EMPTY)
             .bearingName(IMG_EMPTY)
@@ -173,13 +185,52 @@ private class VectorHolder(ctx: Context) {
             .maxZoomIconScale(1.0f)
             .build()
 
-    fun carBitmap(): android.graphics.Bitmap =
-        CarIcon.bitmap(Prefs.carBody.value, Prefs.carPaint.value, (64 * density).toInt())
+    // ---------- auto 3D ----------
+    private val renderer = java.util.concurrent.Executors.newSingleThreadExecutor()
+    private val main = android.os.Handler(android.os.Looper.getMainLooper())
+    private var framesReady = false
+    private var renderGen = 0
+    private var lastBearing = 0f
 
-    fun updateCarIcon(ctx: Context) {
+    /** Renderuje model auta z 36 kątów (co 10°) dla bieżącego widoku 2D/3D – w tle. */
+    fun renderCar() {
+        val body = Prefs.carBody.value
+        val paint = Prefs.carPaint.value
+        val is3d = Prefs.map3d.value
+        val elev = if (is3d) 32.0 else 90.0
+        val size = ((if (is3d) 92 else 70) * density).toInt()
+        val gen = ++renderGen
+        renderer.execute {
+            val faces = Model3D.car(body, paint)
+            val frames = (0 until 36).map { i -> Model3D.carIcon(body, paint, i * 10.0, elev, size, faces) }
+            main.post {
+                val st = style ?: return@post
+                if (gen != renderGen) return@post
+                frames.forEachIndexed { i, b -> st.addImage("car3d_$i", b) }
+                framesReady = true
+                updateMe()
+            }
+        }
+    }
+
+    /** Ustawia auto na mapie: pozycja (tam gdzie kamera śledzi auto) i klatka zgodna z kierunkiem jazdy. */
+    fun updateMe() {
+        val m = map ?: return
         val st = style ?: return
-        st.addImage(IMG_CAR, carBitmap())
-        try { map?.locationComponent?.applyStyle(locOptions(ctx)) } catch (_: Exception) {}
+        if (!framesReady) return
+        val loc = LocationRepository.location.value ?: return
+        val tracking = try {
+            m.locationComponent.isLocationComponentActivated && m.locationComponent.cameraMode != CameraMode.NONE
+        } catch (_: Exception) { false }
+        val target = if (tracking) m.cameraPosition.target else null
+        val lat = target?.latitude ?: loc.latitude
+        val lon = target?.longitude ?: loc.longitude
+        if (loc.hasBearing() && (!loc.hasSpeed() || loc.speed > 1f)) lastBearing = loc.bearing
+        val rel = ((lastBearing - m.cameraPosition.bearing) % 360 + 360) % 360
+        val idx = Math.round(rel / 10.0).toInt() % 36
+        val f = Feature.fromGeometry(Point.fromLngLat(lon, lat))
+        f.addStringProperty("img", "car3d_$idx")
+        st.getSourceAs<GeoJsonSource>(SRC_ME)?.setGeoJson(f)
     }
 
     /** Kamera jedzie za autem (3D: pochylona, opcjonalnie obrót z kierunkiem jazdy). */
@@ -234,7 +285,8 @@ private class VectorHolder(ctx: Context) {
         const val L_CASING = "caros-route-casing"
         const val L_ROUTE = "caros-route-line"
         const val L_DEST = "caros-dest-dot"
-        const val IMG_CAR = "caros-car-icon"
+        const val SRC_ME = "caros-me"
+        const val L_ME = "caros-me-car"
         const val IMG_EMPTY = "caros-empty"
     }
 }
@@ -258,6 +310,7 @@ fun VectorMap(modifier: Modifier) {
         val l = loc ?: return@LaunchedEffect
         if (!ready) return@LaunchedEffect
         try { h.map?.locationComponent?.forceLocationUpdate(l) } catch (_: Exception) {}
+        h.updateMe()
     }
 
     // kolor akcentu: trasa, cel, strzałka auta
@@ -271,8 +324,8 @@ fun VectorMap(modifier: Modifier) {
     // ikona auta: typ nadwozia i kolor
     val carBody by Prefs.carBody.collectAsState()
     val carPaint by Prefs.carPaint.collectAsState()
-    LaunchedEffect(carBody, carPaint, ready) {
-        if (ready) h.updateCarIcon(ctx)
+    LaunchedEffect(carBody, carPaint, is3d, ready) {
+        if (ready) h.renderCar()
     }
 
     // 2D / 3D i obrót mapy

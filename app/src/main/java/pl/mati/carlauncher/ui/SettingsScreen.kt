@@ -626,17 +626,17 @@ private fun LazyListScope.workScheduleSection() {
 private fun CarIconPicker() {
     val body by Prefs.carBody.collectAsState()
     val paint by Prefs.carPaint.collectAsState()
-    val preview = remember(body, paint) { CarIcon.bitmap(body, paint, 360).asImageBitmap() }
+    val preview = remember(body, paint) { Model3D.carIcon(body, paint, 35.0, 32.0, 360).asImageBitmap() }
     Row(
         Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(CarColors.Card).padding(18.dp),
         horizontalArrangement = Arrangement.spacedBy(22.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
-            Modifier.size(150.dp, 210.dp).clip(RoundedCornerShape(16.dp)).background(Color(0xFF0B0E12)),
+            Modifier.size(170.dp).clip(RoundedCornerShape(16.dp)).background(Color(0xFF0B0E12)),
             contentAlignment = Alignment.Center,
         ) {
-            androidx.compose.foundation.Image(preview, "Podgląd auta", modifier = Modifier.size(130.dp, 200.dp))
+            androidx.compose.foundation.Image(preview, "Podgląd auta", modifier = Modifier.size(150.dp))
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("Ikona auta na mapie", fontSize = 19.sp, fontWeight = FontWeight.SemiBold)
