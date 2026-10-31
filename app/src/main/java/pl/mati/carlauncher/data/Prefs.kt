@@ -56,6 +56,9 @@ object Prefs {
     val mapEngine = MutableStateFlow("vector")
     val map3d = MutableStateFlow(true)
     val mapHeadingUp = MutableStateFlow(true)
+    /** Ikona auta na mapie: typ nadwozia i kolor lakieru. */
+    val carBody = MutableStateFlow("minivan")
+    val carPaint = MutableStateFlow(0xFFC3C8CF.toInt())
     val speedLimits = MutableStateFlow(true)
     val speedTolerance = MutableStateFlow(5)
     val speedBeep = MutableStateFlow(false)
@@ -90,6 +93,8 @@ object Prefs {
         mapEngine.value = p.getString("map_engine", "vector") ?: "vector"
         map3d.value = p.getBoolean("map_3d", true)
         mapHeadingUp.value = p.getBoolean("map_heading_up", true)
+        carBody.value = p.getString("car_body", "minivan") ?: "minivan"
+        carPaint.value = p.getInt("car_paint", 0xFFC3C8CF.toInt())
         speedLimits.value = p.getBoolean("speed_limits", true)
         speedTolerance.value = p.getInt("speed_tol", 5)
         speedBeep.value = p.getBoolean("speed_beep", false)
@@ -128,6 +133,8 @@ object Prefs {
     fun setBtApp(v: String) { btApp.value = v; edit { putString("bt_app", v) } }
     fun setHomeWeekdaysOnly(v: Boolean) { homeWeekdaysOnly.value = v; edit { putBoolean("home_weekdays", v) } }
     fun setRoadAlerts(v: Boolean) { roadAlerts.value = v; edit { putBoolean("road_alerts", v) } }
+    fun setCarBody(v: String) { carBody.value = v; edit { putString("car_body", v) }; ConnectRepository.publishStatusSoon() }
+    fun setCarPaint(v: Int) { carPaint.value = v; edit { putInt("car_paint", v) }; ConnectRepository.publishStatusSoon() }
     fun setMapEngine(v: String) { mapEngine.value = v; edit { putString("map_engine", v) } }
     fun setMap3d(v: Boolean) { map3d.value = v; edit { putBoolean("map_3d", v) } }
     fun setMapHeadingUp(v: Boolean) { mapHeadingUp.value = v; edit { putBoolean("map_heading_up", v) } }

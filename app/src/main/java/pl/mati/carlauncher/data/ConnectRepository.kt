@@ -174,6 +174,7 @@ object ConnectRepository {
                 .put("week", TripRepository.summary(TripRepository.startOfWeek()).distanceM)
                 .put("month", TripRepository.summary(TripRepository.startOfMonth()).distanceM)
                 .put("odoSet", ServiceRepository.odometerSet.value)
+                .put("body", Prefs.carBody.value).put("paint", Prefs.carPaint.value)
                 .put("svc", svc).put("items", items).put("trips", trips).put("favs", favs)
                 .put("ver", BuildConfig.VERSION_NAME)
             send(o)

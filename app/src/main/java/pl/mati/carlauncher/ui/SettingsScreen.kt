@@ -224,6 +224,7 @@ private fun LazyListScope.lookPage() {
             ChoiceChip("Klasyczna (OSM)", engine == "osm", Modifier.weight(1f)) { Prefs.setMapEngine("osm") }
         }
     }
+    item { CarIconPicker() }
     item {
         val v by Prefs.map3d.collectAsState()
         SettingRow("Budynki 3D", "Pochylony widok z budynkami (dane OpenStreetMap)", onClick = { Prefs.setMap3d(!v) }) { CarSwitch(v) }
@@ -616,6 +617,40 @@ private fun LazyListScope.workScheduleSection() {
                     ChoiceChip(d, (i + 1) in days, Modifier.weight(1f)) { WorkSchedule.toggleDay(i + 1) }
                 }
             }
+        }
+    }
+}
+
+/** Wybór ikony auta na mapie: typ nadwozia + kolor, z podglądem. */
+@Composable
+private fun CarIconPicker() {
+    val body by Prefs.carBody.collectAsState()
+    val paint by Prefs.carPaint.collectAsState()
+    val preview = remember(body, paint) { CarIcon.bitmap(body, paint, 360).asImageBitmap() }
+    Row(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(CarColors.Card).padding(18.dp),
+        horizontalArrangement = Arrangement.spacedBy(22.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            Modifier.size(150.dp, 210.dp).clip(RoundedCornerShape(16.dp)).background(Color(0xFF0B0E12)),
+            contentAlignment = Alignment.Center,
+        ) {
+            androidx.compose.foundation.Image(preview, "Podgląd auta", modifier = Modifier.size(130.dp, 200.dp))
+        }
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text("Ikona auta na mapie", fontSize = 19.sp, fontWeight = FontWeight.SemiBold)
+            CarIcon.BODIES.chunked(4).forEach { row ->
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    row.forEach { b -> ChoiceChip(b.label, b.id == body, Modifier.weight(1f)) { Prefs.setCarBody(b.id) } }
+                }
+            }
+            CarIcon.COLORS.chunked(6).forEach { row ->
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    row.forEach { (_, c) -> Swatch(Color(c), c == paint) { Prefs.setCarPaint(c) } }
+                }
+            }
+            Text(CarIcon.COLORS.firstOrNull { it.second == paint }?.first ?: "", fontSize = 15.sp, color = CarColors.Muted)
         }
     }
 }
