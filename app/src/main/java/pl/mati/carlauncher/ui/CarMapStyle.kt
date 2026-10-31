@@ -24,21 +24,45 @@ object CarMapStyle {
 
     private fun has(id: String, vararg keys: String) = keys.any { id.contains(it) }
 
-    /** Przemalowanie warstw stylu „Liberty” na ciemno. */
-    fun applyDark(style: Style) {
+    private class MapColors(
+        val bg: String, val water: String, val green: String, val building: String, val aero: String, val pier: String, val land: String,
+        val lWater: String, val lBoundary: String, val lRail: String, val lCasing: String, val lMotorway: String, val lPrimary: String,
+        val lSecondary: String, val lPath: String, val lAero: String, val lRoad: String,
+        val text: String, val textPoi: String, val textWater: String, val halo: String,
+        val b0: String, val b1: String, val b2: String,
+    )
+
+    private val DARK = MapColors(
+        "#0B0E12", "#0C1A25", "#0E1914", "#171C23", "#1A1F27", "#151A21", "#10141A",
+        "#15344B", "#3A404A", "#262C34", "#06080B", "#677180", "#535C69", "#434B56", "#232931", "#2B313A", "#333A44",
+        "#C3C9D0", "#8C96A3", "#4E7FA3", "#0A0C0F",
+        "#1B212A", "#232B36", "#2C3644",
+    )
+
+    /** Dzień: jasna, ale stonowana (nie biała) – pasuje do jasnego interfejsu CAR OS. */
+    private val LIGHT = MapColors(
+        "#DADFE4", "#A9C6DC", "#C4D9C3", "#CBD0D7", "#D2D6DC", "#D4D8DE", "#D6DBE0",
+        "#8FB6D3", "#A3A9B2", "#B3B8C0", "#B9BFC7", "#F1D9A0", "#F7F8FA", "#F4F5F7", "#C9CED5", "#C3C8CF", "#EEF0F3",
+        "#2F3640", "#56606C", "#3C6F96", "#EEF1F4",
+        "#C9CED6", "#BCC3CC", "#AEB7C2",
+    )
+
+    /** Przemalowanie warstw stylu „Liberty”: ciemno (noc) albo jasno (dzień). */
+    fun apply(style: Style, light: Boolean) {
+        val p = if (light) LIGHT else DARK
         for (layer in style.layers) {
             val id = layer.id.lowercase()
             try {
                 when (layer) {
-                    is BackgroundLayer -> layer.setProperties(PropertyFactory.backgroundColor(Color.parseColor("#0B0E12")))
+                    is BackgroundLayer -> layer.setProperties(PropertyFactory.backgroundColor(Color.parseColor(p.bg)))
                     is FillLayer -> {
                         val c = when {
-                            has(id, "water", "ocean", "lake", "river") -> "#0C1A25"
-                            has(id, "park", "wood", "forest", "grass", "wetland", "landcover", "scrub", "farmland", "meadow") -> "#0E1914"
-                            has(id, "building") -> "#171C23"
-                            has(id, "aeroway", "runway") -> "#1A1F27"
-                            has(id, "pier", "bridge") -> "#151A21"
-                            else -> "#10141A"
+                            has(id, "water", "ocean", "lake", "river") -> p.water
+                            has(id, "park", "wood", "forest", "grass", "wetland", "landcover", "scrub", "farmland", "meadow") -> p.green
+                            has(id, "building") -> p.building
+                            has(id, "aeroway", "runway") -> p.aero
+                            has(id, "pier", "bridge") -> p.pier
+                            else -> p.land
                         }
                         // warstwy z deseniem (mokradła, lód…) – ukryj, deseń byłby jasny
                         if (!layer.fillPattern.isNull) layer.setProperties(PropertyFactory.visibility(Property.NONE))
@@ -48,36 +72,51 @@ object CarMapStyle {
                         )
                     }
                     is LineLayer -> {
+                        if (id.startsWith("caros-")) continue
                         val c = when {
-                            has(id, "waterway", "water", "river", "stream", "canal") -> "#15344B"
-                            has(id, "boundary", "admin") -> "#3A404A"
-                            has(id, "rail", "transit") -> "#262C34"
-                            has(id, "casing") -> "#06080B"
-                            has(id, "motorway", "trunk") -> "#677180"
-                            has(id, "primary") -> "#535C69"
-                            has(id, "secondary", "tertiary") -> "#434B56"
-                            has(id, "path", "footway", "cycle", "track", "pedestrian", "steps") -> "#232931"
-                            has(id, "aeroway", "runway", "taxiway") -> "#2B313A"
-                            else -> "#333A44"
+                            has(id, "waterway", "water", "river", "stream", "canal") -> p.lWater
+                            has(id, "boundary", "admin") -> p.lBoundary
+                            has(id, "rail", "transit") -> p.lRail
+                            has(id, "casing") -> p.lCasing
+                            has(id, "motorway", "trunk") -> p.lMotorway
+                            has(id, "primary") -> p.lPrimary
+                            has(id, "secondary", "tertiary") -> p.lSecondary
+                            has(id, "path", "footway", "cycle", "track", "pedestrian", "steps") -> p.lPath
+                            has(id, "aeroway", "runway", "taxiway") -> p.lAero
+                            else -> p.lRoad
                         }
                         layer.setProperties(PropertyFactory.lineColor(Color.parseColor(c)))
                     }
                     is SymbolLayer -> {
+                        if (id.startsWith("caros-")) continue
                         val poi = has(id, "poi")
                         layer.setProperties(
-                            PropertyFactory.textColor(Color.parseColor(if (has(id, "water")) "#4E7FA3" else if (poi) "#8C96A3" else "#C3C9D0")),
-                            PropertyFactory.textHaloColor(Color.parseColor("#0A0C0F")),
+                            PropertyFactory.textColor(Color.parseColor(if (has(id, "water")) p.textWater else if (poi) p.textPoi else p.text)),
+                            PropertyFactory.textHaloColor(Color.parseColor(p.halo)),
                             PropertyFactory.textHaloWidth(1.4f),
                             PropertyFactory.iconOpacity(if (poi) 0.55f else 0.85f),
                         )
                     }
                     is FillExtrusionLayer -> if (layer.id != BUILDINGS_3D) layer.setProperties(PropertyFactory.visibility(Property.NONE))
+                    else layer.setProperties(PropertyFactory.fillExtrusionColor(buildingColor(light)))
                     is RasterLayer -> layer.setProperties(PropertyFactory.visibility(Property.NONE))
                     is HillshadeLayer -> layer.setProperties(PropertyFactory.visibility(Property.NONE))
                 }
             } catch (_: Exception) {
             }
         }
+    }
+
+    fun applyDark(style: Style) = apply(style, false)
+
+    private fun buildingColor(light: Boolean): Expression {
+        val p = if (light) LIGHT else DARK
+        return Expression.interpolate(
+            Expression.linear(), Expression.get("render_height"),
+            Expression.stop(0, Expression.color(Color.parseColor(p.b0))),
+            Expression.stop(30, Expression.color(Color.parseColor(p.b1))),
+            Expression.stop(120, Expression.color(Color.parseColor(p.b2))),
+        )
     }
 
     /** Pierwsza warstwa z napisami – nasze warstwy wstawiamy pod nią (napisy zostają na wierzchu). */
@@ -92,14 +131,7 @@ object CarMapStyle {
         val layer = FillExtrusionLayer(BUILDINGS_3D, src)
             .withSourceLayer("building")
             .withProperties(
-                PropertyFactory.fillExtrusionColor(
-                    Expression.interpolate(
-                        Expression.linear(), Expression.get("render_height"),
-                        Expression.stop(0, Expression.color(Color.parseColor("#1B212A"))),
-                        Expression.stop(30, Expression.color(Color.parseColor("#232B36"))),
-                        Expression.stop(120, Expression.color(Color.parseColor("#2C3644"))),
-                    ),
-                ),
+                PropertyFactory.fillExtrusionColor(buildingColor(false)),
                 PropertyFactory.fillExtrusionHeight(
                     Expression.interpolate(Expression.linear(), Expression.zoom(), Expression.stop(14, 0), Expression.stop(15.5, height)),
                 ),

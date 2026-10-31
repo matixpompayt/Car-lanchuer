@@ -139,9 +139,11 @@ private fun MediaCard(modifier: Modifier) {
     val tint by androidx.compose.animation.animateColorAsState(artColor ?: accent.copy(alpha = 0.5f), androidx.compose.animation.core.tween(700), label = "tint")
 
     val artImg = remember(np.art) { np.art?.asImageBitmap() }
-    val shadow = androidx.compose.ui.text.TextStyle(
+    val shadow = if (CarColors.isLight) androidx.compose.ui.text.TextStyle() else androidx.compose.ui.text.TextStyle(
         shadow = androidx.compose.ui.graphics.Shadow(Color.Black.copy(alpha = 0.7f), androidx.compose.ui.geometry.Offset(0f, 2f), 8f),
     )
+    // napisy na ciemnych „pigułkach” nad okładką – zawsze jasne
+    val onChip = Color(0xFFEEF1F4)
 
     CarCard(modifier) {
         if (!access) {
@@ -168,7 +170,7 @@ private fun MediaCard(modifier: Modifier) {
                     Brush.verticalGradient(
                         0f to Color.Black.copy(alpha = 0.35f),
                         0.25f to Color.Black.copy(alpha = 0.05f),
-                        0.5f to tint.copy(alpha = 0.35f).compositeOver(Color.Black.copy(alpha = 0.35f)),
+                        0.5f to (if (CarColors.isLight) tint.copy(alpha = 0.25f).compositeOver(CarColors.Card.copy(alpha = 0.35f)) else tint.copy(alpha = 0.35f).compositeOver(Color.Black.copy(alpha = 0.35f))),
                         0.72f to CarColors.Card.copy(alpha = 0.92f),
                         1f to CarColors.Card,
                     ),
@@ -190,13 +192,13 @@ private fun MediaCard(modifier: Modifier) {
                     ) {
                         Icon(
                             when (np.key) { "bt" -> Icons.Rounded.Bluetooth; "radio" -> Icons.Rounded.Radio; else -> Icons.Rounded.MusicNote },
-                            null, tint = CarColors.Text, modifier = Modifier.size(18.dp),
+                            null, tint = onChip, modifier = Modifier.size(18.dp),
                         )
-                        Caption(np.appName ?: "Muzyka", size = 13.sp, color = CarColors.Text)
+                        Caption(np.appName ?: "Muzyka", size = 13.sp, color = onChip)
                     }
                     Box(Modifier.weight(1f))
                     Box(Modifier.clip(RoundedCornerShape(50)).background(Color.Black.copy(alpha = 0.45f)).padding(6.dp)) {
-                        Icon(Icons.Rounded.ChevronRight, "Otwórz odtwarzacz", tint = CarColors.Text, modifier = Modifier.size(22.dp))
+                        Icon(Icons.Rounded.ChevronRight, "Otwórz odtwarzacz", tint = onChip, modifier = Modifier.size(22.dp))
                     }
                 }
                 // wolne miejsce – tu widać okładkę
@@ -314,7 +316,7 @@ private fun SmallTile(
     val bg = if (blink) {
         val t = rememberInfiniteTransition(label = "blink")
         val f by t.animateFloat(0f, 1f, infiniteRepeatable(tween(700), RepeatMode.Reverse), label = "f")
-        lerp(CarColors.Card, androidx.compose.ui.graphics.Color(0xFF5A1418), f)
+        lerp(CarColors.Card, CarColors.Blink, f)
     } else CarColors.Card
     CarCard(modifier.clickable(onClick = onClick), color = bg, radius = 20.dp) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
@@ -349,7 +351,7 @@ private fun ServiceTile(
 
     val t = rememberInfiniteTransition(label = "blink")
     val f by t.animateFloat(0f, 1f, infiniteRepeatable(tween(700), RepeatMode.Reverse), label = "f")
-    val bg = if (overdue) lerp(CarColors.Card, androidx.compose.ui.graphics.Color(0xFF5A1418), f) else CarColors.Card
+    val bg = if (overdue) lerp(CarColors.Card, CarColors.Blink, f) else CarColors.Card
 
     CarCard(m.clickable { UiState.go(Screen.SERVICE) }, color = bg, radius = 20.dp) {
         AnimatedContent(
@@ -382,7 +384,7 @@ private fun ServiceTile(
                 val counter = if (pool.size > 1) " ${pool.indexOf(d) + 1}/${pool.size}" else ""
                 Caption(
                     (if (d.overdue) "$name · po terminie" else name) + counter,
-                    color = if (d.overdue) androidx.compose.ui.graphics.Color(0xFFFF8A8E) else CarColors.Muted,
+                    color = if (d.overdue) CarColors.Red else CarColors.Muted,
                 )
                 ValueText(
                     v, u, size, Modifier.fillMaxWidth(),

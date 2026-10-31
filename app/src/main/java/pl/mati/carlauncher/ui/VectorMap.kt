@@ -164,6 +164,7 @@ private class VectorHolder(ctx: Context) {
         } catch (_: Exception) {
         }
         style = st
+        if (CarColors.isLight) applyTheme(true)
         ready = true
         renderCar()
         follow()
@@ -249,6 +250,14 @@ private class VectorHolder(ctx: Context) {
         }
     }
 
+    /** Dzień / noc: kolory mapy, budynków i obwódki trasy. */
+    fun applyTheme(light: Boolean) {
+        val st = style ?: return
+        CarMapStyle.apply(st, light)
+        st.getLayer(L_CASING)?.setProperties(PropertyFactory.lineColor(android.graphics.Color.parseColor(if (light) "#FFFFFF" else "#05070A")))
+        st.getLayer(L_ALTS)?.setProperties(PropertyFactory.lineColor(android.graphics.Color.parseColor(if (light) "#9AA3AE" else "#66717F")))
+    }
+
     fun stopFollow() {
         try { map?.locationComponent?.cameraMode = CameraMode.NONE } catch (_: Exception) {}
     }
@@ -326,6 +335,12 @@ fun VectorMap(modifier: Modifier) {
     val carPaint by Prefs.carPaint.collectAsState()
     LaunchedEffect(carBody, carPaint, is3d, ready) {
         if (ready) h.renderCar()
+    }
+
+    // dzień / noc
+    val lightMap = CarColors.isLight
+    LaunchedEffect(lightMap, ready) {
+        if (ready) h.applyTheme(lightMap)
     }
 
     // 2D / 3D i obrót mapy

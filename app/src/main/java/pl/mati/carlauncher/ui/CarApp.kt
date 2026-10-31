@@ -1,5 +1,10 @@
 package pl.mati.carlauncher.ui
 
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.foundation.layout.offset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.animation.core.snap
@@ -57,9 +62,26 @@ fun CarApp() {
             }
         }
         ConnectRestoreOverlay()
+        ThemeFade()
         NightDim()
         ToastHost()
     }
+}
+
+/** Płynne przejście dzień ↔ noc: nowy kolor tła wygasa na ekranie. */
+@Composable
+private fun ThemeFade() {
+    val light = CarColors.isLight
+    val anim by Prefs.animations.collectAsState()
+    val a = remember { androidx.compose.animation.core.Animatable(0f) }
+    var first by remember { mutableStateOf(true) }
+    LaunchedEffect(light) {
+        if (first) { first = false; return@LaunchedEffect }
+        if (!anim) return@LaunchedEffect
+        a.snapTo(1f)
+        a.animateTo(0f, tween(650))
+    }
+    if (a.value > 0f) Box(Modifier.fillMaxSize().background(CarColors.Bg.copy(alpha = a.value)))
 }
 
 @Composable
@@ -68,7 +90,7 @@ private fun NightDim() {
     val now by Prefs.nightNow.collectAsState()
     val time by rememberNow()
     val night = now || (auto && isNightHour(time))
-    if (night) Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.28f)))
+    if (night && !CarColors.isLight) Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.28f)))
 }
 
 @Composable
@@ -88,7 +110,9 @@ private fun Shell() {
         }
     }
 
-    Box(Modifier.fillMaxSize().background(Wallpapers[wall.coerceIn(0, Wallpapers.lastIndex)].second)) {
+    val bgBrush = if (CarColors.isLight) Brush.linearGradient(listOf(CarColors.Card2, CarColors.Bg), Offset(0f, 0f), Offset(900f, 1400f))
+    else Wallpapers[wall.coerceIn(0, Wallpapers.lastIndex)].second
+    Box(Modifier.fillMaxSize().background(bgBrush)) {
         Row(Modifier.fillMaxSize()) {
             Dock(screen)
             Box(Modifier.width(1.dp).fillMaxHeight().background(CarColors.Border))

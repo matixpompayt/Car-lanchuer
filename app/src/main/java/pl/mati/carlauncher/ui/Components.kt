@@ -524,7 +524,7 @@ fun CarTextField(
             .onFocusChanged { focused = it.isFocused },
         decorationBox = { inner ->
             Box(Modifier.fillMaxSize().padding(horizontal = 20.dp), contentAlignment = Alignment.CenterStart) {
-                if (value.isEmpty()) Text(placeholder, fontSize = 24.sp, color = Color(0xFF5D6672))
+                if (value.isEmpty()) Text(placeholder, fontSize = 24.sp, color = CarColors.Dim)
                 inner()
             }
         },
@@ -553,7 +553,7 @@ fun ToastHost(modifier: Modifier = Modifier) {
                     .border(1.dp, CarColors.Switch, RoundedCornerShape(18.dp))
                     .padding(horizontal = 22.dp, vertical = 14.dp),
             ) {
-                Text(text, fontSize = 18.sp)
+                Text(text, fontSize = 18.sp, color = Color(0xFFEEF1F4))
             }
         }
     }

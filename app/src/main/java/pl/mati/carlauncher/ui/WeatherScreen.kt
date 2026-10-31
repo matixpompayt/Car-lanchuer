@@ -114,11 +114,11 @@ fun WeatherScreen() {
             rw?.let { r ->
                 Row(
                     Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))
-                        .background(if (r.rain) Color(0xFF15324A) else CarColors.Card).padding(horizontal = 20.dp, vertical = 16.dp),
+                        .background(if (r.rain) CarColors.RainBg else CarColors.Card).padding(horizontal = 20.dp, vertical = 16.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
-                    Icon(if (r.rain) weatherIcon(r.code) else Icons.Rounded.WbSunny, null, tint = if (r.rain) Color(0xFF6CC4FF) else CarColors.Green, modifier = Modifier.size(32.dp))
+                    Icon(if (r.rain) weatherIcon(r.code) else Icons.Rounded.WbSunny, null, tint = if (r.rain) CarColors.RainText else CarColors.Green, modifier = Modifier.size(32.dp))
                     Column {
                         Caption("Na trasie")
                         Text(r.text + (r.atTime?.let { " (ok. ${formatTime(it)})" } ?: ""), fontSize = 19.sp, fontWeight = FontWeight.SemiBold)
@@ -136,7 +136,7 @@ fun WeatherScreen() {
                                 Text(formatTime(h.time), fontSize = 15.sp, color = CarColors.Muted)
                                 Icon(weatherIcon(h.code), null, tint = CarColors.Text2, modifier = Modifier.size(28.dp))
                                 Text("${h.temp.roundToInt()}°", fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
-                                Text(if (h.prob > 0) "${h.prob}%" else " ", fontSize = 14.sp, color = Color(0xFF6CC4FF))
+                                Text(if (h.prob > 0) "${h.prob}%" else " ", fontSize = 14.sp, color = CarColors.RainText)
                             }
                         }
                     }
@@ -150,7 +150,7 @@ fun WeatherScreen() {
                             Text(if (i == 0) "Dziś" else WEEKDAY.format(Date(d.time)).replaceFirstChar { it.uppercase() }, fontSize = 19.sp, modifier = Modifier.width(70.dp))
                             Icon(weatherIcon(d.code), null, tint = CarColors.Text2, modifier = Modifier.size(26.dp))
                             Text(weatherText(d.code), fontSize = 17.sp, color = CarColors.Muted, modifier = Modifier.weight(1f))
-                            if (d.precipSum >= 0.1) Text("${d.precipSum.toFloat().pl1()} mm", fontSize = 16.sp, color = Color(0xFF6CC4FF))
+                            if (d.precipSum >= 0.1) Text("${d.precipSum.toFloat().pl1()} mm", fontSize = 16.sp, color = CarColors.RainText)
                             Text("${d.min.roundToInt()}° / ${d.max.roundToInt()}°", fontSize = 19.sp, fontWeight = FontWeight.SemiBold)
                         }
                     }

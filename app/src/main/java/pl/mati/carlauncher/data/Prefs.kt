@@ -52,6 +52,10 @@ object Prefs {
     val radioApp = MutableStateFlow("")
     val btApp = MutableStateFlow("")
     val animations = MutableStateFlow(true)
+    /** Tryb dzień/noc: "lights" (światła auta), "sun", "light", "dark". */
+    val themeMode = MutableStateFlow("lights")
+    /** Jasny wariant: "perla", "piasek", "mgla". */
+    val lightVariant = MutableStateFlow("perla")
     /** Mapa: "vector" = OpenFreeMap 3D (MapLibre), "osm" = klasyczne kafelki OSM. */
     val mapEngine = MutableStateFlow("vector")
     val map3d = MutableStateFlow(true)
@@ -90,6 +94,8 @@ object Prefs {
         radioApp.value = p.getString("radio_app", "") ?: ""
         btApp.value = p.getString("bt_app", "") ?: ""
         animations.value = p.getBoolean("animations", true)
+        themeMode.value = p.getString("theme_mode", "lights") ?: "lights"
+        lightVariant.value = p.getString("light_variant", "perla") ?: "perla"
         mapEngine.value = p.getString("map_engine", "vector") ?: "vector"
         map3d.value = p.getBoolean("map_3d", true)
         mapHeadingUp.value = p.getBoolean("map_heading_up", true)
@@ -138,6 +144,8 @@ object Prefs {
     fun setMapEngine(v: String) { mapEngine.value = v; edit { putString("map_engine", v) } }
     fun setMap3d(v: Boolean) { map3d.value = v; edit { putBoolean("map_3d", v) } }
     fun setMapHeadingUp(v: Boolean) { mapHeadingUp.value = v; edit { putBoolean("map_heading_up", v) } }
+    fun setThemeMode(v: String) { themeMode.value = v; edit { putString("theme_mode", v) } }
+    fun setLightVariant(v: String) { lightVariant.value = v; edit { putString("light_variant", v) } }
     fun setAnimations(v: Boolean) { animations.value = v; edit { putBoolean("animations", v) } }
     fun setSpeedLimits(v: Boolean) { speedLimits.value = v; edit { putBoolean("speed_limits", v) } }
     fun setSpeedTolerance(v: Int) { speedTolerance.value = v.coerceIn(0, 20); edit { putInt("speed_tol", speedTolerance.value) } }

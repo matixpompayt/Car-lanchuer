@@ -42,7 +42,7 @@ object BroadcastProbe {
         "android.bluetooth.a2dp-sink.profile.action.PLAYING_STATE_CHANGED",
     )
 
-    private val INTEREST = Regex("(radio|rds|fm|freq|band|bt|blue|a2dp|avrcp|music|media|track|song|id3|play|meta|info|report|station)", RegexOption.IGNORE_CASE)
+    private val INTEREST = Regex("(radio|rds|fm|freq|band|bt|blue|a2dp|avrcp|music|media|track|song|id3|play|meta|info|report|station|ill|light|lamp|night|day|dimm|backl|mcu|car|acc|canbus)", RegexOption.IGNORE_CASE)
 
     fun start(ctx: Context, pkg: String?) {
         appCtx = ctx.applicationContext
@@ -53,7 +53,7 @@ object BroadcastProbe {
         scope.launch {
             val sp = Prefs.store
             val ver = try { ctx.packageManager.getPackageInfo(pkg, 0).longVersionCode } catch (_: Exception) { -1L }
-            val cacheKey = "probe_$pkg:$ver"
+            val cacheKey = "probe2_$pkg:$ver"
             val cached = sp?.getString("probe_actions", null)?.takeIf { sp.getString("probe_key", null) == cacheKey }
             val list = if (cached != null) {
                 val a = JSONArray(cached)
@@ -123,6 +123,7 @@ object BroadcastProbe {
         val line = formatTime(System.currentTimeMillis()) + " " + action +
             if (pairs.isEmpty()) "" else " → " + pairs.entries.joinToString(", ") { "${it.key}=${it.value}" }.take(300)
         log.value = (listOf(line) + log.value).take(40)
+        HeadlightDetector.onBroadcast(action, pairs)
         if (action.endsWith("headsetclient.profile.action.AG_EVENT")) {
             PhoneStatusRepository.onAgEvent(pairs)
             return

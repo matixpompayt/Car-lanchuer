@@ -107,10 +107,10 @@ fun SetupWizard() {
         BackupManager.autoBackup(ctx, force = true)
     }
 
-    Row(Modifier.fillMaxSize().background(Color(0xFF07090C))) {
+    Row(Modifier.fillMaxSize().background(CarColors.BgDeep)) {
         // lewa kolumna z krokami
         Column(
-            Modifier.width(340.dp).fillMaxHeight().background(Color(0xFF0B0E12)).padding(horizontal = 32.dp, vertical = 40.dp),
+            Modifier.width(340.dp).fillMaxHeight().background(CarColors.Panel).padding(horizontal = 32.dp, vertical = 40.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(bottom = 28.dp)) {

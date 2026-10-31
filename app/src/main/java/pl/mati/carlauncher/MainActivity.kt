@@ -69,6 +69,7 @@ class MainActivity : ComponentActivity() {
         TripRepository.start()
         ForecastRepository.start()
         pl.mati.carlauncher.data.SpeedLimitRepository.start()
+        pl.mati.carlauncher.data.ThemeManager.start(this)
         pl.mati.carlauncher.data.ConnectRepository.init()
         pl.mati.carlauncher.data.ParkingRepository.start()
         pl.mati.carlauncher.data.PlacesRepository.load()
@@ -87,6 +88,11 @@ class MainActivity : ComponentActivity() {
         setContent {
             CarRoot { CarApp() }
         }
+    }
+
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        super.onConfigurationChanged(newConfig)
+        pl.mati.carlauncher.data.HeadlightDetector.onUiMode(newConfig)
     }
 
     override fun onPause() {

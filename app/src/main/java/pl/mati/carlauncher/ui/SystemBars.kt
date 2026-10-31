@@ -177,7 +177,7 @@ fun ControlCenter() {
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp))
                     .background(CarColors.Panel)
-                    .border(1.dp, Color(0xFF232933), RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp))
+                    .border(1.dp, CarColors.Border, RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp))
                     .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {}
                     .pointerInput(Unit) {
                         detectVerticalDragGestures(
@@ -364,7 +364,7 @@ fun VolumeHud() {
     Box(Modifier.fillMaxSize().padding(end = 28.dp), contentAlignment = Alignment.CenterEnd) {
         AnimatedVisibility(visible && !UiState.controlCenter.value, enter = fadeIn(), exit = fadeOut()) {
             Box(
-                Modifier.size(64.dp, 300.dp).clip(RoundedCornerShape(32.dp)).background(Color(0xF212161B))
+                Modifier.size(64.dp, 300.dp).clip(RoundedCornerShape(32.dp)).background(CarColors.Panel.copy(alpha = 0.95f))
                     .border(1.dp, CarColors.Switch, RoundedCornerShape(32.dp)),
                 contentAlignment = Alignment.BottomCenter,
             ) {

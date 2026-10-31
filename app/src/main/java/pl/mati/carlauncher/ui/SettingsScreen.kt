@@ -1,5 +1,7 @@
 package pl.mati.carlauncher.ui
 
+import pl.mati.carlauncher.data.HeadlightDetector
+import pl.mati.carlauncher.data.ThemeManager
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.border
 import android.annotation.SuppressLint
@@ -159,6 +161,7 @@ fun SettingsScreen() {
         }
     }
     AppPickerOverlay()
+    HeadlightCalibrationOverlay()
     }
 }
 
@@ -173,7 +176,7 @@ private fun AppPickerOverlay() {
     val ctx = LocalContext.current
     val apps = remember { loadApps(ctx) }
     Box(
-        Modifier.fillMaxSize().clip(RoundedCornerShape(24.dp)).background(Color(0xF00A0C0F))
+        Modifier.fillMaxSize().clip(RoundedCornerShape(24.dp)).background(CarColors.Bg.copy(alpha = 0.96f))
             .clickable(interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, indication = null) {},
     ) {
         Column(Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -216,6 +219,45 @@ private fun AppPickerOverlay() {
 }
 
 private fun LazyListScope.lookPage() {
+    item { SectionLabel("Dzień / noc") }
+    item {
+        val mode by Prefs.themeMode.collectAsState()
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            ChoiceChip("Światła auta", mode == "lights", Modifier.weight(1f)) { Prefs.setThemeMode("lights") }
+            ChoiceChip("Wschód / zachód", mode == "sun", Modifier.weight(1f)) { Prefs.setThemeMode("sun") }
+            ChoiceChip("Zawsze jasny", mode == "light", Modifier.weight(1f)) { Prefs.setThemeMode("light") }
+            ChoiceChip("Zawsze ciemny", mode == "dark", Modifier.weight(1f)) { Prefs.setThemeMode("dark") }
+        }
+    }
+    item {
+        val mode by Prefs.themeMode.collectAsState()
+        val light by ThemeManager.light.collectAsState()
+        val on by HeadlightDetector.on.collectAsState()
+        val learned by HeadlightDetector.learned.collectAsState()
+        Text(
+            remember(mode, light, on, learned) { ThemeManager.describe() } +
+                if (mode == "lights") (learned?.let { "\nSygnał: ${it.describe()}" } ?: "\nRozpoznaj światła poniżej – wtedy tryb zmieni się razem ze światłami") else "",
+            fontSize = 16.sp, color = CarColors.Muted,
+        )
+    }
+    item {
+        val learned by HeadlightDetector.learned.collectAsState()
+        SettingRow(
+            "Rozpoznaj światła auta",
+            if (learned == null) "Włączysz i wyłączysz światła – CAR OS nauczy się sygnału z radia" else "Rozpoznane: ${learned!!.describe()} – dotknij, aby powtórzyć",
+            leading = Icons.Rounded.WbSunny,
+            onClick = { Calibration.open.value = true },
+        ) { Chevron() }
+    }
+    item {
+        val variant by Prefs.lightVariant.collectAsState()
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Jasny wygląd", fontSize = 17.sp, color = CarColors.Text2)
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Palettes.LIGHT.forEach { p -> PalettePreview(p, p.id == variant, Modifier.weight(1f)) { Prefs.setLightVariant(p.id) } }
+            }
+        }
+    }
     item { SectionLabel("Mapa") }
     item {
         val engine by Prefs.mapEngine.collectAsState()
@@ -621,6 +663,86 @@ private fun LazyListScope.workScheduleSection() {
     }
 }
 
+/** Podgląd jasnego wariantu: tło, karta, napis, akcent. */
+@Composable
+private fun PalettePreview(p: Palette, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
+    val accent = LocalAccent.current
+    Column(
+        modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(p.bg)
+            .border(3.dp, if (selected) accent else Color.Transparent, RoundedCornerShape(16.dp))
+            .clickable(onClick = onClick)
+            .padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Box(Modifier.weight(1.4f).height(54.dp).clip(RoundedCornerShape(10.dp)).background(p.mapBg).border(1.dp, p.border, RoundedCornerShape(10.dp)))
+            Column(
+                Modifier.weight(1f).height(54.dp).clip(RoundedCornerShape(10.dp)).background(p.card).border(1.dp, p.border, RoundedCornerShape(10.dp)).padding(8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Box(Modifier.fillMaxWidth(0.8f).height(7.dp).clip(RoundedCornerShape(4.dp)).background(p.text))
+                Box(Modifier.fillMaxWidth(0.55f).height(6.dp).clip(RoundedCornerShape(3.dp)).background(p.muted))
+                Box(Modifier.size(14.dp).clip(CircleShape).background(CarColors.accentFor(Color(Prefs.accent.value), true)))
+            }
+        }
+        Text(p.name, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, color = p.text)
+    }
+}
+
+/** Kreator rozpoznawania sygnału świateł. */
+object Calibration {
+    val open = kotlinx.coroutines.flow.MutableStateFlow(false)
+}
+
+@Composable
+fun HeadlightCalibrationOverlay() {
+    val open by Calibration.open.collectAsState()
+    if (!open) return
+    val ctx = LocalContext.current
+    var step by remember { mutableIntStateOf(0) }
+    var result by remember { mutableStateOf<String?>(null) }
+    val steps = listOf(
+        "Wyłącz światła (pozycyjne i mijania), potem dotknij „Dalej”.",
+        "Teraz WŁĄCZ światła i odczekaj 2–3 sekundy, potem „Dalej”.",
+        "WYŁĄCZ światła ponownie, odczekaj 2–3 sekundy i dotknij „Zakończ”.",
+    )
+    Box(
+        Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.6f)).clickable(enabled = true, onClick = {}),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            Modifier.width(640.dp).clip(RoundedCornerShape(28.dp)).background(CarColors.Panel)
+                .border(1.dp, CarColors.Border, RoundedCornerShape(28.dp)).padding(32.dp),
+            verticalArrangement = Arrangement.spacedBy(18.dp),
+        ) {
+            Text("Rozpoznaj światła auta", fontSize = 26.sp, fontWeight = FontWeight.Bold)
+            if (result == null) {
+                Text("Krok ${step + 1} z 3", fontSize = 16.sp, color = LocalAccent.current, fontWeight = FontWeight.SemiBold)
+                Text(steps[step], fontSize = 21.sp, color = CarColors.Text2)
+                Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                    SecondaryButton("Anuluj", { HeadlightDetector.cancelCalibration(); Calibration.open.value = false }, Modifier.weight(1f))
+                    PrimaryButton(if (step < 2) "Dalej" else "Zakończ", {
+                        val r = HeadlightDetector.calibrateStep(ctx, step)
+                        if (step < 2) step++
+                        else result = r?.let { "Gotowe – rozpoznano: ${it.describe()}.\nJasny wygląd przy wyłączonych światłach, ciemny przy włączonych." }
+                            ?: "Nie znalazłem sygnału świateł w tym radiu. Tryb przełącza się wg wschodu i zachodu słońca."
+                    }, Modifier.weight(1f))
+                }
+            } else {
+                Text(result!!, fontSize = 20.sp, color = CarColors.Text2)
+                PrimaryButton("OK", {
+                    Calibration.open.value = false
+                    step = 0
+                    result = null
+                    ThemeManager.update()
+                }, Modifier.fillMaxWidth())
+            }
+        }
+    }
+}
+
 /** Wybór ikony auta na mapie: typ nadwozia + kolor, z podglądem. */
 @Composable
 private fun CarIconPicker() {
@@ -633,7 +755,7 @@ private fun CarIconPicker() {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
-            Modifier.size(170.dp).clip(RoundedCornerShape(16.dp)).background(Color(0xFF0B0E12)),
+            Modifier.size(170.dp).clip(RoundedCornerShape(16.dp)).background(CarColors.MapBg),
             contentAlignment = Alignment.Center,
         ) {
             androidx.compose.foundation.Image(preview, "Podgląd auta", modifier = Modifier.size(150.dp))

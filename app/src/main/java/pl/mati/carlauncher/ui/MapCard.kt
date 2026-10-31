@@ -131,13 +131,13 @@ fun MapCard(modifier: Modifier) {
                     .align(Alignment.TopEnd)
                     .padding(top = if (nav != null) 112.dp else 16.dp, end = 16.dp)
                     .clip(RoundedCornerShape(16.dp))
-                    .background(if (w.rain) Color(0xE615324A) else CarColors.Overlay)
+                    .background(if (w.rain) CarColors.RainBg.copy(alpha = 0.92f) else CarColors.Overlay)
                     .clickable { UiState.go(Screen.WEATHER) }
                     .padding(horizontal = 14.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Icon(if (w.rain) weatherIcon(w.code) else Icons.Rounded.WbSunny, null, tint = if (w.rain) Color(0xFF6CC4FF) else CarColors.Green, modifier = Modifier.size(22.dp))
+                Icon(if (w.rain) weatherIcon(w.code) else Icons.Rounded.WbSunny, null, tint = if (w.rain) CarColors.RainText else CarColors.Green, modifier = Modifier.size(22.dp))
                 Text(w.text, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
             }
         }
@@ -280,6 +280,12 @@ private fun OsmMap(modifier: Modifier) {
     }
 
     holder.line.outlinePaint.color = accent.toArgb()
+    // dzień: zwykła jasna mapa, noc: odwrócone kolory
+    val lightMap = CarColors.isLight
+    LaunchedEffect(lightMap) {
+        holder.map.overlayManager.tilesOverlay.setColorFilter(if (lightMap) null else TilesOverlay.INVERT_COLORS)
+        holder.map.invalidate()
+    }
 
     // Trasa: rysowanie + podgląd całej trasy, potem powrót do śledzenia auta
     LaunchedEffect(route?.id) {
