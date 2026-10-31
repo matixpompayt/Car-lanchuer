@@ -132,8 +132,14 @@ fun SettingsScreen() {
                 }
             }
         }
+        val anim by Prefs.animations.collectAsState()
+        androidx.compose.animation.AnimatedContent(
+            targetState = page, transitionSpec = { pageTransition(anim) }, label = "page",
+            modifier = Modifier.weight(1f).fillMaxHeight(),
+        ) { page ->
+        androidx.compose.runtime.CompositionLocalProvider(LocalStagger provides remember { StaggerCounter() }) {
         LazyColumn(
-            Modifier.weight(1f).fillMaxHeight(),
+            Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             when (page) {
@@ -148,6 +154,8 @@ fun SettingsScreen() {
                 else -> systemPage()
             }
             item { Box(Modifier.height(16.dp)) }
+        }
+        }
         }
     }
     AppPickerOverlay()
@@ -208,6 +216,10 @@ private fun AppPickerOverlay() {
 }
 
 private fun LazyListScope.lookPage() {
+    item {
+        val v by Prefs.animations.collectAsState()
+        SettingRow("Animacje", "Płynne przejścia, wejście kart, efekt wciśnięcia – wyłącz na wolnym radiu", onClick = { Prefs.setAnimations(!v) }) { CarSwitch(v) }
+    }
     item { SectionLabel("Kolor akcentu") }
     item {
         val accent by Prefs.accent.collectAsState()

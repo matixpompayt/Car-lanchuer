@@ -1,5 +1,8 @@
 package pl.mati.carlauncher.ui
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.LocalIndication
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
@@ -218,6 +221,7 @@ fun CarCard(
     val shape = RoundedCornerShape(radius)
     Box(
         modifier
+            .stagger()
             .clip(shape)
             .background(color)
             .border(1.dp, CarColors.Border, shape),
@@ -293,12 +297,14 @@ fun RoundIconButton(
     iconSize: Dp = size * 0.5f,
     tint: Color? = null,
 ) {
+    val src = remember { MutableInteractionSource() }
     Box(
         modifier
+            .pressScale(src, 0.86f)
             .size(size)
             .clip(CircleShape)
             .background(if (filled) CarColors.Text else Color.Transparent)
-            .clickable(onClickLabel = label, onClick = onClick),
+            .clickable(interactionSource = src, indication = LocalIndication.current, onClickLabel = label, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Icon(icon, contentDescription = label, tint = tint ?: if (filled) CarColors.Bg else CarColors.Text, modifier = Modifier.size(iconSize))
@@ -327,12 +333,14 @@ fun AlbumArt(art: Bitmap?, size: Dp, radius: Dp, modifier: Modifier = Modifier) 
 @Composable
 fun PrimaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, icon: ImageVector? = null) {
     val accent = LocalAccent.current
+    val src = remember { MutableInteractionSource() }
     Row(
         modifier
+            .pressScale(src)
             .height(64.dp)
             .clip(RoundedCornerShape(18.dp))
             .background(if (enabled) accent else accent.copy(alpha = 0.3f))
-            .clickable(enabled = enabled, onClick = onClick)
+            .clickable(interactionSource = src, indication = LocalIndication.current, enabled = enabled, onClick = onClick)
             .padding(horizontal = 32.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -344,12 +352,14 @@ fun PrimaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifi
 
 @Composable
 fun SecondaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, height: Dp = 64.dp, icon: ImageVector? = null) {
+    val src = remember { MutableInteractionSource() }
     Row(
         modifier
+            .pressScale(src)
             .height(height)
             .clip(RoundedCornerShape(18.dp))
             .background(CarColors.Card)
-            .clickable(onClick = onClick)
+            .clickable(interactionSource = src, indication = LocalIndication.current, onClick = onClick)
             .padding(horizontal = 28.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -363,13 +373,16 @@ fun SecondaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modi
 fun CarChip(text: String, selected: Boolean, onClick: () -> Unit, icon: ImageVector? = null) {
     val accent = LocalAccent.current
     val shape = RoundedCornerShape(24.dp)
+    val src = remember { MutableInteractionSource() }
+    val bg by animateColorAsState(if (selected) accent.copy(alpha = 0.14f) else CarColors.Card, tween(220), label = "chip")
     Row(
         Modifier
+            .pressScale(src)
             .height(48.dp)
             .clip(shape)
-            .background(if (selected) accent.copy(alpha = 0.14f) else CarColors.Card)
+            .background(bg)
             .border(1.dp, if (selected) accent.copy(alpha = 0.4f) else CarColors.Border, shape)
-            .clickable(onClick = onClick)
+            .clickable(interactionSource = src, indication = LocalIndication.current, onClick = onClick)
             .padding(horizontal = 18.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -422,13 +435,16 @@ fun SettingRow(
     trailing: @Composable () -> Unit = {},
 ) {
     val accent = LocalAccent.current
+    val src = remember { MutableInteractionSource() }
     Row(
         modifier
+            .stagger()
+            .pressScale(src, 0.98f)
             .fillMaxWidth()
             .heightIn(min = 72.dp)
             .clip(RoundedCornerShape(18.dp))
             .background(CarColors.Card)
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .then(if (onClick != null) Modifier.clickable(interactionSource = src, indication = LocalIndication.current, onClick = onClick) else Modifier)
             .padding(horizontal = 20.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp),

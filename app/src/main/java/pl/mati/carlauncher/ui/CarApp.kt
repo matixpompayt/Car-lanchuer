@@ -1,5 +1,16 @@
 package pl.mati.carlauncher.ui
 
+import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.LocalIndication
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.animation.AnimatedContent
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
@@ -84,7 +95,9 @@ private fun Shell() {
             Column(Modifier.weight(1f).fillMaxHeight()) {
                 StatusBar()
                 Box(Modifier.weight(1f).padding(start = 24.dp, end = 24.dp, bottom = 24.dp)) {
-                    Crossfade(targetState = screen, animationSpec = tween(220), label = "screen") { s ->
+                    val anim by Prefs.animations.collectAsState()
+                    AnimatedContent(targetState = screen, transitionSpec = { screenTransition(anim) }, label = "screen") { s ->
+                        CompositionLocalProvider(LocalStagger provides remember { StaggerCounter() }) {
                         when (s) {
                             Screen.HOME -> HomeScreen()
                             Screen.NAV -> NavScreen()
@@ -96,6 +109,7 @@ private fun Shell() {
                             Screen.TRIPS -> TripsScreen()
                             Screen.SERVICE -> ServiceScreen()
                             Screen.WEATHER -> WeatherScreen()
+                        }
                         }
                     }
                 }
@@ -136,14 +150,33 @@ private fun Dock(current: Screen) {
 @Composable
 private fun DockButton(icon: ImageVector, label: String, active: Boolean, onClick: () -> Unit) {
     val accent = LocalAccent.current
-    Box(
-        Modifier
-            .size(72.dp)
-            .clip(RoundedCornerShape(18.dp))
-            .background(if (active) accent.copy(alpha = 0.14f) else Color.Transparent)
-            .clickable(onClickLabel = label, onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(icon, contentDescription = label, tint = if (active) accent else CarColors.Muted, modifier = Modifier.size(34.dp))
+    val anim by Prefs.animations.collectAsState()
+    val src = remember { MutableInteractionSource() }
+    val spec: androidx.compose.animation.core.AnimationSpec<Color> = if (anim) tween(260) else snap()
+    val bg by animateColorAsState(if (active) accent.copy(alpha = 0.14f) else Color.Transparent, spec, label = "dockBg")
+    val tint by animateColorAsState(if (active) accent else CarColors.Muted, spec, label = "dockTint")
+    val scale by animateFloatAsState(if (active && anim) 1.12f else 1f, spring(dampingRatio = 0.45f, stiffness = 400f), label = "dockScale")
+    val bar by animateFloatAsState(if (active) 1f else 0f, if (anim) spring(dampingRatio = 0.6f, stiffness = 500f) else snap(), label = "dockBar")
+    Box(contentAlignment = Alignment.CenterStart) {
+        Box(
+            Modifier
+                .pressScale(src, 0.88f)
+                .size(72.dp)
+                .clip(RoundedCornerShape(18.dp))
+                .background(bg)
+                .clickable(interactionSource = src, indication = LocalIndication.current, onClickLabel = label, onClick = onClick),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(icon, contentDescription = label, tint = tint, modifier = Modifier.size(34.dp).graphicsLayer { scaleX = scale; scaleY = scale })
+        }
+        // pasek przy aktywnej ikonie
+        Box(
+            Modifier
+                .offset(x = (-13).dp)
+                .size(width = 4.dp, height = 36.dp)
+                .graphicsLayer { scaleY = bar; alpha = bar }
+                .clip(RoundedCornerShape(2.dp))
+                .background(accent),
+        )
     }
 }

@@ -51,6 +51,7 @@ object Prefs {
     /** Wybrane aplikacje źródeł: "pakiet/aktywność", pusto = wykrywanie automatyczne. */
     val radioApp = MutableStateFlow("")
     val btApp = MutableStateFlow("")
+    val animations = MutableStateFlow(true)
     val speedLimits = MutableStateFlow(true)
     val speedTolerance = MutableStateFlow(5)
     val speedBeep = MutableStateFlow(false)
@@ -81,6 +82,7 @@ object Prefs {
         homeWeekdaysOnly.value = p.getBoolean("home_weekdays", true)
         radioApp.value = p.getString("radio_app", "") ?: ""
         btApp.value = p.getString("bt_app", "") ?: ""
+        animations.value = p.getBoolean("animations", true)
         speedLimits.value = p.getBoolean("speed_limits", true)
         speedTolerance.value = p.getInt("speed_tol", 5)
         speedBeep.value = p.getBoolean("speed_beep", false)
@@ -119,6 +121,7 @@ object Prefs {
     fun setBtApp(v: String) { btApp.value = v; edit { putString("bt_app", v) } }
     fun setHomeWeekdaysOnly(v: Boolean) { homeWeekdaysOnly.value = v; edit { putBoolean("home_weekdays", v) } }
     fun setRoadAlerts(v: Boolean) { roadAlerts.value = v; edit { putBoolean("road_alerts", v) } }
+    fun setAnimations(v: Boolean) { animations.value = v; edit { putBoolean("animations", v) } }
     fun setSpeedLimits(v: Boolean) { speedLimits.value = v; edit { putBoolean("speed_limits", v) } }
     fun setSpeedTolerance(v: Int) { speedTolerance.value = v.coerceIn(0, 20); edit { putInt("speed_tol", speedTolerance.value) } }
     fun setSpeedBeep(v: Boolean) { speedBeep.value = v; edit { putBoolean("speed_beep", v) } }
@@ -140,6 +143,6 @@ object Prefs {
     }
 
     fun resetLook() {
-        setAccent(DEFAULT_ACCENT); setWallpaper(0); setAutoNight(true); setNightNow(false); setBootAnim(true)
+        setAccent(DEFAULT_ACCENT); setWallpaper(0); setAutoNight(true); setNightNow(false); setBootAnim(true); setAnimations(true)
     }
 }
