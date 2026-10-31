@@ -18,6 +18,8 @@ android {
         targetSdk = 34
         versionCode = buildNumber
         versionName = "$carosVersion.$buildNumber"
+        // tylko ARM (radio i telefony) – mniejszy plik aktualizacji
+        ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }
         buildConfigField("String", "UPDATE_REPO", "\"matixpompayt/Car-lanchuer\"")
     }
 
@@ -58,6 +60,8 @@ android {
     }
 
     packaging {
+        // biblioteki natywne (mapa) skompresowane w APK – szybsze pobieranie aktualizacji
+        jniLibs { useLegacyPackaging = true }
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
