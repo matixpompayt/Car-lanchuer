@@ -242,6 +242,19 @@ private class VectorHolder(ctx: Context) {
             val lc = m.locationComponent
             if (!lc.isLocationComponentActivated) return
             val is3d = Prefs.map3d.value
+            // od razu ustaw widok jak po dotknięciu „moja pozycja” (także przed pierwszym ruchem auta)
+            LocationRepository.location.value?.let { l ->
+                if (lc.lastKnownLocation == null) lc.forceLocationUpdate(l)
+                m.animateCamera(
+                    CameraUpdateFactory.newCameraPosition(
+                        CameraPosition.Builder().target(LatLng(l.latitude, l.longitude))
+                            .zoom(if (is3d) 16.8 else 16.0).tilt(if (is3d) 58.0 else 0.0)
+                            .bearing(if (Prefs.mapHeadingUp.value && l.hasBearing()) l.bearing.toDouble() else if (Prefs.mapHeadingUp.value) m.cameraPosition.bearing else 0.0)
+                            .build(),
+                    ),
+                    700,
+                )
+            }
             lc.cameraMode = if (Prefs.mapHeadingUp.value) CameraMode.TRACKING_GPS else CameraMode.TRACKING
             lc.zoomWhileTracking(if (is3d) 16.8 else 16.0, 900)
             lc.tiltWhileTracking(if (is3d) 58.0 else 0.0, 900)
@@ -313,6 +326,17 @@ fun VectorMap(modifier: Modifier) {
     val headingUp by Prefs.mapHeadingUp.collectAsState()
     val h = remember { VectorHolder(ctx) }
     val ready = h.ready
+
+    // start: pierwsza pozycja → kamera jedzie za autem (jak po dotknięciu „moja pozycja”)
+    var followedOnce by remember { mutableStateOf(false) }
+    LaunchedEffect(loc != null, ready) {
+        if (!ready || loc == null || followedOnce) return@LaunchedEffect
+        followedOnce = true
+        if (route == null && plan == null) {
+            delay(400)
+            h.follow()
+        }
+    }
 
     // pozycja auta z GPS radia
     LaunchedEffect(loc, ready) {

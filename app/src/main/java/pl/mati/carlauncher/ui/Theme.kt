@@ -1,5 +1,6 @@
 package pl.mati.carlauncher.ui
 
+import androidx.compose.runtime.remember
 import pl.mati.carlauncher.data.ThemeManager
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.runtime.setValue
@@ -88,6 +89,20 @@ object Palettes {
     )
 
     val LIGHT = listOf(PEARL, SAND, MIST)
+
+    /** Płynne przejście między zestawami kolorów (t = 0…1). */
+    fun lerp(a: Palette, b: Palette, t: Float): Palette {
+        fun c(x: Color, y: Color) = androidx.compose.ui.graphics.lerp(x, y, t)
+        return Palette(
+            b.id, b.name, if (t < 0.5f) a.light else b.light,
+            c(a.bg, b.bg), c(a.bgDeep, b.bgDeep), c(a.dock, b.dock),
+            c(a.card, b.card), c(a.card2, b.card2), c(a.panel, b.panel), c(a.raised, b.raised), c(a.mapBg, b.mapBg),
+            c(a.border, b.border), c(a.text, b.text), c(a.text2, b.text2), c(a.muted, b.muted), c(a.dim, b.dim),
+            c(a.track, b.track), c(a.switch, b.switch), c(a.overlay, b.overlay),
+            c(a.green, b.green), c(a.orange, b.orange), c(a.red, b.red), c(a.redZone, b.redZone), c(a.blink, b.blink),
+            c(a.rainBg, b.rainBg), c(a.rainText, b.rainText),
+        )
+    }
     fun light(id: String) = LIGHT.firstOrNull { it.id == id } ?: PEARL
 }
 
@@ -159,9 +174,24 @@ fun CarRoot(content: @Composable () -> Unit) {
     val accentInt by Prefs.accent.collectAsState()
     val light by ThemeManager.light.collectAsState()
     val variant by Prefs.lightVariant.collectAsState()
-    val pal = if (light) Palettes.light(variant) else Palettes.DARK
-    LaunchedEffect(pal) { CarColors.palette = pal }
-    MaterialTheme(colorScheme = if (pal.light) lightColorScheme() else darkColorScheme()) {
+    val anim by Prefs.animations.collectAsState()
+    val target = if (light) Palettes.light(variant) else Palettes.DARK
+    var first by remember { mutableStateOf(true) }
+    // dzień ↔ noc: wszystkie kolory przechodzą płynnie (ok. 1 s), przy starcie od razu właściwy tryb
+    LaunchedEffect(target) {
+        val from = CarColors.palette
+        if (first || !anim || from == target) {
+            first = false
+            CarColors.palette = target
+            return@LaunchedEffect
+        }
+        val a = androidx.compose.animation.core.Animatable(0f)
+        a.animateTo(1f, androidx.compose.animation.core.tween(1000, easing = androidx.compose.animation.core.FastOutSlowInEasing)) {
+            CarColors.palette = Palettes.lerp(from, target, value)
+        }
+        CarColors.palette = target
+    }
+    MaterialTheme(colorScheme = if (CarColors.isLight) lightColorScheme() else darkColorScheme()) {
         CompositionLocalProvider(
             LocalAccent provides CarColors.accentFor(Color(accentInt), CarColors.isLight),
             LocalContentColor provides CarColors.Text,
