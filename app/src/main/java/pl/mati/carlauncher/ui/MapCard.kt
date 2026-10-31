@@ -82,8 +82,9 @@ fun MapCard(modifier: Modifier) {
     val ctx = LocalContext.current
     val accent = LocalAccent.current
 
+    val engine by Prefs.mapEngine.collectAsState()
     CarCard(modifier, color = CarColors.MapBg) {
-        OsmMap(Modifier.fillMaxSize())
+        if (engine == "osm") OsmMap(Modifier.fillMaxSize()) else VectorMap(Modifier.fillMaxSize())
 
         // Następny manewr (z powiadomienia Map Google / Waze)
         nav?.let { n ->

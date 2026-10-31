@@ -52,6 +52,10 @@ object Prefs {
     val radioApp = MutableStateFlow("")
     val btApp = MutableStateFlow("")
     val animations = MutableStateFlow(true)
+    /** Mapa: "vector" = OpenFreeMap 3D (MapLibre), "osm" = klasyczne kafelki OSM. */
+    val mapEngine = MutableStateFlow("vector")
+    val map3d = MutableStateFlow(true)
+    val mapHeadingUp = MutableStateFlow(true)
     val speedLimits = MutableStateFlow(true)
     val speedTolerance = MutableStateFlow(5)
     val speedBeep = MutableStateFlow(false)
@@ -83,6 +87,9 @@ object Prefs {
         radioApp.value = p.getString("radio_app", "") ?: ""
         btApp.value = p.getString("bt_app", "") ?: ""
         animations.value = p.getBoolean("animations", true)
+        mapEngine.value = p.getString("map_engine", "vector") ?: "vector"
+        map3d.value = p.getBoolean("map_3d", true)
+        mapHeadingUp.value = p.getBoolean("map_heading_up", true)
         speedLimits.value = p.getBoolean("speed_limits", true)
         speedTolerance.value = p.getInt("speed_tol", 5)
         speedBeep.value = p.getBoolean("speed_beep", false)
@@ -121,6 +128,9 @@ object Prefs {
     fun setBtApp(v: String) { btApp.value = v; edit { putString("bt_app", v) } }
     fun setHomeWeekdaysOnly(v: Boolean) { homeWeekdaysOnly.value = v; edit { putBoolean("home_weekdays", v) } }
     fun setRoadAlerts(v: Boolean) { roadAlerts.value = v; edit { putBoolean("road_alerts", v) } }
+    fun setMapEngine(v: String) { mapEngine.value = v; edit { putString("map_engine", v) } }
+    fun setMap3d(v: Boolean) { map3d.value = v; edit { putBoolean("map_3d", v) } }
+    fun setMapHeadingUp(v: Boolean) { mapHeadingUp.value = v; edit { putBoolean("map_heading_up", v) } }
     fun setAnimations(v: Boolean) { animations.value = v; edit { putBoolean("animations", v) } }
     fun setSpeedLimits(v: Boolean) { speedLimits.value = v; edit { putBoolean("speed_limits", v) } }
     fun setSpeedTolerance(v: Int) { speedTolerance.value = v.coerceIn(0, 20); edit { putInt("speed_tol", speedTolerance.value) } }

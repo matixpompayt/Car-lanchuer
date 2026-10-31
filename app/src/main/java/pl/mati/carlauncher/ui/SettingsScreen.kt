@@ -216,6 +216,22 @@ private fun AppPickerOverlay() {
 }
 
 private fun LazyListScope.lookPage() {
+    item { SectionLabel("Mapa") }
+    item {
+        val engine by Prefs.mapEngine.collectAsState()
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            ChoiceChip("Mapa 3D (OpenFreeMap)", engine == "vector", Modifier.weight(1f)) { Prefs.setMapEngine("vector") }
+            ChoiceChip("Klasyczna (OSM)", engine == "osm", Modifier.weight(1f)) { Prefs.setMapEngine("osm") }
+        }
+    }
+    item {
+        val v by Prefs.map3d.collectAsState()
+        SettingRow("Budynki 3D", "Pochylony widok z budynkami (dane OpenStreetMap)", onClick = { Prefs.setMap3d(!v) }) { CarSwitch(v) }
+    }
+    item {
+        val v by Prefs.mapHeadingUp.collectAsState()
+        SettingRow("Mapa obraca się z kierunkiem jazdy", "Wyłączone = północ zawsze u góry", onClick = { Prefs.setMapHeadingUp(!v) }) { CarSwitch(v) }
+    }
     item {
         val v by Prefs.animations.collectAsState()
         SettingRow("Animacje", "Płynne przejścia, wejście kart, efekt wciśnięcia – wyłącz na wolnym radiu", onClick = { Prefs.setAnimations(!v) }) { CarSwitch(v) }

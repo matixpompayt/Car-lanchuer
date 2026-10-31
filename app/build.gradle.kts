@@ -78,6 +78,8 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 
     implementation("org.osmdroid:osmdroid-android:6.1.18")
+    // mapa wektorowa 3D (OpenFreeMap, bez klucza)
+    implementation("org.maplibre.gl:android-sdk:11.5.2")
     implementation("androidx.palette:palette-ktx:1.0.0")
     implementation("com.google.zxing:core:3.5.3")
 }
