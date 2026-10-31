@@ -103,6 +103,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onPause() {
         super.onPause()
+        pl.mati.carlauncher.data.ShadeGuard.launcherResumed = false
         pl.mati.carlauncher.data.BackupManager.autoBackup(this)
     }
 
@@ -128,6 +129,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        pl.mati.carlauncher.data.ShadeGuard.launcherResumed = true
         SystemControls.attach(this)
         watchSources()
         hideSystemBars()
@@ -148,23 +150,34 @@ class MainActivity : ComponentActivity() {
     /**
      * Systemowy pasek / zasłona powiadomień nad CAR OS: od razu je zamykamy.
      * Gdy okno traci fokus, a CAR OS dalej jest na wierzchu (nie otwarto innej aplikacji),
-     * to znaczy, że ktoś wysunął systemową zasłonę – zamykamy ją (Android 10 na to pozwala).
+     * to znaczy, że ktoś wysunął systemową zasłonę – zamykamy ją
+     * (Android ≤ 11 broadcastem, Android 12+ przez usługę ułatwień dostępu ShadeGuardService).
      */
     private val closeShade = Runnable {
         if (!Prefs.blockStatusBar.value) return@Runnable
         if (hasWindowFocus() || !lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED)) return@Runnable
-        try {
-            @Suppress("DEPRECATION")
-            sendBroadcast(Intent(Intent.ACTION_CLOSE_SYSTEM_DIALOGS))
-        } catch (_: Exception) {
-        }
+        pl.mati.carlauncher.data.ShadeGuard.dismiss(this)
         hideSystemBars()
     }
+
+    /**
+     * Android 11+: pasek pokazany gestem jest „tymczasowy” i system odbiera nam nad nim kontrolę
+     * na ~3 s. Prośba o pokazanie przerywa ten tryb i oddaje kontrolę – zaraz potem go chowamy.
+     */
+    private val abortTransient = Runnable {
+        if (!Prefs.blockStatusBar.value || !hasWindowFocus()) return@Runnable
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return@Runnable
+        val c = window.insetsController ?: return@Runnable
+        c.show(android.view.WindowInsets.Type.systemBars())
+        window.decorView.postDelayed({ if (Prefs.blockStatusBar.value) hideSystemBars() }, 60)
+    }
+    private var hadBarControl = false
 
     private val rehide = Runnable { if (Prefs.blockStatusBar.value) hideSystemBars() }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
+        pl.mati.carlauncher.data.ShadeGuard.launcherFocused = hasFocus
         window.decorView.removeCallbacks(closeShade)
         if (hasFocus) hideSystemBars()
         else window.decorView.postDelayed(closeShade, 120)
@@ -191,6 +204,19 @@ class MainActivity : ComponentActivity() {
             systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         }
         // pasek wysunięty gestem z krawędzi – schowaj go od razu (zamiast po kilku sekundach)
+        if (!barsListener && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            barsListener = true
+            window.insetsController?.addOnControllableInsetsChangedListener { _, types ->
+                val has = types and android.view.WindowInsets.Type.statusBars() != 0
+                if (hadBarControl && !has && hasWindowFocus() && Prefs.blockStatusBar.value &&
+                    lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED)
+                ) {
+                    window.decorView.removeCallbacks(abortTransient)
+                    window.decorView.postDelayed(abortTransient, 150)
+                }
+                hadBarControl = has
+            }
+        }
         if (!barsListener) {
             barsListener = true
             @Suppress("DEPRECATION")

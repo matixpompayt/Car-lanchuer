@@ -303,6 +303,27 @@ private fun LazyListScope.lookPage() {
             onClick = { Prefs.setBlockStatusBar(!v) },
         ) { CarSwitch(v) }
     }
+    if (pl.mati.carlauncher.data.ShadeGuard.needsService) item {
+        val v by Prefs.blockStatusBar.collectAsState()
+        val on by pl.mati.carlauncher.data.ShadeGuard.connected.collectAsState()
+        val ctx = androidx.compose.ui.platform.LocalContext.current
+        androidx.compose.animation.AnimatedVisibility(v) {
+            Column {
+                SettingRow(
+                    "Usługa dostępności CAR OS",
+                    if (on) "Włączona – zasłona powiadomień zamyka się od razu"
+                    else "Android ${android.os.Build.VERSION.RELEASE} pozwala zamknąć zasłonę tylko przez nią. " +
+                        "Dotknij → Ułatwienia dostępu → „CAR OS – blokada paska systemowego” → włącz",
+                    onClick = { pl.mati.carlauncher.data.ShadeGuard.openAccessibilitySettings(ctx) },
+                ) { CarSwitch(on) }
+                if (!on && android.os.Build.VERSION.SDK_INT >= 33) SettingRow(
+                    "Przełącznik usługi jest wyszarzony?",
+                    "Dotknij → w Informacjach o aplikacji ⋮ (prawy górny róg) → „Zezwól na ustawienia z ograniczeniami”, potem włącz usługę",
+                    onClick = { pl.mati.carlauncher.data.ShadeGuard.openAppInfo(ctx) },
+                )
+            }
+        }
+    }
     item {
         val light by ThemeManager.light.collectAsState()
         SettingRow(
