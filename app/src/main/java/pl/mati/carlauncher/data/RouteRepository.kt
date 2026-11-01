@@ -130,6 +130,17 @@ object RouteRepository {
 
     /** Dom / Praca: adres → współrzędne → planowanie. */
     fun planToAddress(address: String, label: String) {
+        // dom / praca z zapisanymi współrzędnymi – bez szukania adresu
+        val pr = Prefs.profile.value
+        val known = when {
+            label == "Dom" && address == pr.home && pr.homeLat != null && pr.homeLon != null -> Place(label, address, pr.homeLat, pr.homeLon)
+            label == "Praca" && address == pr.work && pr.workLat != null && pr.workLon != null -> Place(label, address, pr.workLat, pr.workLon)
+            else -> null
+        }
+        if (known != null) {
+            planTo(known)
+            return
+        }
         scope.launch {
             busy.value = true
             try {

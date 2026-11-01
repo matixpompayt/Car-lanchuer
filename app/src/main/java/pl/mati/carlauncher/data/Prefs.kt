@@ -15,6 +15,11 @@ data class Profile(
     val home: String = "",
     val work: String = "",
     val setupDone: Boolean = false,
+    /** Współrzędne domu / pracy (np. ustawione z telefonu) – trasa bez szukania adresu. */
+    val homeLat: Double? = null,
+    val homeLon: Double? = null,
+    val workLat: Double? = null,
+    val workLon: Double? = null,
 ) {
     val carName: String
         get() = listOf(brand, model, engine).filter { it.isNotBlank() }.joinToString(" ").ifBlank { "Mój samochód" }
@@ -122,6 +127,10 @@ object Prefs {
             home = p.getString("p_home", "") ?: "",
             work = p.getString("p_work", "") ?: "",
             setupDone = p.getBoolean("p_done", false),
+            homeLat = p.getString("p_home_lat", null)?.toDoubleOrNull(),
+            homeLon = p.getString("p_home_lon", null)?.toDoubleOrNull(),
+            workLat = p.getString("p_work_lat", null)?.toDoubleOrNull(),
+            workLon = p.getString("p_work_lon", null)?.toDoubleOrNull(),
         )
     }
 
@@ -163,7 +172,12 @@ object Prefs {
     fun setSpeedBeep(v: Boolean) { speedBeep.value = v; edit { putBoolean("speed_beep", v) } }
     fun setMapsInBackground(v: Boolean) { mapsInBackground.value = v; edit { putBoolean("maps_bg", v) } }
 
-    fun setProfile(p: Profile) {
+    fun setProfile(np: Profile) {
+        val old = profile.value
+        // adres zmieniony ręcznie w radiu → stare współrzędne już nie pasują
+        var p = np
+        if (p.home != old.home && p.homeLat == old.homeLat) p = p.copy(homeLat = null, homeLon = null)
+        if (p.work != old.work && p.workLat == old.workLat) p = p.copy(workLat = null, workLon = null)
         profile.value = p
         edit {
             putString("p_name", p.name)
@@ -175,7 +189,25 @@ object Prefs {
             putString("p_home", p.home)
             putString("p_work", p.work)
             putBoolean("p_done", p.setupDone)
+            putString("p_home_lat", p.homeLat?.toString())
+            putString("p_home_lon", p.homeLon?.toString())
+            putString("p_work_lat", p.workLat?.toString())
+            putString("p_work_lon", p.workLon?.toString())
         }
+        if (old.home != p.home || old.work != p.work || old.homeLat != p.homeLat || old.workLat != p.workLat) {
+            ConnectRepository.publishStatusSoon()
+        }
+    }
+
+    /** Dom albo praca (np. z CAR OS Connect): adres + opcjonalnie współrzędne. Pusty adres = usuń. */
+    fun setPlace(work: Boolean, address: String, lat: Double?, lon: Double?) {
+        val a = address.trim()
+        val ok = a.isNotBlank() && lat != null && lon != null
+        val p = profile.value
+        setProfile(
+            if (work) p.copy(work = a, workLat = if (ok) lat else null, workLon = if (ok) lon else null)
+            else p.copy(home = a, homeLat = if (ok) lat else null, homeLon = if (ok) lon else null),
+        )
     }
 
     fun resetLook() {

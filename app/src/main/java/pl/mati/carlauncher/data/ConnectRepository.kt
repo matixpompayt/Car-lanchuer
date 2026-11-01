@@ -179,11 +179,16 @@ object ConnectRepository {
                 .put("odoSet", ServiceRepository.odometerSet.value)
                 .put("body", Prefs.carBody.value).put("paint", Prefs.carPaint.value)
                 .put("svc", svc).put("items", items).put("trips", trips).put("favs", favs)
+                .put("home", placeJson(p.home, p.homeLat, p.homeLon))
+                .put("work", placeJson(p.work, p.workLat, p.workLon))
                 .put("ver", BuildConfig.VERSION_NAME)
             send(o)
         } catch (_: Exception) {
         }
     }
+
+    private fun placeJson(a: String, lat: Double?, lon: Double?): JSONObject =
+        JSONObject().put("a", a).put("lat", lat ?: JSONObject.NULL).put("lon", lon ?: JSONObject.NULL)
 
     fun publishTrip(t: TripRepository.Trip, path: String?) {
         if (key(false) == null) return
@@ -308,6 +313,19 @@ object ConnectRepository {
                 PlacesRepository.load()
                 if (!PlacesRepository.isFavorite(p)) PlacesRepository.toggleFavorite(p)
                 Toaster.show("Dodano do ulubionych z telefonu: ${p.name}")
+                publishStatusSoon()
+            }
+            // dom / praca ustawione w telefonie
+            "place_set" -> {
+                val work = o.optString("slot") == "work"
+                val a = o.optString("a")
+                val lat = if (o.has("lat") && !o.isNull("lat")) o.getDouble("lat") else null
+                val lon = if (o.has("lon") && !o.isNull("lon")) o.getDouble("lon") else null
+                Prefs.setPlace(work, a, lat, lon)
+                Toaster.show(
+                    (if (work) "Adres pracy" else "Adres domu") +
+                        (if (a.isBlank()) " usunięty z telefonu" else " z telefonu: $a"),
+                )
                 publishStatusSoon()
             }
             "fav_del" -> {
