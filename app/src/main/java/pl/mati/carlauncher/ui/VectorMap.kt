@@ -110,6 +110,7 @@ private class VectorHolder(ctx: Context) {
         st.addImage(IMG_EMPTY, android.graphics.Bitmap.createBitmap(1, 1, android.graphics.Bitmap.Config.ARGB_8888))
         val below = CarMapStyle.firstSymbolId(st)
         CarMapStyle.add3dBuildings(st, below, CarColors.isLight)
+        initRoads(st)
         st.addSource(GeoJsonSource(SRC_ALTS))
         st.addSource(GeoJsonSource(SRC_ROUTE))
         st.addSource(GeoJsonSource(SRC_DEST))
@@ -229,7 +230,7 @@ private class VectorHolder(ctx: Context) {
         val st = style ?: return
         if (!framesReady) return
         val loc = LocationRepository.location.value ?: return
-        val target = if (following) m.cameraPosition.target else null
+        val target = if (following) m.cameraPosition.target else shown
         val lat = target?.latitude ?: loc.latitude
         val lon = target?.longitude ?: loc.longitude
         takeBearing(loc)
@@ -250,7 +251,139 @@ private class VectorHolder(ctx: Context) {
     private val autoReturn = Runnable { if (!following && !previewing) follow() }
 
     private fun takeBearing(l: android.location.Location) {
+        // na drodze: kierunek drogi (równy, bez drgań GPS), inaczej kierunek z GPS
+        val rb = roadBearing
+        if (rb != null && Prefs.mapSnap.value) {
+            lastBearing = rb
+            return
+        }
         if (l.hasBearing() && (!l.hasSpeed() || l.speed > 1.5f)) lastBearing = l.bearing
+    }
+
+    // ---------- auto na drodze ----------
+    private var roadLayers: Array<String> = emptyArray()
+    private var shown: LatLng? = null
+    private var shownAt = 0L
+    private var roadKey: String? = null
+    private var roadBearing: Float? = null
+
+    /** Warstwy dróg z mapy (bez chodników, torów, obrysów). */
+    private fun initRoads(st: Style) {
+        val skip = Regex("casing|path|pedestrian|rail|transit|ferry|aerial|cable|oneway|label|area|name")
+        roadLayers = st.layers
+            .filter { it is LineLayer && it.sourceLayer == "transportation" && !skip.containsMatchIn(it.id) }
+            .map { it.id }.toTypedArray()
+    }
+
+    /**
+     * Pozycja do pokazania: na postoju bez „pływania”, w ruchu przyciągnięta do najbliższej drogi
+     * pasującej kierunkiem do jazdy (z preferencją drogi, po której jedziemy).
+     */
+    private fun displayPos(l: android.location.Location): LatLng {
+        val raw = LatLng(l.latitude, l.longitude)
+        if (!Prefs.mapSnap.value) {
+            roadBearing = null
+            shown = raw
+            return raw
+        }
+        val now = android.os.SystemClock.uptimeMillis()
+        val prev = shown
+        val acc = if (l.hasAccuracy()) l.accuracy else 15f
+        val slow = l.hasSpeed() && l.speed < 1.2f
+        if (prev != null && slow && now - shownAt < 120_000 && prev.distanceTo(raw) < maxOf(12.0, acc.toDouble())) {
+            return prev
+        }
+        val s = snap(l, raw, acc)
+        roadBearing = s?.second
+        val out = s?.first ?: raw
+        shown = out
+        shownAt = now
+        return out
+    }
+
+    private fun prop(f: Feature, k: String): String? = try {
+        if (f.hasProperty(k)) f.getStringProperty(k) else null
+    } catch (_: Exception) {
+        null
+    }
+
+    private fun snap(l: android.location.Location, raw: LatLng, acc: Float): Pair<LatLng, Float?>? {
+        val m = map ?: return null
+        if (roadLayers.isEmpty()) return null
+        val pt = m.projection.toScreenLocation(raw)
+        if (pt.x < 0 || pt.y < 0 || pt.x > view.width || pt.y > view.height) return null
+        val maxM = acc.toDouble().coerceIn(12.0, 30.0)
+        val mpp = m.projection.getMetersPerPixelAtLatitude(raw.latitude).coerceAtLeast(0.01)
+        val r = (maxM / mpp).toFloat().coerceIn(24f, 320f)
+        val feats = try {
+            m.queryRenderedFeatures(android.graphics.RectF(pt.x - r, pt.y - r, pt.x + r, pt.y + r), *roadLayers)
+        } catch (_: Exception) {
+            return null
+        }
+        if (feats.isEmpty()) {
+            roadKey = null
+            return null
+        }
+        val moving = l.hasBearing() && l.hasSpeed() && l.speed > 2f
+        val lat0 = raw.latitude
+        val lon0 = raw.longitude
+        val kx = 111_320.0 * Math.cos(Math.toRadians(lat0))
+        val ky = 110_540.0
+        var best = Double.MAX_VALUE
+        var bestX = 0.0
+        var bestY = 0.0
+        var bestBearing: Float? = null
+        var bestKey: String? = null
+        val noCar = setOf("path", "track", "rail", "transit", "ferry", "aerialway", "bridleway", "cycleway", "footway", "pedestrian", "steps")
+        for (f in feats) {
+            val cls = prop(f, "class")
+            if (cls != null && cls in noCar) continue
+            val key = prop(f, "name") ?: prop(f, "ref") ?: f.id()
+            val lines: List<List<Point>> = when (val g = f.geometry()) {
+                is LineString -> listOf(g.coordinates())
+                is org.maplibre.geojson.MultiLineString -> g.coordinates()
+                else -> continue
+            }
+            for (line in lines) for (i in 0 until line.size - 1) {
+                val ax = (line[i].longitude() - lon0) * kx
+                val ay = (line[i].latitude() - lat0) * ky
+                val dx = (line[i + 1].longitude() - lon0) * kx - ax
+                val dy = (line[i + 1].latitude() - lat0) * ky - ay
+                val len2 = dx * dx + dy * dy
+                if (len2 < 0.01) continue
+                val t = ((-ax) * dx + (-ay) * dy) / len2
+                val tc = t.coerceIn(0.0, 1.0)
+                val qx = ax + tc * dx
+                val qy = ay + tc * dy
+                val d = Math.hypot(qx, qy)
+                if (d > maxM) continue
+                var score = d
+                var dir: Float? = null
+                if (moving) {
+                    val segB = ((Math.toDegrees(Math.atan2(dx, dy)) + 360) % 360).toFloat()
+                    val diff = Math.abs(((l.bearing - segB) % 360 + 540) % 360 - 180) // 0..180
+                    val reverse = diff > 90
+                    val ad = if (reverse) 180 - diff else diff
+                    if (ad > 45) continue
+                    score += ad * 0.25
+                    dir = if (reverse) (segB + 180) % 360 else segB
+                }
+                if (key != null && key == roadKey) score -= 3.0 // trzymaj się drogi, po której jedziesz
+                if (score < best) {
+                    best = score
+                    bestX = qx
+                    bestY = qy
+                    bestBearing = dir
+                    bestKey = key
+                }
+            }
+        }
+        if (best == Double.MAX_VALUE) {
+            roadKey = null
+            return null
+        }
+        roadKey = bestKey
+        return LatLng(lat0 + bestY / ky, lon0 + bestX / kx) to bestBearing
     }
 
     /**
@@ -280,12 +413,12 @@ private class VectorHolder(ctx: Context) {
         return pts.last().second
     }
 
-    fun cameraFor(l: android.location.Location): CameraPosition {
+    fun cameraFor(l: android.location.Location, target: LatLng = shown ?: LatLng(l.latitude, l.longitude)): CameraPosition {
         takeBearing(l)
         val is3d = Prefs.map3d.value
         val bearing = if (Prefs.mapHeadingUp.value) lastBearing.toDouble() else 0.0
         return CameraPosition.Builder()
-            .target(LatLng(l.latitude, l.longitude))
+            .target(target)
             .zoom(followZoom(l))
             .tilt(if (is3d) 58.0 else 0.0)
             .bearing(bearing)
@@ -306,11 +439,13 @@ private class VectorHolder(ctx: Context) {
     /** Nowa pozycja GPS: kamera płynnie (liniowo, przez czas między odczytami) jedzie za autem. */
     fun onLocation(l: android.location.Location) {
         val m = map ?: return
-        if (!ready || !following) return
+        if (!ready) return
+        val pos = displayPos(l)
+        if (!following) return
         val now = android.os.SystemClock.uptimeMillis()
         val dt = if (lastFix == 0L) 1000L else (now - lastFix).coerceIn(300L, 1500L)
         lastFix = now
-        m.easeCamera(CameraUpdateFactory.newCameraPosition(cameraFor(l)), dt.toInt(), false)
+        m.easeCamera(CameraUpdateFactory.newCameraPosition(cameraFor(l, pos)), dt.toInt(), false)
     }
 
     /** Dzień / noc: kolory mapy, budynków i obwódki trasy. */

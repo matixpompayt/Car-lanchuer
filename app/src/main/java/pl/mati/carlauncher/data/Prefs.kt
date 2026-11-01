@@ -70,6 +70,8 @@ object Prefs {
     val mapEngine = MutableStateFlow("vector")
     val map3d = MutableStateFlow(true)
     val mapHeadingUp = MutableStateFlow(true)
+    /** Przyciąganie pozycji auta do drogi na mapie. */
+    val mapSnap = MutableStateFlow(true)
     /** Ikona auta na mapie: typ nadwozia i kolor lakieru. */
     val carBody = MutableStateFlow("minivan")
     val carPaint = MutableStateFlow(0xFFC3C8CF.toInt())
@@ -112,6 +114,7 @@ object Prefs {
         mapEngine.value = p.getString("map_engine", "vector") ?: "vector"
         map3d.value = p.getBoolean("map_3d", true)
         mapHeadingUp.value = p.getBoolean("map_heading_up", true)
+        mapSnap.value = p.getBoolean("map_snap", true)
         carBody.value = p.getString("car_body", "minivan") ?: "minivan"
         carPaint.value = p.getInt("car_paint", 0xFFC3C8CF.toInt())
         speedLimits.value = p.getBoolean("speed_limits", true)
@@ -160,6 +163,7 @@ object Prefs {
     fun setCarPaint(v: Int) { carPaint.value = v; edit { putInt("car_paint", v) }; ConnectRepository.publishStatusSoon() }
     fun setMapEngine(v: String) { mapEngine.value = v; edit { putString("map_engine", v) } }
     fun setMap3d(v: Boolean) { map3d.value = v; edit { putBoolean("map_3d", v) } }
+    fun setMapSnap(v: Boolean) { mapSnap.value = v; edit { putBoolean("map_snap", v) } }
     fun setMapHeadingUp(v: Boolean) { mapHeadingUp.value = v; edit { putBoolean("map_heading_up", v) } }
     fun setThemeMode(v: String) { themeMode.value = v; edit { putString("theme_mode", v) } }
     fun setBriDay(v: Int) { briDay.value = v; edit { putInt("bri_day", v) } }

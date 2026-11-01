@@ -277,6 +277,10 @@ private fun LazyListScope.lookPage() {
         SettingRow("Mapa obraca się z kierunkiem jazdy", "Wyłączone = północ zawsze u góry", onClick = { Prefs.setMapHeadingUp(!v) }) { CarSwitch(v) }
     }
     item {
+        val v by Prefs.mapSnap.collectAsState()
+        SettingRow("Auto zawsze na drodze", "Wygładza pozycję GPS: przyciąga auto do najbliższej drogi i nie pływa na postoju", onClick = { Prefs.setMapSnap(!v) }) { CarSwitch(v) }
+    }
+    item {
         val v by Prefs.animations.collectAsState()
         SettingRow("Animacje", "Płynne przejścia, wejście kart, efekt wciśnięcia – wyłącz na wolnym radiu", onClick = { Prefs.setAnimations(!v) }) { CarSwitch(v) }
     }
