@@ -97,14 +97,57 @@ object CarMapStyle {
                             PropertyFactory.iconOpacity(if (poi) 0.55f else 0.85f),
                         )
                     }
-                    is FillExtrusionLayer -> if (layer.id != BUILDINGS_3D) layer.setProperties(PropertyFactory.visibility(Property.NONE))
-                    else layer.setProperties(PropertyFactory.fillExtrusionColor(buildingColor(light)))
+                    is FillExtrusionLayer -> if (!layer.id.startsWith(BUILDINGS_3D)) layer.setProperties(PropertyFactory.visibility(Property.NONE))
                     is RasterLayer -> layer.setProperties(PropertyFactory.visibility(Property.NONE))
                     is HillshadeLayer -> layer.setProperties(PropertyFactory.visibility(Property.NONE))
                 }
             } catch (_: Exception) {
             }
         }
+        swapBuildings(style, light)
+    }
+
+    private fun buildingsId(light: Boolean) = BUILDINGS_3D + if (light) "-l" else "-d"
+
+    /**
+     * Kolor budynków zależy od wysokości (wyrażenie per budynek), a MapLibre „wypieka” go
+     * w już wczytanych kafelkach – zmiana koloru byłaby widoczna dopiero po przybliżeniu.
+     * Dlatego przy zmianie dzień/noc wstawiamy nową warstwę w nowych kolorach pod starą,
+     * a starą usuwamy chwilę później (bez mrugnięcia).
+     */
+    private fun swapBuildings(style: Style, light: Boolean) {
+        val want = buildingsId(light)
+        if (style.getLayer(want) != null) return
+        val old = style.layers.firstOrNull { it is FillExtrusionLayer && it.id.startsWith(BUILDINGS_3D) } ?: return
+        val src = (old as FillExtrusionLayer).sourceId
+        val fresh = buildingsLayer(want, src, light)
+        try {
+            fresh.setProperties(PropertyFactory.visibility(old.visibility.value ?: Property.VISIBLE))
+        } catch (_: Exception) {
+        }
+        style.addLayerBelow(fresh, old.id)
+        val oldId = old.id
+        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+            try { style.removeLayer(oldId) } catch (_: Exception) {}
+        }, 450)
+    }
+
+    private fun buildingsLayer(id: String, src: String, light: Boolean): FillExtrusionLayer {
+        val height = Expression.coalesce(Expression.get("render_height"), Expression.literal(6))
+        val base = Expression.coalesce(Expression.get("render_min_height"), Expression.literal(0))
+        val layer = FillExtrusionLayer(id, src)
+            .withSourceLayer("building")
+            .withProperties(
+                PropertyFactory.fillExtrusionColor(buildingColor(light)),
+                PropertyFactory.fillExtrusionHeight(
+                    Expression.interpolate(Expression.linear(), Expression.zoom(), Expression.stop(14, 0), Expression.stop(15.5, height)),
+                ),
+                PropertyFactory.fillExtrusionBase(base),
+                PropertyFactory.fillExtrusionOpacity(0.92f),
+                PropertyFactory.fillExtrusionVerticalGradient(true),
+            )
+        layer.minZoom = 14f
+        return layer
     }
 
     fun applyDark(style: Style) = apply(style, false)
@@ -123,27 +166,16 @@ object CarMapStyle {
     fun firstSymbolId(style: Style): String? = style.layers.firstOrNull { it is SymbolLayer }?.id
 
     /** Budynki 3D z wysokości OpenStreetMap (render_height). Widoczne od zoomu 14, rosną płynnie. */
-    fun add3dBuildings(style: Style, below: String?) {
-        if (style.getLayer(BUILDINGS_3D) != null) return
+    fun add3dBuildings(style: Style, below: String?, light: Boolean = false) {
+        if (style.layers.any { it.id.startsWith(BUILDINGS_3D) }) return
         val src = style.sources.firstOrNull { it.id == "openmaptiles" }?.id ?: return
-        val height = Expression.coalesce(Expression.get("render_height"), Expression.literal(6))
-        val base = Expression.coalesce(Expression.get("render_min_height"), Expression.literal(0))
-        val layer = FillExtrusionLayer(BUILDINGS_3D, src)
-            .withSourceLayer("building")
-            .withProperties(
-                PropertyFactory.fillExtrusionColor(buildingColor(false)),
-                PropertyFactory.fillExtrusionHeight(
-                    Expression.interpolate(Expression.linear(), Expression.zoom(), Expression.stop(14, 0), Expression.stop(15.5, height)),
-                ),
-                PropertyFactory.fillExtrusionBase(base),
-                PropertyFactory.fillExtrusionOpacity(0.92f),
-                PropertyFactory.fillExtrusionVerticalGradient(true),
-            )
-        layer.minZoom = 14f
+        val layer = buildingsLayer(buildingsId(light), src, light)
         if (below != null) style.addLayerBelow(layer, below) else style.addLayer(layer)
     }
 
     fun set3d(style: Style, on: Boolean) {
-        style.getLayer(BUILDINGS_3D)?.setProperties(PropertyFactory.visibility(if (on) Property.VISIBLE else Property.NONE))
+        style.layers.filter { it.id.startsWith(BUILDINGS_3D) }.forEach {
+            it.setProperties(PropertyFactory.visibility(if (on) Property.VISIBLE else Property.NONE))
+        }
     }
 }

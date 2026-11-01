@@ -109,7 +109,7 @@ private class VectorHolder(ctx: Context) {
         CarMapStyle.applyDark(st)
         st.addImage(IMG_EMPTY, android.graphics.Bitmap.createBitmap(1, 1, android.graphics.Bitmap.Config.ARGB_8888))
         val below = CarMapStyle.firstSymbolId(st)
-        CarMapStyle.add3dBuildings(st, below)
+        CarMapStyle.add3dBuildings(st, below, CarColors.isLight)
         st.addSource(GeoJsonSource(SRC_ALTS))
         st.addSource(GeoJsonSource(SRC_ROUTE))
         st.addSource(GeoJsonSource(SRC_DEST))
