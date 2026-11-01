@@ -25,7 +25,7 @@ object Vehicle {
     }
 
     private fun merge(o: ObdManager.ObdData, c: Map<CanRepository.Field, Double>): ObdManager.ObdData {
-        fun i(f: CanRepository.Field) = c[f]?.roundToInt()
+        fun i(f: CanRepository.Field) = c[f]?.takeIf { !it.isNaN() && !it.isInfinite() }?.roundToInt()
         return ObdManager.ObdData(
             speed = o.speed ?: i(CanRepository.Field.SPEED),
             rpm = o.rpm ?: i(CanRepository.Field.RPM),

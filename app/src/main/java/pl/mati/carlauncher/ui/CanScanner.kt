@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import pl.mati.carlauncher.data.BroadcastProbe
 import pl.mati.carlauncher.data.CanRepository
@@ -55,7 +56,7 @@ object CanScanner {
     val open = MutableStateFlow(false)
 }
 
-private data class Snap(val key: String, val value: Double, val text: String, val min: Double, val max: Double, val changes: Int)
+private typealias Snap = CanRepository.Row
 
 /** Czytelny opis klucza (bez długich prefiksów nazw pakietów). */
 private fun shortKey(k: String): String {
@@ -97,13 +98,11 @@ private fun ScannerContent() {
     var assign by remember { mutableStateOf<Snap?>(null) }
     var saving by remember { mutableStateOf(false) }
     var note by remember { mutableStateOf<String?>(null) }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
 
     LaunchedEffect(onlyChanging, query) {
         while (true) {
-            val now = System.currentTimeMillis()
-            list = withContext(Dispatchers.Default) {
-                CanRepository.snapshot(onlyChanging, query).map { Snap(it.key, it.value, it.text, it.min, it.max, it.recentChanges(now)) }
-            }
+            list = try { withContext(Dispatchers.Default) { CanRepository.snapshot(onlyChanging, query) } } catch (_: Exception) { list }
             total = CanRepository.signals.size
             delay(700)
         }
@@ -127,11 +126,11 @@ private fun ScannerContent() {
                 SecondaryButton(if (saving) "Zapisuję…" else "Zapisz raport", {
                     if (saving) return@SecondaryButton
                     saving = true
-                    Thread {
-                        val path = CanRepository.saveReport(ctx)
+                    scope.launch {
+                        val path = withContext(Dispatchers.IO) { CanRepository.saveReport(ctx) }
                         note = if (path != null) "Raport zapisany: $path – wyślij mi ten plik" else "Nie udało się zapisać raportu"
                         saving = false
-                    }.start()
+                    }
                 }, height = 52.dp, icon = Icons.Rounded.Save)
                 SecondaryButton("Wyczyść", { CanRepository.clearSignals() }, height = 52.dp, icon = Icons.Rounded.Delete)
                 RoundIconButton(Icons.Rounded.Close, "Zamknij", 52.dp, { CanScanner.open.value = false })

@@ -60,6 +60,12 @@ object CanRepository {
         }
     }
 
+    /** Niezmienna kopia sygnału (do sortowania i wyświetlania – wartości w tle zmieniają się w trakcie). */
+    data class Row(
+        val key: String, val value: Double, val text: String, val min: Double, val max: Double,
+        val changes: Int, val lastChange: Long, val lastUpdate: Long,
+    )
+
     data class Sources(
         val canPackages: List<String> = emptyList(),
         val actions: Int = 0,
@@ -142,7 +148,7 @@ object CanRepository {
             s.lastChange = now
             synchronized(s.changes) {
                 s.changes.addLast(now)
-                if (s.changes.size > 200) s.changes.removeFirst()
+                if (s.changes.size > 120) s.changes.removeFirst()
             }
         }
         s.value = d
@@ -200,8 +206,10 @@ object CanRepository {
                 sources.value = sources.value.copy(settingsKeys = count)
             }
             if (wantProp && n % 2 == 0) {
+                var p: Process? = null
                 try {
-                    val p = Runtime.getRuntime().exec("getprop")
+                    p = Runtime.getRuntime().exec("getprop")
+                    try { p.outputStream.close() } catch (_: Exception) {}
                     var count = 0
                     p.inputStream.bufferedReader().useLines { lines ->
                         lines.forEach { line ->
@@ -213,6 +221,9 @@ object CanRepository {
                     p.waitFor()
                     sources.value = sources.value.copy(props = count)
                 } catch (_: Exception) {
+                } finally {
+                    try { p?.errorStream?.close() } catch (_: Exception) {}
+                    try { p?.destroy() } catch (_: Exception) {}
                 }
             }
             n++
@@ -262,14 +273,17 @@ object CanRepository {
         tick.value = System.currentTimeMillis()
     }
 
-    /** Lista do skanera: najpierw to, co się zmienia, potem świeże. */
-    fun snapshot(onlyChanging: Boolean, query: String): List<Signal> {
+    /** Lista do skanera: najpierw to, co się zmienia, potem świeże. Sortujemy kopie (stałe wartości). */
+    fun snapshot(onlyChanging: Boolean, query: String): List<Row> = try {
         val now = System.currentTimeMillis()
-        return signals.values
+        signals.values.toList()
             .filter { query.isBlank() || it.key.contains(query, ignoreCase = true) }
-            .filter { !onlyChanging || it.recentChanges(now) > 0 || now - it.lastChange < 120_000 }
-            .sortedWith(compareByDescending<Signal> { it.recentChanges(now) }.thenByDescending { it.lastChange }.thenByDescending { it.lastUpdate })
+            .map { Row(it.key, it.value, it.text, it.min, it.max, it.recentChanges(now), it.lastChange, it.lastUpdate) }
+            .filter { !onlyChanging || it.changes > 0 || (it.lastChange > 0 && now - it.lastChange < 120_000) }
+            .sortedWith(compareByDescending<Row> { it.changes }.thenByDescending { it.lastChange }.thenByDescending { it.lastUpdate }.thenBy { it.key })
             .take(300)
+    } catch (_: Exception) {
+        emptyList()
     }
 
     // ---------- radio: pakiety CAN ----------
@@ -328,7 +342,7 @@ object CanRepository {
         sb.append("\n== Sygnały (najpierw zmieniające się) ==\n")
         snapshot(false, "").take(250).forEach { s ->
             sb.append(String.format(java.util.Locale.US, "%s = %s  [min %s, max %s, zmian/min %d, odczytów %d]\n",
-                s.key, fmt(s.value), fmt(s.min), fmt(s.max), s.recentChanges(now), s.updates))
+                s.key, fmt(s.value), fmt(s.min), fmt(s.max), s.changes, signals[s.key]?.updates ?: 0))
         }
         sb.append("\n== Ostatnie komunikaty ==\n")
         BroadcastProbe.log.value.forEach { sb.append(it).append('\n') }
@@ -345,27 +359,7 @@ object CanRepository {
 
     /** Zapis raportu do Pobrane/CarOS. Zwraca ścieżkę albo null. */
     fun saveReport(ctx: Context): String? = try {
-        val text = report(ctx)
-        val name = "CarOS-dane-radia.txt"
-        val dir = "Download/CarOS/"
-        val resolver = ctx.contentResolver
-        val coll = MediaStore.Downloads.EXTERNAL_CONTENT_URI
-        var uri: Uri? = null
-        resolver.query(
-            coll, arrayOf(MediaStore.MediaColumns._ID),
-            "${MediaStore.MediaColumns.DISPLAY_NAME}=? AND ${MediaStore.MediaColumns.RELATIVE_PATH}=?",
-            arrayOf(name, dir), null,
-        )?.use { c -> if (c.moveToFirst()) uri = Uri.withAppendedPath(coll, c.getLong(0).toString()) }
-        if (uri == null) {
-            uri = resolver.insert(coll, ContentValues().apply {
-                put(MediaStore.MediaColumns.DISPLAY_NAME, name)
-                put(MediaStore.MediaColumns.MIME_TYPE, "text/plain")
-                put(MediaStore.MediaColumns.RELATIVE_PATH, dir)
-            })
-        }
-        val target = uri ?: throw IllegalStateException()
-        resolver.openOutputStream(target, "wt")?.use { it.write(text.toByteArray()) }
-        "Pobrane/CarOS/$name"
+        CrashLog.saveText(ctx, "CarOS-dane-radia.txt", report(ctx))
     } catch (_: Exception) {
         null
     }
