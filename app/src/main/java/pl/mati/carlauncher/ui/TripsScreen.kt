@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -74,6 +75,7 @@ fun TripsScreen() {
         }
 
         LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            if (trips.isNotEmpty() || current != null) item { StatsCard(key) }
             current?.let { c ->
                 item { TripRow(c, live = true) }
             }
@@ -95,6 +97,76 @@ fun TripsScreen() {
                 item(key = t.start) { TripRow(t, live = false) }
             }
         }
+    }
+}
+
+/** Statystyki tygodnia / miesiąca: wykres km na dzień, średnia, płynność jazdy. */
+@Composable
+private fun StatsCard(key: Any) {
+    val accent = LocalAccent.current
+    var month by remember { mutableStateOf(false) }
+    val from = if (month) TripRepository.startOfMonth() else TripRepository.startOfWeek()
+    val days = if (month) java.util.Calendar.getInstance().getActualMaximum(java.util.Calendar.DAY_OF_MONTH) else 7
+    val s = remember(key, month) { TripRepository.summary(from) }
+    val bars = remember(key, month) { TripRepository.perDay(from, days) }
+    CarCard(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("Statystyki jazdy", fontSize = 22.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                CarChip("Tydzień", !month, { month = false })
+                CarChip("Miesiąc", month, { month = true })
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(24.dp), verticalAlignment = Alignment.Bottom) {
+                // wykres km na dzień
+                val max = (bars.maxOrNull() ?: 0.0).coerceAtLeast(1.0)
+                val today = ((System.currentTimeMillis() - from) / 86_400_000L).toInt()
+                Row(Modifier.weight(1f).height(120.dp), horizontalArrangement = Arrangement.spacedBy(if (month) 3.dp else 10.dp), verticalAlignment = Alignment.Bottom) {
+                    bars.forEachIndexed { i, km ->
+                        Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Bottom) {
+                            if (!month && km > 0) Text(km.toFloat().pl1(), fontSize = 12.sp, color = CarColors.Muted)
+                            Box(
+                                Modifier.fillMaxWidth().height((84 * (km / max)).dp.coerceAtLeast(3.dp))
+                                    .clip(RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp))
+                                    .background(if (i == today) accent else accent.copy(alpha = if (km > 0) 0.45f else 0.15f)),
+                            )
+                            if (!month) Text(listOf("Pn", "Wt", "Śr", "Cz", "Pt", "So", "Nd")[i], fontSize = 13.sp, color = if (i == today) accent else CarColors.Muted)
+                        }
+                    }
+                }
+                Column(Modifier.width(300.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    StatLine("Przejechane", "${(s.distanceM / 1000).toFloat().pl1()} km")
+                    StatLine("Czas jazdy", formatDurationLong(s.movingS))
+                    StatLine("Średnia prędkość", "${s.avgKmh.roundToInt()} km/h")
+                    StatLine("Najszybciej", "${s.maxSpeed} km/h")
+                }
+            }
+            val sc = s.score
+            val col = when {
+                sc >= 85 -> CarColors.Green
+                sc >= 65 -> CarColors.Orange
+                else -> CarColors.Red
+            }
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                Text("$sc", fontSize = 40.sp, fontWeight = FontWeight.Bold, fontFamily = Condensed, color = col)
+                Column(Modifier.weight(1f)) {
+                    Text("Płynność jazdy (0–100)", fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        "${s.brake} gwałt. hamowań · ${s.accel} ostrych przyspieszeń" +
+                            if (s.distanceM < 5000) " · za mało km na pewną ocenę" else "",
+                        fontSize = 15.sp, color = CarColors.Muted,
+                    )
+                }
+                ProgressBar(sc / 100f, col, Modifier.width(260.dp), height = 10.dp)
+            }
+        }
+    }
+}
+
+@Composable
+private fun StatLine(label: String, value: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(label, fontSize = 16.sp, color = CarColors.Muted, modifier = Modifier.weight(1f))
+        Text(value, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
     }
 }
 
@@ -127,7 +199,8 @@ private fun TripRow(t: TripRepository.Trip, live: Boolean) {
             )
             Text(
                 "${formatDurationLong(t.durationS)} · śr. ${t.avgKmh.roundToInt()} km/h · maks. ${t.maxSpeed} km/h" +
-                    (t.maxCoolant?.let { " · płyn maks. $it °C" } ?: ""),
+                    (t.maxCoolant?.let { " · płyn maks. $it °C" } ?: "") +
+                    (if (!live && t.distanceM >= 1000) " · płynność ${t.score}" else ""),
                 fontSize = 15.sp, color = CarColors.Muted,
             )
         }

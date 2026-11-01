@@ -22,6 +22,7 @@ class ShadeGuardService : AccessibilityService() {
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         val e = event ?: return
+        camSam(e)
         when (e.eventType) {
             AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED -> {
                 val pkg = e.packageName?.toString() ?: return
@@ -31,6 +32,44 @@ class ShadeGuardService : AccessibilityService() {
             else -> return
         }
         if (ShadeGuard.shouldBlock()) ShadeGuard.dismiss(this)
+    }
+
+    // ---------- okienko ostrzeżeń CamSam ----------
+    private var camVisible = false
+    private var lastRead = 0L
+
+    private fun camSam(e: AccessibilityEvent) {
+        val pkg = e.packageName?.toString()
+        val fromCam = pkg != null && pkg.startsWith("com.camsam")
+        if (e.eventType == AccessibilityEvent.TYPE_WINDOWS_CHANGED || fromCam) {
+            val now = android.os.SystemClock.uptimeMillis()
+            if (!fromCam && now - lastRead < 300) return
+            lastRead = now
+            val win = try {
+                windows.firstOrNull { w -> w.root?.packageName?.toString()?.startsWith("com.camsam") == true }
+            } catch (_: Exception) {
+                null
+            }
+            val root = win?.root ?: (if (fromCam) e.source else null)
+            if (root == null) {
+                if (camVisible) {
+                    camVisible = false
+                    pl.mati.carlauncher.data.AlertRepository.onOverlayGone()
+                }
+                return
+            }
+            camVisible = true
+            val out = ArrayList<String>()
+            collect(root, out, 0)
+            pl.mati.carlauncher.data.AlertRepository.onOverlay(root.packageName?.toString() ?: pkg ?: "com.camsam", out)
+        }
+    }
+
+    private fun collect(n: android.view.accessibility.AccessibilityNodeInfo?, out: MutableList<String>, depth: Int) {
+        if (n == null || depth > 12 || out.size > 30) return
+        n.text?.toString()?.let { out += it }
+        n.contentDescription?.toString()?.let { out += it }
+        for (i in 0 until n.childCount) collect(n.getChild(i), out, depth + 1)
     }
 
     override fun onInterrupt() {}

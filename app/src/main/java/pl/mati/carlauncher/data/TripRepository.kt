@@ -5,6 +5,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
@@ -24,23 +25,40 @@ object TripRepository {
         val movingS: Long,
         val maxSpeed: Int,
         val maxCoolant: Int?,
+        /** Gwałtowne przyspieszenia / hamowania (z prędkości GPS). */
+        val accel: Int = 0,
+        val brake: Int = 0,
     ) {
         val avgKmh: Double get() = if (movingS > 0) distanceM / movingS * 3.6 else 0.0
         val durationS: Long get() = (end - start) / 1000
+        /** Płynność jazdy 0–100: mniej gwałtownych manewrów na 10 km = więcej punktów. */
+        val score: Int get() = smoothness(accel, brake, distanceM)
 
         fun toJson(): JSONObject = JSONObject()
             .put("s", start).put("e", end).put("d", distanceM).put("m", movingS).put("v", maxSpeed)
-            .put("c", maxCoolant ?: JSONObject.NULL)
+            .put("c", maxCoolant ?: JSONObject.NULL).put("ha", accel).put("hb", brake)
 
         companion object {
             fun from(o: JSONObject) = Trip(
                 o.getLong("s"), o.getLong("e"), o.getDouble("d"), o.getLong("m"), o.getInt("v"),
                 if (o.isNull("c")) null else o.getInt("c"),
+                o.optInt("ha", 0), o.optInt("hb", 0),
             )
         }
     }
 
-    data class Summary(val count: Int, val distanceM: Double, val durationS: Long)
+    fun smoothness(accel: Int, brake: Int, distanceM: Double): Int {
+        val per10 = (accel + brake * 1.5) / (maxOf(distanceM / 1000.0, 5.0) / 10.0)
+        return (100 - per10 * 12).toInt().coerceIn(0, 100)
+    }
+
+    data class Summary(
+        val count: Int, val distanceM: Double, val durationS: Long,
+        val movingS: Long = 0, val maxSpeed: Int = 0, val accel: Int = 0, val brake: Int = 0,
+    ) {
+        val avgKmh: Double get() = if (movingS > 0) distanceM / movingS * 3.6 else 0.0
+        val score: Int get() = smoothness(accel, brake, distanceM)
+    }
 
     val trips = MutableStateFlow<List<Trip>>(emptyList())
     val current = MutableStateFlow<Trip?>(null)
@@ -82,6 +100,36 @@ object TripRepository {
         started = true
         load()
         scope.launch { loop() }
+        scope.launch { harshLoop() }
+    }
+
+    /**
+     * Gwałtowne manewry z prędkości GPS (1 odczyt/s): przyspieszenie > 3 m/s² albo
+     * hamowanie < −3,5 m/s² (ok. 13 km/h na sekundę). Między zdarzeniami min. 4 s.
+     */
+    private suspend fun harshLoop() {
+        var lastV = -1f
+        var lastT = 0L
+        var lastEvent = 0L
+        LocationRepository.location.collect { l ->
+            if (l == null || !l.hasSpeed()) return@collect
+            val t = l.time
+            val v = l.speed
+            val dt = (t - lastT) / 1000f
+            if (lastV >= 0 && dt in 0.5f..2.5f && l.accuracy < 30f) {
+                val a = (v - lastV) / dt
+                val cur = current.value
+                if (cur != null && t - lastEvent > 4000) {
+                    if (a > 3.0f && v > 3f) {
+                        current.update { c -> c?.copy(accel = c.accel + 1) }; lastEvent = t
+                    } else if (a < -3.5f && lastV > 4f) {
+                        current.update { c -> c?.copy(brake = c.brake + 1) }; lastEvent = t
+                    }
+                }
+            }
+            lastV = v
+            lastT = t
+        }
     }
 
     private suspend fun loop() {
@@ -111,13 +159,15 @@ object TripRepository {
                 continue
             }
             val moving = spd >= 3
-            current.value = cur.copy(
-                end = now,
-                distanceM = cur.distanceM + if (moving || gpsDelta > 5f) delta else 0.0,
-                movingS = cur.movingS + if (moving) 2 else 0,
-                maxSpeed = max(cur.maxSpeed, spd),
-                maxCoolant = listOfNotNull(cur.maxCoolant, obd.coolant).maxOrNull(),
-            )
+            current.update { c ->
+                c?.copy(
+                    end = now,
+                    distanceM = c.distanceM + if (moving || gpsDelta > 5f) delta else 0.0,
+                    movingS = c.movingS + if (moving) 2 else 0,
+                    maxSpeed = max(c.maxSpeed, spd),
+                    maxCoolant = listOfNotNull(c.maxCoolant, obd.coolant).maxOrNull(),
+                )
+            }
             if (moving) ServiceRepository.addMeters(delta)
             recordPoint(reset = false)
             if (!moving) {
@@ -173,7 +223,20 @@ object TripRepository {
 
     fun summary(sinceMs: Long): Summary {
         val list = trips.value.filter { it.start >= sinceMs } + listOfNotNull(current.value?.takeIf { it.start >= sinceMs })
-        return Summary(list.size, list.sumOf { it.distanceM }, list.sumOf { it.durationS })
+        return Summary(
+            list.size, list.sumOf { it.distanceM }, list.sumOf { it.durationS },
+            list.sumOf { it.movingS }, list.maxOfOrNull { it.maxSpeed } ?: 0, list.sumOf { it.accel }, list.sumOf { it.brake },
+        )
+    }
+
+    /** Kilometry w kolejnych dniach od [fromMs] (np. tydzień: 7 wartości). */
+    fun perDay(fromMs: Long, days: Int): List<Double> {
+        val all = trips.value + listOfNotNull(current.value)
+        return (0 until days).map { i ->
+            val a = fromMs + i * 86_400_000L
+            val b = a + 86_400_000L
+            all.filter { it.start in a until b }.sumOf { it.distanceM } / 1000.0
+        }
     }
 
     fun startOfDay(): Long = Calendar.getInstance().apply {

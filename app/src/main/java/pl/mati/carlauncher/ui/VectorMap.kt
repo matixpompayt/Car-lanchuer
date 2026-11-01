@@ -307,7 +307,7 @@ private class VectorHolder(ctx: Context) {
         null
     }
 
-    private fun snap(l: android.location.Location, raw: LatLng, acc: Float): Pair<LatLng, Float?>? {
+    private fun snap(l: android.location.Location, raw: LatLng, acc: Float, commit: Boolean = true): Pair<LatLng, Float?>? {
         val m = map ?: return null
         if (roadLayers.isEmpty()) return null
         val pt = m.projection.toScreenLocation(raw)
@@ -321,7 +321,7 @@ private class VectorHolder(ctx: Context) {
             return null
         }
         if (feats.isEmpty()) {
-            roadKey = null
+            if (commit) roadKey = null
             return null
         }
         val moving = l.hasBearing() && l.hasSpeed() && l.speed > 2f
@@ -379,10 +379,10 @@ private class VectorHolder(ctx: Context) {
             }
         }
         if (best == Double.MAX_VALUE) {
-            roadKey = null
+            if (commit) roadKey = null
             return null
         }
-        roadKey = bestKey
+        if (commit) roadKey = bestKey
         return LatLng(lat0 + bestY / ky, lon0 + bestX / kx) to bestBearing
     }
 
@@ -445,7 +445,25 @@ private class VectorHolder(ctx: Context) {
         val now = android.os.SystemClock.uptimeMillis()
         val dt = if (lastFix == 0L) 1000L else (now - lastFix).coerceIn(300L, 1500L)
         lastFix = now
-        m.easeCamera(CameraUpdateFactory.newCameraPosition(cameraFor(l, pos)), dt.toInt(), false)
+        takeBearing(l)
+        m.easeCamera(CameraUpdateFactory.newCameraPosition(cameraFor(l, predict(l, pos, dt))), dt.toInt(), false)
+    }
+
+    /**
+     * Gdzie auto będzie przy następnym odczycie GPS: kamera jedzie tam przez czas między odczytami,
+     * więc auto na mapie jest tam, gdzie naprawdę jest (bez sekundowego spóźnienia). Na łuku – dociągnięte do drogi.
+     */
+    private fun predict(l: android.location.Location, pos: LatLng, dtMs: Long): LatLng {
+        if (!l.hasSpeed() || l.speed < 2.5f) return pos
+        val d = (l.speed * dtMs / 1000.0 * 0.9).coerceAtMost(40.0)
+        val b = Math.toRadians(lastBearing.toDouble())
+        val p = LatLng(
+            pos.latitude + d * Math.cos(b) / 110_540.0,
+            pos.longitude + d * Math.sin(b) / (111_320.0 * Math.cos(Math.toRadians(pos.latitude))),
+        )
+        if (!Prefs.mapSnap.value || roadKey == null) return p
+        val probe = android.location.Location(l).apply { latitude = p.latitude; longitude = p.longitude }
+        return snap(probe, p, 15f, commit = false)?.first ?: p
     }
 
     /** Dzień / noc: kolory mapy, budynków i obwódki trasy. */

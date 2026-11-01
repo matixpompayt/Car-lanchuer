@@ -19,7 +19,7 @@ class CarNotificationListener : NotificationListenerService() {
             activeNotifications?.forEach {
                 NavRepository.onPosted(this, it)
                 NotificationRepository.onPosted(this, it)
-                AlertRepository.onPosted(it)
+                AlertRepository.onPosted(this, it)
                 SourceInfoRepository.onPosted(this, it)
             }
         } catch (_: Exception) {
@@ -29,7 +29,7 @@ class CarNotificationListener : NotificationListenerService() {
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         NavRepository.onPosted(this, sbn)
         NotificationRepository.onPosted(this, sbn)
-        AlertRepository.onPosted(sbn)
+        AlertRepository.onPosted(this, sbn)
         SourceInfoRepository.onPosted(this, sbn)
     }
 

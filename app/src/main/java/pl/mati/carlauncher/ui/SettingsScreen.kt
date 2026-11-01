@@ -317,7 +317,7 @@ private fun LazyListScope.lookPage() {
                     "Usługa dostępności CAR OS",
                     if (on) "Włączona – zasłona powiadomień zamyka się od razu"
                     else "Android ${android.os.Build.VERSION.RELEASE} pozwala zamknąć zasłonę tylko przez nią. " +
-                        "Dotknij → Ułatwienia dostępu → „CAR OS – blokada paska systemowego” → włącz",
+                        "Dotknij → Ułatwienia dostępu → „CAR OS – pasek systemowy i CamSam” → włącz",
                     onClick = { pl.mati.carlauncher.data.ShadeGuard.openAccessibilitySettings(ctx) },
                 ) { CarSwitch(on) }
                 if (!on && android.os.Build.VERSION.SDK_INT >= 33) SettingRow(
@@ -636,10 +636,45 @@ private fun LazyListScope.speedSection() {
 }
 
 private fun LazyListScope.alertsSection() {
-    item { SectionLabel("Ostrzeżenia drogowe (CamSam / Yanosik)") }
+    item { SectionLabel("Fotoradary i ostrzeżenia (CamSam)") }
     item {
         val v by Prefs.roadAlerts.collectAsState()
-        SettingRow("Pokazuj ostrzeżenia", "Fotoradary, kontrole i zdarzenia z powiadomień CamSam na każdym ekranie", onClick = { Prefs.setRoadAlerts(!v) }) { CarSwitch(v) }
+        SettingRow("Pokazuj ostrzeżenia", "Fotoradary i kontrole z CamSam / CamSam PLUS na każdym ekranie CAR OS", onClick = { Prefs.setRoadAlerts(!v) }) { CarSwitch(v) }
+    }
+    item {
+        val ctx = LocalContext.current
+        val a11y by pl.mati.carlauncher.data.ShadeGuard.connected.collectAsState()
+        val seen by AlertRepository.lastSeen.collectAsState()
+        val cam = remember { AlertRepository.installed(ctx) }
+        var notifOk by remember { mutableStateOf(false) }
+        LaunchedEffect(Unit) {
+            while (true) {
+                notifOk = androidx.core.app.NotificationManagerCompat.getEnabledListenerPackages(ctx).contains(ctx.packageName)
+                kotlinx.coroutines.delay(2000)
+            }
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            SettingRow(
+                "CamSam w radiu",
+                cam?.let { "Zainstalowany ($it)" } ?: "Nie znaleziono – zainstaluj CamSam PLUS w radiu (Sklep Play)",
+            ) { StatusText(cam != null) }
+            SettingRow(
+                "1. Dostęp do powiadomień",
+                "CAR OS czyta powiadomienia CamSam (odległość do fotoradaru)",
+                onClick = { Launch.start(ctx, Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS")) },
+            ) { StatusText(notifOk) }
+            SettingRow(
+                "2. Okienko CamSam (ułatwienia dostępu)",
+                "Najpewniejsze: CAR OS czyta okienko ostrzeżeń CamSam. Włącz „CAR OS – pasek systemowy i CamSam”",
+                onClick = { pl.mati.carlauncher.data.ShadeGuard.openAccessibilitySettings(ctx) },
+            ) { StatusText(a11y) }
+            Text(
+                "W CamSam włącz pracę w tle i okienko ostrzeżeń (tryb widżetu / nakładka na inne aplikacje). " +
+                    "Ostatni sygnał z CamSam: " + (if (seen == 0L) "jeszcze nic" else formatTime(seen)),
+                fontSize = 15.sp, color = CarColors.Muted,
+            )
+            SecondaryButton("Pokaż próbne ostrzeżenie", { AlertRepository.test() }, height = 52.dp)
+        }
     }
     item {
         val raw by AlertRepository.raw.collectAsState()
@@ -647,13 +682,13 @@ private fun LazyListScope.alertsSection() {
             Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(CarColors.Card).padding(horizontal = 20.dp, vertical = 14.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Text("Ostatnie powiadomienia CamSam", fontSize = 19.sp, fontWeight = FontWeight.SemiBold)
+            Text("Co ostatnio przyszło z CamSam", fontSize = 19.sp, fontWeight = FontWeight.SemiBold)
             if (raw.isEmpty()) {
-                Text("Brak – uruchom CamSam w tle i włącz dostęp do powiadomień dla CAR OS.", fontSize = 15.sp, color = CarColors.Muted)
+                Text("Nic – uruchom CamSam i podjedź w pobliże fotoradaru albo poczekaj na komunikat.", fontSize = 15.sp, color = CarColors.Muted)
             }
             raw.forEach { r ->
                 Text(
-                    "${formatTime(r.time)} · ${r.app}${if (r.ongoing) " (stałe)" else ""}: ${r.title} | ${r.text}",
+                    "${formatTime(r.time)} · ${r.app} (${r.source}${if (r.ongoing) ", stałe" else ""}): ${r.title} | ${r.text}",
                     fontSize = 15.sp, color = CarColors.Text2,
                 )
             }
