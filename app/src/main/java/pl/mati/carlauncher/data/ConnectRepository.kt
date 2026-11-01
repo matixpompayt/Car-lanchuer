@@ -68,10 +68,78 @@ object ConnectRepository {
         if (paired.value) {
             scope.launch {
                 delay(20_000) // po starcie radia: internet, GPS
+                ensureCommute()
                 publishStatus()
                 publishBackup(force = false)
             }
         }
+        // auto na żywo w telefonie: pozycja co minutę w czasie jazdy
+        scope.launch {
+            LocationRepository.location.collect { l -> if (l != null) maybeLive(l) }
+        }
+    }
+
+    // ---------- auto na żywo ----------
+    private var lastLive = 0L
+    private var liveMoving = false
+
+    private fun maybeLive(l: android.location.Location) {
+        if (!Prefs.shareLive.value || key(false) == null) return
+        val now = System.currentTimeMillis()
+        val moving = l.hasSpeed() && l.speed > 2f
+        if (!moving) return
+        if (now - lastLive < 60_000) return
+        lastLive = now
+        liveMoving = true
+        send(
+            JSONObject().put("type", "live").put("lat", l.latitude).put("lon", l.longitude)
+                .put("spd", (l.speed * 3.6).toInt()).put("brg", l.bearing.toInt()).put("t", now).put("m", true),
+        )
+    }
+
+    /** Koniec jazdy: telefon przestaje pokazywać „auto w drodze”. */
+    fun publishLiveStop() {
+        if (!liveMoving || key(false) == null) return
+        liveMoving = false
+        val l = LocationRepository.location.value
+        send(
+            JSONObject().put("type", "live").put("lat", l?.latitude ?: 0.0).put("lon", l?.longitude ?: 0.0)
+                .put("spd", 0).put("t", System.currentTimeMillis()).put("m", false),
+        )
+    }
+
+    // ---------- czas dojazdu do pracy (dla przypomnień w telefonie) ----------
+    private fun ensureCommute() {
+        val sp = Prefs.store ?: return
+        val p = Prefs.profile.value
+        if (p.home.isBlank() || p.work.isBlank()) return
+        val sig = p.home + "|" + p.work
+        if (sp.getString("commute_key", null) == sig && System.currentTimeMillis() - sp.getLong("commute_at", 0) < 7 * 86_400_000L) return
+        scope.launch {
+            val h = if (p.homeLat != null && p.homeLon != null) RouteRepository.Place("Dom", p.home, p.homeLat, p.homeLon) else RouteRepository.geocode(p.home)
+            val w = if (p.workLat != null && p.workLon != null) RouteRepository.Place("Praca", p.work, p.workLat, p.workLon) else RouteRepository.geocode(p.work)
+            if (h == null || w == null) return@launch
+            val d = RouteRepository.routeDuration(h.lat, h.lon, w.lat, w.lon) ?: return@launch
+            sp.edit().putString("commute_key", sig).putLong("commute_at", System.currentTimeMillis()).putInt("commute_s", d.toInt()).apply()
+            publishStatusSoon()
+        }
+    }
+
+    /** Zmiany na najbliższe 14 dni (początek, koniec, nazwa) – telefon przypomina przed pracą. */
+    private fun shiftsJson(): JSONArray {
+        val out = JSONArray()
+        val today = java.time.LocalDate.now()
+        val zone = java.time.ZoneId.systemDefault()
+        for (i in -1..13) {
+            val d = today.plusDays(i.toLong())
+            val s = WorkSchedule.shiftStartingOn(d) ?: continue
+            if (s.off) continue
+            val start = d.atStartOfDay(zone).toInstant().toEpochMilli() + s.start * 60_000L
+            var dur = (s.end - s.start) * 60_000L
+            if (dur <= 0) dur += 24 * 3_600_000L
+            out.put(JSONObject().put("s", start).put("e", start + dur).put("n", s.name).put("h", s.hours))
+        }
+        return out
     }
 
     // ---------- klucz i kod QR ----------
@@ -180,6 +248,8 @@ object ConnectRepository {
                 .put("body", Prefs.carBody.value).put("paint", Prefs.carPaint.value)
                 .put("svc", svc).put("items", items).put("trips", trips).put("favs", favs)
                 .put("fuel", FuelRepository.toJson())
+                .put("shifts", try { shiftsJson() } catch (_: Exception) { JSONArray() })
+                .put("commute", Prefs.store?.getInt("commute_s", 0)?.takeIf { it > 0 } ?: JSONObject.NULL)
                 .put("home", placeJson(p.home, p.homeLat, p.homeLon))
                 .put("work", placeJson(p.work, p.workLat, p.workLon))
                 .put("ver", BuildConfig.VERSION_NAME)

@@ -102,6 +102,15 @@ object RouteRepository {
     /** Adres → miejsce (pierwszy wynik). Wołać poza wątkiem głównym. */
     fun geocode(address: String): Place? = try { searchPlaces(address, false).firstOrNull() } catch (_: Exception) { null }
 
+    /** Czas przejazdu A → B w sekundach (OSRM) albo null. Wołać poza wątkiem głównym. */
+    fun routeDuration(fromLat: Double, fromLon: Double, toLat: Double, toLon: Double): Double? = try {
+        val url = String.format(Locale.US, "https://router.project-osrm.org/route/v1/driving/%.6f,%.6f;%.6f,%.6f?overview=false", fromLon, fromLat, toLon, toLat)
+        val json = JSONObject(get(url))
+        if (json.optString("code") != "Ok") null else json.getJSONArray("routes").getJSONObject(0).getDouble("duration")
+    } catch (_: Exception) {
+        null
+    }
+
     /** Sama linia trasy A → B (OSRM, uproszczona). Wołać poza wątkiem głównym. */
     fun routeLine(fromLat: Double, fromLon: Double, toLat: Double, toLon: Double): List<GeoPoint> {
         val url = String.format(Locale.US, "https://router.project-osrm.org/route/v1/driving/%.6f,%.6f;%.6f,%.6f?overview=simplified&geometries=polyline6", fromLon, fromLat, toLon, toLat)

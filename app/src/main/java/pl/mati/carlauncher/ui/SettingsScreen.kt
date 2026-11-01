@@ -1050,6 +1050,10 @@ private fun LazyListScope.connectPage() {
         }
     }
     item {
+        val v by Prefs.shareLive.collectAsState()
+        SettingRow("Auto na żywo w telefonie", "W czasie jazdy pozycja auta co minutę w CAR OS Connect (np. gdy ktoś inny jedzie autem)", onClick = { Prefs.setShareLive(!v) }) { CarSwitch(v) }
+    }
+    item {
         var gen by remember { mutableIntStateOf(0) }
         val sent by ConnectRepository.lastSent.collectAsState()
         val qr = remember(gen) { ParkingRepository.qr(ConnectRepository.payload(), 520)?.asImageBitmap() }

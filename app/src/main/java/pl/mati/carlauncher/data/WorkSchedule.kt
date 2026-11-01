@@ -85,12 +85,14 @@ object WorkSchedule {
     fun setMode(m: String) {
         mode.value = m
         Prefs.store?.edit()?.putString("work_mode", m)?.apply()
+        ConnectRepository.publishStatusSoon()
     }
 
     fun toggleDay(d: Int) {
         val n = if (d in days.value) days.value - d else days.value + d
         days.value = n
         Prefs.store?.edit()?.putString("work_days", n.sorted().joinToString(","))?.apply()
+        ConnectRepository.publishStatusSoon()
     }
 
     fun setCustom(monday: LocalDate, shift: Shift) {
@@ -102,6 +104,7 @@ object WorkSchedule {
         val o = JSONObject()
         m.forEach { (k, s) -> o.put(k.toString(), JSONObject().put("k", s.kind).put("s", s.start).put("e", s.end)) }
         Prefs.store?.edit()?.putString("work_custom", o.toString())?.apply()
+        ConnectRepository.publishStatusSoon()
     }
 
     fun mondayOf(d: LocalDate): LocalDate = d.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
