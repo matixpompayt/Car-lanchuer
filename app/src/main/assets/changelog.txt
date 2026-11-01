@@ -2,7 +2,7 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
-## next
+## 1.57 · 2026-11-01
 Lista zmian
 - Ustawienia → System → Aktualizacja i lista zmian: wszystko, co weszło w kolejnych wersjach
 - Po aktualizacji CAR OS sam pokazuje, co się zmieniło
