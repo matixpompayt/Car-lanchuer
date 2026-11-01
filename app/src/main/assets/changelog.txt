@@ -2,7 +2,7 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
-## next
+## 1.59 · 2026-11-01
 Własna nawigacja z głosem
 - CAR OS prowadzi sam: strzałka manewru, odległość, ulica i następny manewr na mapie
 - Komunikaty głosowe po polsku („Za 300 metrów skręć w prawo w …”), muzyka przycisza się na czas komunikatu
