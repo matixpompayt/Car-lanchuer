@@ -41,7 +41,7 @@ import pl.mati.carlauncher.data.Prefs
 
 @Composable
 fun VehicleScreen() {
-    val d by ObdManager.data.collectAsState()
+    val d by pl.mati.carlauncher.data.Vehicle.data.collectAsState()
     val profile by Prefs.profile.collectAsState()
     val gps by LocationRepository.gpsSpeed.collectAsState()
     val accent = LocalAccent.current

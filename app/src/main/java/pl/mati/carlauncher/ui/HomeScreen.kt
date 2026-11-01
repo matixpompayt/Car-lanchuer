@@ -260,7 +260,7 @@ val TILE_DEFS = listOf(
 
 @Composable
 private fun VehicleTiles(modifier: Modifier) {
-    val d by ObdManager.data.collectAsState()
+    val d by pl.mati.carlauncher.data.Vehicle.data.collectAsState()
     val gps by LocationRepository.gpsSpeed.collectAsState()
     val keysStr by Prefs.homeTiles.collectAsState()
     val temp by WeatherRepository.temperature.collectAsState()

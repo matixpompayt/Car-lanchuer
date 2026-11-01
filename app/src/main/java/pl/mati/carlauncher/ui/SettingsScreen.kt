@@ -568,9 +568,20 @@ private fun LazyListScope.carPage() {
             }
         }
     }
+    item { SectionLabel("Dane z radia (CAN) – bez adaptera") }
+    item {
+        val maps by pl.mati.carlauncher.data.CanRepository.mappings.collectAsState()
+        val vals by pl.mati.carlauncher.data.CanRepository.values.collectAsState()
+        SettingRow(
+            "Skaner danych z radia",
+            if (maps.isEmpty()) "Odczyt obrotów, temperatur, paliwa itd. z dekodera CAN radia – znajdź i przypisz wartości"
+            else maps.keys.joinToString(" · ") { f -> f.label + (vals[f]?.let { ": " + pl.mati.carlauncher.data.CanRepository.fmt(Math.round(it * 10) / 10.0) } ?: "") },
+            onClick = { CanScanner.open.value = true },
+        ) { Chevron() }
+    }
     item { SectionLabel("Dane na żywo") }
     item {
-        val d by ObdManager.data.collectAsState()
+        val d by pl.mati.carlauncher.data.Vehicle.data.collectAsState()
         val gps by LocationRepository.gpsSpeed.collectAsState()
         val cells = listOf(
             "Prędkość" to ((d.speed ?: gps)?.let { "$it km/h" } ?: "--"),
@@ -579,6 +590,11 @@ private fun LazyListScope.carPage() {
             "MAP" to (d.mapKpa?.let { "$it kPa" } ?: "--"),
             "Obciążenie" to (d.load?.let { "$it %" } ?: "--"),
             "Napięcie" to (d.voltage?.let { "${it.pl1()} V" } ?: "--"),
+        ) + listOfNotNull(
+            d.outside?.let { "Na zewnątrz" to "$it °C" },
+            d.fuelPct?.let { "Paliwo" to "$it %" },
+            d.rangeKm?.let { "Zasięg" to "$it km" },
+            d.odoKm?.let { "Przebieg" to "$it km" },
         )
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             cells.chunked(3).forEach { row ->

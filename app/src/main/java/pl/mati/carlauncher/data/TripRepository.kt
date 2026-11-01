@@ -92,7 +92,7 @@ object TripRepository {
         while (true) {
             delay(2000)
             val now = System.currentTimeMillis()
-            val obd = ObdManager.data.value
+            val obd = Vehicle.data.value
             val spd = obd.speed ?: LocationRepository.gpsSpeed.value ?: 0
             val meters = LocationRepository.tripMeters.value
             val gpsDelta = (meters - lastMeters).coerceAtLeast(0f)

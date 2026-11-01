@@ -142,6 +142,7 @@ private fun Shell() {
         ControlCenter()
         VolumeHud()
         ServiceAlertOverlay()
+        CanScannerOverlay()
     }
 }
 

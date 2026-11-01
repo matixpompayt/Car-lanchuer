@@ -42,12 +42,19 @@ object BroadcastProbe {
         "android.bluetooth.a2dp-sink.profile.action.PLAYING_STATE_CHANGED",
     )
 
+    /** Dane auta z dekodera CAN (obroty, temperatury, paliwo, drzwi…). */
+    private val CAN_INTEREST = Regex("(can|mcu|car|speed|rpm|engine|motor|fuel|oil|temp|water|odo|mile|volt|batt|door|gear|reverse|tpms|obd|ecu|data|status|trip|info|report|update|changed|notify)", RegexOption.IGNORE_CASE)
+
     private val INTEREST = Regex("(radio|rds|fm|freq|band|bt|blue|a2dp|avrcp|music|media|track|song|id3|play|meta|info|report|station|ill|light|lamp|night|day|dimm|backl|mcu|car|acc|canbus)", RegexOption.IGNORE_CASE)
 
     fun start(ctx: Context, pkg: String?) {
         appCtx = ctx.applicationContext
         if (pkg == null) {
             register(STANDARD)
+            scope.launch {
+                val can = canActions(ctx, null)
+                withContext(Dispatchers.Main) { register((STANDARD + can).distinct()) }
+            }
             return
         }
         scope.launch {
@@ -66,12 +73,39 @@ object BroadcastProbe {
                 sp?.edit()?.putString("probe_actions", arr.toString())?.putString("probe_key", cacheKey)?.apply()
                 found
             }
-            withContext(Dispatchers.Main) { register((STANDARD + list).distinct()) }
+            val can = canActions(ctx, pkg)
+            withContext(Dispatchers.Main) { register((STANDARD + list + can).distinct()) }
         }
     }
 
+    /** Komunikaty aplikacji systemowych od CAN / MCU (nazwy z ich kodu, z pamięcią podręczną). */
+    private fun canActions(ctx: Context, radioPkg: String?): List<String> {
+        val pkgs = CanRepository.canPackages(ctx).filter { it != radioPkg && it != ctx.packageName }
+        CanRepository.sources.value = CanRepository.sources.value.copy(canPackages = pkgs)
+        if (pkgs.isEmpty()) return emptyList()
+        val sp = Prefs.store
+        val key = "can1:" + pkgs.joinToString(",") { p ->
+            p + ":" + (try { ctx.packageManager.getPackageInfo(p, 0).longVersionCode } catch (_: Exception) { -1L })
+        }
+        sp?.getString("probe_can_actions", null)?.takeIf { sp.getString("probe_can_key", null) == key }?.let { c ->
+            val a = JSONArray(c)
+            return (0 until a.length()).map { a.getString(it) }
+        }
+        scanning.value = true
+        val out = LinkedHashSet<String>()
+        for (p in pkgs) {
+            try { out += scan(ctx, p, CAN_INTEREST) } catch (_: Exception) {}
+            if (out.size > 1500) break
+        }
+        scanning.value = false
+        val arr = JSONArray(); out.forEach { arr.put(it) }
+        sp?.edit()?.putString("probe_can_actions", arr.toString())?.putString("probe_can_key", key)?.apply()
+        return out.toList()
+    }
+
     /** Szuka w plikach .dex aplikacji stałych wyglądających na nazwy komunikatów. */
-    private fun scan(ctx: Context, pkg: String): List<String> {
+    private fun scan(ctx: Context, pkg: String, interest: Regex = INTEREST): List<String> {
+        val own = pkg.split('.').take(2).joinToString(".").lowercase() + "."
         val ai = ctx.packageManager.getApplicationInfo(pkg, 0)
         val files = listOfNotNull(ai.sourceDir) + (ai.splitSourceDirs?.toList() ?: emptyList())
         val out = LinkedHashSet<String>()
@@ -89,8 +123,9 @@ object BroadcastProbe {
                         val lower = s.lowercase()
                         val looksAction = lower.contains("action") || lower.contains("broadcast") || lower.contains(".report") ||
                             lower.contains(".info") || lower.contains("changed") || lower.contains("update") || lower.contains("notify") ||
-                            lower.startsWith("com.ts") || lower.startsWith("com.tw.") || lower.startsWith("com.android.music")
-                        if (looksAction && INTEREST.containsMatchIn(s)) out += s
+                            lower.startsWith("com.ts") || lower.startsWith("com.tw.") || lower.startsWith("com.android.music") ||
+                            (interest === CAN_INTEREST && lower.startsWith(own))
+                        if (looksAction && interest.containsMatchIn(s)) out += s
                         if (out.size >= 400) return out.toList()
                     }
                 }
@@ -103,6 +138,7 @@ object BroadcastProbe {
         val ctx = appCtx ?: return
         receiver?.let { try { ctx.unregisterReceiver(it) } catch (_: Exception) {} }
         actions.value = list
+        CanRepository.sources.value = CanRepository.sources.value.copy(actions = list.size)
         val filter = IntentFilter()
         list.forEach { filter.addAction(it) }
         val r = object : BroadcastReceiver() {
@@ -124,6 +160,7 @@ object BroadcastProbe {
             if (pairs.isEmpty()) "" else " → " + pairs.entries.joinToString(", ") { "${it.key}=${it.value}" }.take(300)
         log.value = (listOf(line) + log.value).take(40)
         HeadlightDetector.onBroadcast(action, pairs)
+        CanRepository.observeBundle(action, pairs)
         if (action.endsWith("headsetclient.profile.action.AG_EVENT")) {
             PhoneStatusRepository.onAgEvent(pairs)
             return
@@ -147,6 +184,13 @@ object BroadcastProbe {
             null -> "null"
             is Array<*> -> v.joinToString("|")
             is IntArray -> v.joinToString("|")
+            is ByteArray -> v.joinToString("|") { (it.toInt() and 0xFF).toString() }
+            is ShortArray -> v.joinToString("|")
+            is LongArray -> v.joinToString("|")
+            is FloatArray -> v.joinToString("|")
+            is DoubleArray -> v.joinToString("|")
+            is BooleanArray -> v.joinToString("|") { if (it) "1" else "0" }
+            is Collection<*> -> v.joinToString("|")
             else -> v.toString()
         }
     } catch (_: Exception) {

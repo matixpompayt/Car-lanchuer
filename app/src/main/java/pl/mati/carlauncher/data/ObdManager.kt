@@ -35,6 +35,11 @@ object ObdManager {
         val mapKpa: Int? = null,
         val baroKpa: Int? = null,
         val voltage: Float? = null,
+        // tylko z radia (dekoder CAN)
+        val outside: Int? = null,
+        val fuelPct: Int? = null,
+        val rangeKm: Int? = null,
+        val odoKm: Int? = null,
     ) {
         /** Doładowanie względne w barach: MAP - ciśnienie atmosferyczne (domyślnie 101 kPa). */
         val boostBar: Float?
