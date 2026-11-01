@@ -44,6 +44,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         pl.mati.carlauncher.data.CrashLog.install(this)
         Prefs.init(this)
+        pl.mati.carlauncher.data.Changelog.init(this)
         // tryb dzień/noc znany od pierwszej klatki (także ekran startowy)
         pl.mati.carlauncher.data.ThemeManager.start(this)
         pl.mati.carlauncher.data.CanRepository.init(this)

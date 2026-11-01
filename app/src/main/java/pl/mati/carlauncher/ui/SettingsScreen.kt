@@ -949,7 +949,7 @@ private fun LazyListScope.systemPage() {
             is UpdateManager.State.Downloading -> "Pobieranie ${s.r.name}…"
             else -> "CAR OS ${UpdateManager.currentVersion}"
         }
-        SettingRow("Aktualizacja systemu", sub, onClick = { UiState.settingsPage.value = "update" }) {
+        SettingRow("Aktualizacja i lista zmian", sub, onClick = { UiState.settingsPage.value = "update" }) {
             if (st is UpdateManager.State.Available || st is UpdateManager.State.Ready) {
                 Box(Modifier.clip(RoundedCornerShape(10.dp)).background(LocalAccent.current).padding(horizontal = 10.dp, vertical = 4.dp)) {
                     Text("NOWA", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = CarColors.Bg)
@@ -1116,6 +1116,14 @@ private fun LazyListScope.updatePage() {
         val v by Prefs.updateWifiOnly.collectAsState()
         SettingRow("Pobieraj tylko przez Wi-Fi", "Oszczędza transfer z karty SIM", onClick = { Prefs.setUpdateWifiOnly(!v) }) { CarSwitch(v) }
     }
+    item { SectionLabel("Lista zmian") }
+    item {
+        val list by pl.mati.carlauncher.data.Changelog.entries.collectAsState()
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            if (list.isEmpty()) Text("Brak listy zmian w tej wersji.", fontSize = 17.sp, color = CarColors.Muted)
+            list.forEach { ChangelogCard(it) }
+        }
+    }
 }
 
 @Composable
@@ -1130,7 +1138,9 @@ private fun ReleaseCard(r: UpdateManager.Release, actions: @Composable () -> Uni
                 Text("CAR OS ${r.name}", fontSize = 22.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                 if (r.sizeBytes > 0) Text("${(r.sizeBytes / 1048576f).pl1()} MB", fontSize = 17.sp, color = CarColors.Muted)
             }
-            if (r.notes.isNotBlank()) Text(r.notes.take(600), fontSize = 18.sp, color = CarColors.Text2)
+            val parsed = remember(r.notes) { pl.mati.carlauncher.data.Changelog.fromBody(r.name, r.notes) }
+            if (parsed != null) ChangelogPoints(parsed)
+            else if (r.notes.isNotBlank()) Text(r.notes.take(600), fontSize = 18.sp, color = CarColors.Text2)
             actions()
         }
     }

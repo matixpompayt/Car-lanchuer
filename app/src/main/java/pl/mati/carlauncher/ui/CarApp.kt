@@ -143,6 +143,7 @@ private fun Shell() {
         VolumeHud()
         ServiceAlertOverlay()
         CanScannerOverlay()
+        WhatsNewOverlay()
     }
 }
 
