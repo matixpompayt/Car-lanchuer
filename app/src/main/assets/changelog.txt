@@ -2,7 +2,7 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
-## next
+## 1.61 · 2026-11-01
 Tankowania i spalanie
 - Nowy ekran Tankowania (Aplikacje → Tankowania): litry, kwota, przebieg, „do pełna”
 - Średnie spalanie z tankowań do pełna, koszt kilometra, wydatki w miesiącu
