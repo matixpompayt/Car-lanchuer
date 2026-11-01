@@ -262,8 +262,14 @@ private fun ColumnScope.PlannerPanel(p: RouteRepository.Plan, onAddStop: () -> U
             }
         }
 
-        SettingRow("Mapy Google w tle", "Głos prowadzi w tle, CAR OS wraca na ekran", onClick = { Prefs.setMapsInBackground(!bg) }) { CarSwitch(bg) }
-        if (bg && !canReturn) {
+        val engine by Prefs.navEngine.collectAsState()
+        SettingRow(
+            if (engine == "caros") "Prowadzi CAR OS" else "Prowadzą Mapy Google",
+            if (engine == "caros") "Strzałki na mapie i głos po polsku – dotknij, aby prowadziły Mapy Google" else "Dotknij, aby prowadził CAR OS (głos po polsku)",
+            onClick = { Prefs.setNavEngine(if (engine == "caros") "google" else "caros") },
+        ) { Text(if (engine == "caros") "CAR OS" else "Google", fontSize = 17.sp, fontWeight = FontWeight.SemiBold, color = accent) }
+        if (engine == "google") SettingRow("Mapy Google w tle", "Głos prowadzi w tle, CAR OS wraca na ekran", onClick = { Prefs.setMapsInBackground(!bg) }) { CarSwitch(bg) }
+        if (engine == "google" && bg && !canReturn) {
             SettingRow("Zezwól na powrót do CAR OS", "Wymagane: „Wyświetlanie nad innymi aplikacjami”", onClick = {
                 RouteRepository.requestReturnPermission(ctx); canReturn = RouteRepository.canReturn(ctx)
             }) { Text("Zezwól", fontSize = 17.sp, fontWeight = FontWeight.SemiBold, color = accent) }
@@ -274,7 +280,7 @@ private fun ColumnScope.PlannerPanel(p: RouteRepository.Plan, onAddStop: () -> U
         "Jedź",
         {
             canReturn = RouteRepository.canReturn(ctx)
-            if (bg && !canReturn) Toaster.show("Bez zgody „nad innymi aplikacjami” wrócisz do CAR OS przyciskiem HOME")
+            if (Prefs.navEngine.value == "google" && bg && !canReturn) Toaster.show("Bez zgody „nad innymi aplikacjami” wrócisz do CAR OS przyciskiem HOME")
             RouteRepository.start(ctx)
             UiState.go(Screen.HOME)
         },

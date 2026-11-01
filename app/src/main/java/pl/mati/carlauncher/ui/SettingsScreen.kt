@@ -276,6 +276,26 @@ private fun LazyListScope.lookPage() {
         val v by Prefs.mapHeadingUp.collectAsState()
         SettingRow("Mapa obraca się z kierunkiem jazdy", "Wyłączone = północ zawsze u góry", onClick = { Prefs.setMapHeadingUp(!v) }) { CarSwitch(v) }
     }
+    item { SectionLabel("Nawigacja") }
+    item {
+        val e by Prefs.navEngine.collectAsState()
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            ChoiceChip("Prowadzi CAR OS (głos po polsku)", e == "caros", Modifier.weight(1f)) { Prefs.setNavEngine("caros") }
+            ChoiceChip("Mapy Google w tle", e == "google", Modifier.weight(1f)) { Prefs.setNavEngine("google") }
+        }
+    }
+    item {
+        val ctx = LocalContext.current
+        val v by Prefs.navVoice.collectAsState()
+        val problem by pl.mati.carlauncher.data.NavVoice.problem.collectAsState()
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            SettingRow("Głos nawigacji", problem ?: "Komunikaty manewrów po polsku – muzyka przycisza się na czas komunikatu", onClick = { Prefs.setNavVoice(!v) }) { CarSwitch(v) }
+            SecondaryButton("Test głosu", {
+                pl.mati.carlauncher.data.NavVoice.init(ctx)
+                pl.mati.carlauncher.data.NavVoice.say("Za 300 metrów skręć w prawo w Jana Pawła II", force = true)
+            }, height = 52.dp)
+        }
+    }
     item {
         val v by Prefs.mapSnap.collectAsState()
         SettingRow("Auto zawsze na drodze", "Wygładza pozycję GPS: przyciąga auto do najbliższej drogi i nie pływa na postoju", onClick = { Prefs.setMapSnap(!v) }) { CarSwitch(v) }

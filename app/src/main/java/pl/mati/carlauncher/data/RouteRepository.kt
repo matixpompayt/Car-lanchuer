@@ -43,6 +43,7 @@ object RouteRepository {
         val cumulative: DoubleArray,
         val distanceM: Double,
         val durationS: Double,
+        val steps: List<Guidance.Step> = emptyList(),
         val id: Long = System.nanoTime(),
     )
 
@@ -225,6 +226,13 @@ object RouteRepository {
         route.value = r
         PlacesRepository.addRecent(p.dest)
         offRouteCount = 0
+        appCtx = ctx.applicationContext
+        if (ownGuidance) {
+            // prowadzi CAR OS: strzałki na mapie i głos po polsku, bez Map Google
+            Guidance.begin(ctx, r, rerouted = false)
+            startMonitor()
+            return
+        }
         startMonitor()
 
         // Wymuszenie wybranego wariantu w Mapach Google: punkty „przez” z wybranej trasy.
@@ -240,6 +248,11 @@ object RouteRepository {
 
     /** Anulowanie przez kierowcę: kończy też nawigację w Mapach Google. */
     fun cancel(ctx: Context) {
+        if (ownGuidance) {
+            stop()
+            pl.mati.carlauncher.ui.Toaster.show("Nawigacja zakończona")
+            return
+        }
         val hadGoogle = NavRepository.state.value != null
         stop()
         if (!hadGoogle) return
@@ -256,7 +269,11 @@ object RouteRepository {
         monitor?.cancel()
         route.value = null
         progress.value = null
+        Guidance.end()
     }
+
+    private var appCtx: Context? = null
+    private val ownGuidance get() = Prefs.navEngine.value == "caros"
 
     /** Czy Android pozwoli launcherowi wrócić na ekran z tła (zgoda „nad innymi aplikacjami”). */
     fun canReturn(ctx: Context) = Settings.canDrawOverlays(ctx)
@@ -315,7 +332,7 @@ object RouteRepository {
             add(String.format(Locale.US, "%.6f,%.6f", dest.lon, dest.lat))
         }.joinToString(";")
         val alt = if (stops.isEmpty()) "&alternatives=3" else ""
-        val json = JSONObject(get("https://router.project-osrm.org/route/v1/driving/$coords?overview=full&geometries=polyline6$alt"))
+        val json = JSONObject(get("https://router.project-osrm.org/route/v1/driving/$coords?overview=full&geometries=polyline6&steps=true$alt"))
         if (json.optString("code") != "Ok") throw IOException(json.optString("code"))
         val arr = json.getJSONArray("routes")
         val out = ArrayList<Route>()
@@ -325,7 +342,8 @@ object RouteRepository {
             if (pts.size < 2) continue
             val cum = DoubleArray(pts.size)
             for (k in 1 until pts.size) cum[k] = cum[k - 1] + dist(pts[k - 1].latitude, pts[k - 1].longitude, pts[k].latitude, pts[k].longitude)
-            out += Route(dest, stops, pts, cum, r.getDouble("distance"), r.getDouble("duration"))
+            val steps = try { Guidance.parseSteps(r, pts, cum) } catch (_: Exception) { emptyList() }
+            out += Route(dest, stops, pts, cum, r.getDouble("distance"), r.getDouble("duration"), steps)
         }
         return out
     }
@@ -336,6 +354,7 @@ object RouteRepository {
             val nr = fetchRoutes(from, r.stops, r.dest).firstOrNull() ?: return
             route.value = nr
             offRouteCount = 0
+            if (ownGuidance) appCtx?.let { Guidance.begin(it, nr, rerouted = true) }
             startMonitor()
         } catch (_: Exception) {
         }
@@ -347,39 +366,52 @@ object RouteRepository {
         monitor = scope.launch {
             var navSeen = false
             var navGoneSince = 0L
+            var lastIdx = 0
+            val own = ownGuidance
             while (true) {
                 val r = route.value ?: break
                 val loc = LocationRepository.location.value
                 if (loc != null) {
+                    // najbliższy punkt trasy: najpierw w okolicy poprzedniego (szybko, bez skoków na pętlach)
                     var best = Double.MAX_VALUE
-                    var idx = 0
-                    for (i in r.points.indices) {
+                    var idx = lastIdx
+                    val a = (lastIdx - 30).coerceAtLeast(0)
+                    val b = (lastIdx + 400).coerceAtMost(r.points.size)
+                    for (i in a until b) {
                         val d = dist(loc.latitude, loc.longitude, r.points[i].latitude, r.points[i].longitude)
                         if (d < best) { best = d; idx = i }
                     }
+                    if (best > 80) for (i in r.points.indices) {
+                        val d = dist(loc.latitude, loc.longitude, r.points[i].latitude, r.points[i].longitude)
+                        if (d < best) { best = d; idx = i }
+                    }
+                    lastIdx = idx
                     val remaining = max(0.0, r.distanceM - r.cumulative[idx]) + best.coerceAtMost(200.0)
                     val arrived = dist(loc.latitude, loc.longitude, r.dest.lat, r.dest.lon) < 40
                     progress.value = Progress(remaining, r.durationS * (remaining / max(1.0, r.distanceM)), arrived)
+                    if (own) Guidance.update(r, r.cumulative[idx], loc)
                     if (arrived) {
                         delay(15_000)
                         stop()
                         break
                     }
-                    offRouteCount = if (best > 120) offRouteCount + 1 else 0
+                    offRouteCount = if (best > (if (own) 60 else 120)) offRouteCount + 1 else 0
                     val now = System.currentTimeMillis()
-                    if (offRouteCount >= 3 && now - lastReroute > 30_000) {
+                    if (offRouteCount >= (if (own) 4 else 3) && now - lastReroute > (if (own) 15_000 else 30_000)) {
                         lastReroute = now
                         reroute(r)
                         break
                     }
                 }
-                val nav = NavRepository.state.value
-                if (nav != null) { navSeen = true; navGoneSince = 0L }
-                else if (navSeen) {
-                    if (navGoneSince == 0L) navGoneSince = System.currentTimeMillis()
-                    else if (System.currentTimeMillis() - navGoneSince > 20_000) { stop(); break }
+                if (!own) {
+                    val nav = NavRepository.state.value
+                    if (nav != null) { navSeen = true; navGoneSince = 0L }
+                    else if (navSeen) {
+                        if (navGoneSince == 0L) navGoneSince = System.currentTimeMillis()
+                        else if (System.currentTimeMillis() - navGoneSince > 20_000) { stop(); break }
+                    }
                 }
-                delay(2000)
+                delay(if (own) 1000 else 2000)
             }
         }
     }

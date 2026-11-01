@@ -19,6 +19,8 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.MyLocation
 import androidx.compose.material.icons.rounded.Navigation
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.VolumeOff
+import androidx.compose.material.icons.rounded.VolumeUp
 import androidx.compose.material.icons.rounded.WbSunny
 import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.Icon
@@ -76,8 +78,11 @@ fun formatEta(secondsFromNow: Double): String {
 
 @Composable
 fun MapCard(modifier: Modifier) {
-    val nav by NavRepository.state.collectAsState()
+    val googleNav by NavRepository.state.collectAsState()
+    val guide by pl.mati.carlauncher.data.Guidance.state.collectAsState()
     val route by RouteRepository.route.collectAsState()
+    // gdy prowadzi CAR OS – baner CAR OS zamiast powiadomienia Map Google
+    val nav = if (guide != null) null else googleNav
     val prog by RouteRepository.progress.collectAsState()
     val ctx = LocalContext.current
     val accent = LocalAccent.current
@@ -120,8 +125,13 @@ fun MapCard(modifier: Modifier) {
             }
         }
 
+        guide?.let { g ->
+            GuidanceBanner(g, Modifier.align(Alignment.TopCenter).padding(16.dp).fillMaxWidth())
+        }
+        val bannerUp = nav != null || guide != null
+
         // Ograniczenie prędkości (OSM) + aktualna prędkość
-        SpeedLimitBadge(Modifier.align(Alignment.TopStart).padding(top = if (nav != null) 112.dp else 16.dp, start = 16.dp))
+        SpeedLimitBadge(Modifier.align(Alignment.TopStart).padding(top = if (bannerUp) 128.dp else 16.dp, start = 16.dp))
 
         // Pogoda na trasie
         val rw by ForecastRepository.routeWeather.collectAsState()
@@ -129,7 +139,7 @@ fun MapCard(modifier: Modifier) {
             Row(
                 Modifier
                     .align(Alignment.TopEnd)
-                    .padding(top = if (nav != null) 112.dp else 16.dp, end = 16.dp)
+                    .padding(top = if (bannerUp) 128.dp else 16.dp, end = 16.dp)
                     .clip(RoundedCornerShape(16.dp))
                     .background(if (w.rain) CarColors.RainBg.copy(alpha = 0.92f) else CarColors.Overlay)
                     .clickable { UiState.go(Screen.WEATHER) }
@@ -150,7 +160,7 @@ fun MapCard(modifier: Modifier) {
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(18.dp))
                 .background(CarColors.Overlay)
-                .clickable { if (route == null) UiState.go(Screen.NAV) else Launch.navigation(ctx) }
+                .clickable { if (route == null || guide != null) UiState.go(Screen.NAV) else Launch.navigation(ctx) }
                 .padding(start = 18.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -172,6 +182,18 @@ fun MapCard(modifier: Modifier) {
                             Text(
                                 "${(remS / 60).roundToInt()} min · ${formatDistance(remM)} · ${r.dest.name}",
                                 fontSize = 16.sp, color = CarColors.Text2, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
+                    if (guide != null) {
+                        val voice by Prefs.navVoice.collectAsState()
+                        Box(
+                            Modifier.size(48.dp).clip(CircleShape).background(CarColors.Raised).clickable { Prefs.setNavVoice(!voice) },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                if (voice) Icons.Rounded.VolumeUp else Icons.Rounded.VolumeOff,
+                                if (voice) "Wycisz głos" else "Włącz głos", tint = if (voice) CarColors.Text else CarColors.Muted, modifier = Modifier.size(26.dp),
                             )
                         }
                     }

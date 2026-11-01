@@ -2,6 +2,14 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
+## next
+Własna nawigacja z głosem
+- CAR OS prowadzi sam: strzałka manewru, odległość, ulica i następny manewr na mapie
+- Komunikaty głosowe po polsku („Za 300 metrów skręć w prawo w …”), muzyka przycisza się na czas komunikatu
+- Ronda z numerem zjazdu, zjazdy i wjazdy na drogi szybkie, „trzymaj się prawej”
+- Po zjechaniu z trasy CAR OS sam wyznacza nową
+- Przycisk wyciszenia głosu przy trasie; wybór: CAR OS albo Mapy Google (Wygląd → Nawigacja)
+
 ## 1.58 · 2026-11-01
 Fotoradary CamSam, statystyki jazdy, płynniejsza mapa
 - CamSam / CamSam PLUS: CAR OS czyta też okienko ostrzeżeń CamSam i pełną treść powiadomień – ustawienia i diagnostyka w Pojazd i OBD2 → Fotoradary
