@@ -2,7 +2,7 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
-## next
+## 1.60 · 2026-11-01
 Mapy offline i komendy głosowe
 - Mapy offline: pobierz okolicę auta albo trasę dom ↔ praca (Wygląd → Mapa → Mapy offline); oglądane okolice zapamiętywane same (do 800 MB)
 - Komendy głosowe: przycisk mikrofonu w pasku bocznym albo przycisk głosowy na kierownicy
