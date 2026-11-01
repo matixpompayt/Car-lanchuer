@@ -2,6 +2,12 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
+## next
+Mapy offline i komendy głosowe
+- Mapy offline: pobierz okolicę auta albo trasę dom ↔ praca (Wygląd → Mapa → Mapy offline); oglądane okolice zapamiętywane same (do 800 MB)
+- Komendy głosowe: przycisk mikrofonu w pasku bocznym albo przycisk głosowy na kierownicy
+- „Jedź do domu / do pracy / do Lidla”, „następna piosenka”, „pauza”, „głośniej”, „ciszej”, „zadzwoń do …”, „tryb nocny”, „zapisz miejsce parkowania”, „pokaż pogodę”
+
 ## 1.59 · 2026-11-01
 Własna nawigacja z głosem
 - CAR OS prowadzi sam: strzałka manewru, odległość, ulica i następny manewr na mapie

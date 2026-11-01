@@ -48,6 +48,7 @@ class MainActivity : ComponentActivity() {
         // tryb dzień/noc znany od pierwszej klatki (także ekran startowy)
         pl.mati.carlauncher.data.ThemeManager.start(this)
         pl.mati.carlauncher.data.CanRepository.init(this)
+        pl.mati.carlauncher.data.OfflineMaps.init(this)
         window.decorView.postDelayed({
             Thread { pl.mati.carlauncher.data.CrashLog.reportPrevious(applicationContext) }.start()
         }, 5000)
@@ -141,6 +142,16 @@ class MainActivity : ComponentActivity() {
         hideSystemBars()
         MediaRepository.attach(this)
         SystemControls.refresh(this)
+    }
+
+    /** Przycisk głosowy na kierownicy / radiu → komenda głosowa CAR OS. */
+    override fun onKeyDown(keyCode: Int, event: android.view.KeyEvent?): Boolean {
+        if (keyCode == android.view.KeyEvent.KEYCODE_VOICE_ASSIST || keyCode == android.view.KeyEvent.KEYCODE_SEARCH) {
+            if (pl.mati.carlauncher.data.VoiceCommands.hasMic(this)) pl.mati.carlauncher.data.VoiceCommands.listen(this)
+            else UiState.go(Screen.HOME)
+            return true
+        }
+        return super.onKeyDown(keyCode, event)
     }
 
     override fun onNewIntent(intent: Intent) {

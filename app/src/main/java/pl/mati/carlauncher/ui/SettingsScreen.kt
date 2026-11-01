@@ -276,6 +276,7 @@ private fun LazyListScope.lookPage() {
         val v by Prefs.mapHeadingUp.collectAsState()
         SettingRow("Mapa obraca się z kierunkiem jazdy", "Wyłączone = północ zawsze u góry", onClick = { Prefs.setMapHeadingUp(!v) }) { CarSwitch(v) }
     }
+    item { OfflineMapsCard() }
     item { SectionLabel("Nawigacja") }
     item {
         val e by Prefs.navEngine.collectAsState()
@@ -1197,6 +1198,61 @@ private fun ReleaseCard(r: UpdateManager.Release, actions: @Composable () -> Uni
             if (parsed != null) ChangelogPoints(parsed)
             else if (r.notes.isNotBlank()) Text(r.notes.take(600), fontSize = 18.sp, color = CarColors.Text2)
             actions()
+        }
+    }
+}
+
+/** Mapy bez internetu: okolica auta i trasa dom ↔ praca. */
+@Composable
+private fun OfflineMapsCard() {
+    val areas by pl.mati.carlauncher.data.OfflineMaps.areas.collectAsState()
+    val busy by pl.mati.carlauncher.data.OfflineMaps.busy.collectAsState()
+    val accent = LocalAccent.current
+    Column(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(CarColors.Card).padding(horizontal = 20.dp, vertical = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Text("Mapy offline", fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+        Text(
+            "Mapa działa bez internetu tam, gdzie jest pobrana. Okolice, przez które jeździsz, CAR OS zapamiętuje sam (do 800 MB). " +
+                "Pobieranie może zająć kilkaset MB – najlepiej przez Wi-Fi.",
+            fontSize = 15.sp, color = CarColors.Muted,
+        )
+        for ((group, title, sub) in listOf(
+            Triple("okolica", "Okolica auta", "Ok. 40 km wokół obecnej pozycji"),
+            Triple("dojazd", "Trasa dom ↔ praca", "Pas ok. 7 km wzdłuż trasy"),
+        )) {
+            val a = areas[group]
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                Column(Modifier.weight(1f)) {
+                    Text(title, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+                    val state = when {
+                        busy == group -> "Wyznaczam trasę…"
+                        a == null -> sub
+                        a.error != null -> a.error
+                        a.complete -> "Pobrano · ${(a.bytes / 1048576f).pl1()} MB"
+                        a.required > 0 -> "Pobieranie ${(a.done * 100 / a.required)}% · ${(a.bytes / 1048576f).pl1()} MB"
+                        else -> "Przygotowuję…"
+                    }
+                    Text(state, fontSize = 15.sp, color = if (a?.complete == true) CarColors.Green else CarColors.Muted)
+                    if (a != null && !a.complete && a.required > 0) {
+                        ProgressBar(a.done.toFloat() / a.required, accent, Modifier.fillMaxWidth().padding(top = 6.dp))
+                    }
+                }
+                if (a == null) {
+                    SecondaryButton("Pobierz", {
+                        val err = if (group == "okolica") pl.mati.carlauncher.data.OfflineMaps.downloadAround()
+                        else pl.mati.carlauncher.data.OfflineMaps.downloadCommute()
+                        err?.let { Toaster.show(it) }
+                    }, height = 52.dp)
+                } else {
+                    SecondaryButton(if (a.complete) "Odśwież" else "Od nowa", {
+                        if (group == "okolica") pl.mati.carlauncher.data.OfflineMaps.downloadAround()?.let { Toaster.show(it) }
+                        else pl.mati.carlauncher.data.OfflineMaps.downloadCommute()?.let { Toaster.show(it) }
+                    }, height = 52.dp)
+                    SecondaryButton("Usuń", { pl.mati.carlauncher.data.OfflineMaps.delete(group) }, height = 52.dp)
+                }
+            }
         }
     }
 }

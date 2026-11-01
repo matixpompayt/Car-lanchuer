@@ -33,6 +33,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Apps
+import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.GridView
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Navigation
@@ -143,6 +144,7 @@ private fun Shell() {
         VolumeHud()
         ServiceAlertOverlay()
         CanScannerOverlay()
+        VoiceOverlay()
         WhatsNewOverlay()
     }
 }
@@ -165,8 +167,13 @@ private fun Dock(current: Screen) {
             DockButton(Icons.Rounded.Phone, "Telefon", current == Screen.PHONE) { UiState.go(Screen.PHONE) }
             DockButton(Icons.Rounded.Speed, "Pojazd", current == Screen.VEHICLE) { UiState.go(Screen.VEHICLE) }
         }
-        DockButton(Icons.Rounded.Apps, "Aplikacje", current in setOf(Screen.APPS, Screen.SETTINGS, Screen.TRIPS, Screen.SERVICE, Screen.WEATHER)) {
-            UiState.go(Screen.APPS)
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            val voice by pl.mati.carlauncher.data.VoiceCommands.state.collectAsState()
+            val startVoice = rememberVoiceStarter()
+            DockButton(Icons.Rounded.Mic, "Komenda głosowa", voice.phase == pl.mati.carlauncher.data.VoiceCommands.Phase.LISTENING) { startVoice() }
+            DockButton(Icons.Rounded.Apps, "Aplikacje", current in setOf(Screen.APPS, Screen.SETTINGS, Screen.TRIPS, Screen.SERVICE, Screen.WEATHER)) {
+                UiState.go(Screen.APPS)
+            }
         }
     }
 }

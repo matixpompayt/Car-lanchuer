@@ -99,6 +99,17 @@ object RouteRepository {
         error.value = null
     }
 
+    /** Adres → miejsce (pierwszy wynik). Wołać poza wątkiem głównym. */
+    fun geocode(address: String): Place? = try { searchPlaces(address, false).firstOrNull() } catch (_: Exception) { null }
+
+    /** Sama linia trasy A → B (OSRM, uproszczona). Wołać poza wątkiem głównym. */
+    fun routeLine(fromLat: Double, fromLon: Double, toLat: Double, toLon: Double): List<GeoPoint> {
+        val url = String.format(Locale.US, "https://router.project-osrm.org/route/v1/driving/%.6f,%.6f;%.6f,%.6f?overview=simplified&geometries=polyline6", fromLon, fromLat, toLon, toLat)
+        val json = JSONObject(get(url))
+        if (json.optString("code") != "Ok") return emptyList()
+        return decodePolyline6(json.getJSONArray("routes").getJSONObject(0).getString("geometry"))
+    }
+
     private fun searchPlaces(query: String, nearbyOnly: Boolean): List<Place> {
         val loc = LocationRepository.location.value
         val sb = StringBuilder("https://nominatim.openstreetmap.org/search?format=jsonv2&limit=8&addressdetails=0&accept-language=pl")
@@ -159,6 +170,21 @@ object RouteRepository {
     /** Szybki start (np. „Jedziesz do domu?”): planuje i od razu rusza najszybszym wariantem. */
     fun quickStart(ctx: Context, address: String, label: String) {
         planToAddress(address, label)
+        scope.launch {
+            repeat(60) {
+                delay(500)
+                val p = plan.value
+                if (p != null && !p.computing && p.chosen != null) {
+                    main.post { start(ctx) }
+                    return@launch
+                }
+            }
+        }
+    }
+
+    /** Plan do miejsca i od razu start najszybszym wariantem (np. z komendy głosowej). */
+    fun quickStartPlace(ctx: Context, place: Place) {
+        planTo(place)
         scope.launch {
             repeat(60) {
                 delay(500)
