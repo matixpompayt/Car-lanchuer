@@ -253,11 +253,31 @@ private class VectorHolder(ctx: Context) {
         if (l.hasBearing() && (!l.hasSpeed() || l.speed > 1.5f)) lastBearing = l.bearing
     }
 
-    /** Przybliżenie: jak na postoju, przy szybszej jeździe lekko oddala (widać dalej drogę). */
+    /**
+     * Przybliżenie zależne od prędkości: wolno = kamera blisko auta, im szybciej tym dalej
+     * (widać więcej drogi przed autem). Prędkość wygładzona, żeby mapa nie „pompowała”.
+     */
+    private var smoothKmh = 0.0
+
     private fun followZoom(l: android.location.Location): Double {
-        val base = if (Prefs.map3d.value) 16.8 else 16.0
-        val kmh = if (l.hasSpeed()) l.speed * 3.6 else 0.0
-        return base - ((kmh - 40.0) / 50.0).coerceIn(0.0, 1.0) * 0.6
+        val kmh = if (l.hasSpeed()) (l.speed * 3.6).coerceIn(0.0, 200.0) else 0.0
+        smoothKmh += (kmh - smoothKmh) * 0.35
+        val z = zoomForSpeed(smoothKmh)
+        return if (Prefs.map3d.value) z else z - 0.6
+    }
+
+    private fun zoomForSpeed(kmh: Double): Double {
+        // km/h → zoom (3D); między punktami płynnie
+        val pts = arrayOf(0.0 to 17.6, 15.0 to 17.5, 30.0 to 17.0, 50.0 to 16.5, 70.0 to 16.0, 90.0 to 15.6, 120.0 to 15.1, 150.0 to 14.8)
+        if (kmh <= pts.first().first) return pts.first().second
+        for (i in 1 until pts.size) {
+            val (k1, z1) = pts[i]
+            if (kmh <= k1) {
+                val (k0, z0) = pts[i - 1]
+                return z0 + (z1 - z0) * (kmh - k0) / (k1 - k0)
+            }
+        }
+        return pts.last().second
     }
 
     fun cameraFor(l: android.location.Location): CameraPosition {

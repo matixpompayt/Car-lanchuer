@@ -497,12 +497,17 @@ fun ServiceAlertOverlay() {
     val show by AutostartManager.serviceAlert.collectAsState()
     AnimatedVisibility(show, enter = fadeIn(), exit = fadeOut()) {
         val list = remember(show) { ServiceRepository.overdue() }
+        val light = CarColors.isLight
+        val scrim = if (light) CarColors.Bg.copy(alpha = 0.88f) else Color(0xE6050608)
+        val cardBg = if (light) androidx.compose.ui.graphics.lerp(CarColors.Card, CarColors.Red, 0.07f) else Color(0xFF1A0B0C)
+        val rowBg = if (light) androidx.compose.ui.graphics.lerp(CarColors.Card, CarColors.Red, 0.14f) else Color(0xFF2A1214)
+        val dueText = if (light) CarColors.Red else Color(0xFFFF8A8E)
         val t = rememberInfiniteTransition(label = "alert")
         val a by t.animateFloat(1f, 0.35f, infiniteRepeatable(tween(700), RepeatMode.Reverse), label = "a")
         Box(
             Modifier
                 .fillMaxSize()
-                .background(Color(0xE6050608))
+                .background(scrim)
                 .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {},
             contentAlignment = Alignment.Center,
         ) {
@@ -511,7 +516,7 @@ fun ServiceAlertOverlay() {
                     .padding(horizontal = 70.dp, vertical = 40.dp)
                     .fillMaxSize()
                     .clip(RoundedCornerShape(32.dp))
-                    .background(Color(0xFF1A0B0C))
+                    .background(cardBg)
                     .border(3.dp, CarColors.Red.copy(alpha = a), RoundedCornerShape(32.dp))
                     .padding(horizontal = 44.dp, vertical = 30.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
@@ -521,7 +526,7 @@ fun ServiceAlertOverlay() {
                         Icon(Icons.Rounded.Warning, null, tint = CarColors.Red, modifier = Modifier.size(52.dp).alpha(a))
                     }
                     Column(Modifier.weight(1f)) {
-                        Text("Przekroczony termin serwisu", fontSize = 40.sp, fontWeight = FontWeight.Bold)
+                        Text("Przekroczony termin serwisu", fontSize = 40.sp, fontWeight = FontWeight.Bold, color = CarColors.Text)
                         Text("Zaplanuj wizytę w warsztacie albo zaktualizuj dane w Serwisie.", fontSize = 20.sp, color = CarColors.Text2)
                     }
                     Box(
@@ -532,13 +537,13 @@ fun ServiceAlertOverlay() {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     list.take(5).forEach { d ->
                         Row(
-                            Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Color(0xFF2A1214)).padding(horizontal = 22.dp, vertical = 14.dp),
+                            Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(rowBg).padding(horizontal = 22.dp, vertical = 14.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(16.dp),
                         ) {
                             Icon(Icons.Rounded.Build, null, tint = CarColors.Red, modifier = Modifier.size(28.dp))
-                            Text(d.item.name, fontSize = 24.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                            Text(ServiceRepository.describe(d), fontSize = 20.sp, color = Color(0xFFFF8A8E))
+                            Text(d.item.name, fontSize = 24.sp, fontWeight = FontWeight.SemiBold, color = CarColors.Text, modifier = Modifier.weight(1f))
+                            Text(ServiceRepository.describe(d), fontSize = 20.sp, color = dueText)
                         }
                     }
                     if (list.size > 5) Text("i jeszcze ${list.size - 5}…", fontSize = 18.sp, color = CarColors.Muted)
