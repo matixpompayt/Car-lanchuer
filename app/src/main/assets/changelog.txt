@@ -2,7 +2,7 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
-## next
+## 1.62 · 2026-11-01
 Auto na żywo i grafik w telefonie
 - W czasie jazdy CAR OS co minutę wysyła pozycję auta do CAR OS Connect (Połączenia → CAR OS Connect – można wyłączyć)
 - Grafik pracy i czas dojazdu trafiają do telefonu – CAR OS Connect przypomni przed zmianą, o której wyjechać
