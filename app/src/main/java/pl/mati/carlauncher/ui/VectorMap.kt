@@ -82,14 +82,23 @@ private class VectorHolder(ctx: Context) {
         view.getMapAsync { m ->
             map = m
             m.uiSettings.apply {
+                // pochylenie tylko przyciskiem 3D/2D – przypadkowy ruch dwoma palcami nie spłaszczy mapy
+                isTiltGesturesEnabled = false
                 isLogoEnabled = false
                 isCompassEnabled = false
                 isAttributionEnabled = true
                 attributionGravity = Gravity.BOTTOM or Gravity.START
                 setAttributionMargins((18 * density).toInt(), 0, 0, (98 * density).toInt())
             }
-            LocationRepository.location.value?.let {
-                m.cameraPosition = CameraPosition.Builder().target(LatLng(it.latitude, it.longitude)).zoom(15.5).build()
+            // od pierwszej klatki widok jak przy jeździe (3D, pochylony, za autem)
+            LocationRepository.location.value?.let { m.cameraPosition = cameraFor(it) }
+            m.addOnCameraMoveStartedListener { reason ->
+                if (reason == MapLibreMap.OnCameraMoveStartedListener.REASON_API_GESTURE) {
+                    // ktoś przesuwa / przybliża mapę palcem – puść auto, po chwili wróć samo
+                    following = false
+                    main.removeCallbacks(autoReturn)
+                    if (!previewing) main.postDelayed(autoReturn, AUTO_RETURN_MS)
+                }
             }
             m.setStyle(Style.Builder().fromUri(CarMapStyle.STYLE_URL)) { st -> onStyle(ctx, m, st) }
         }
@@ -220,13 +229,10 @@ private class VectorHolder(ctx: Context) {
         val st = style ?: return
         if (!framesReady) return
         val loc = LocationRepository.location.value ?: return
-        val tracking = try {
-            m.locationComponent.isLocationComponentActivated && m.locationComponent.cameraMode != CameraMode.NONE
-        } catch (_: Exception) { false }
-        val target = if (tracking) m.cameraPosition.target else null
+        val target = if (following) m.cameraPosition.target else null
         val lat = target?.latitude ?: loc.latitude
         val lon = target?.longitude ?: loc.longitude
-        if (loc.hasBearing() && (!loc.hasSpeed() || loc.speed > 1f)) lastBearing = loc.bearing
+        takeBearing(loc)
         val rel = ((lastBearing - m.cameraPosition.bearing) % 360 + 360) % 360
         val idx = Math.round(rel / 10.0).toInt() % 36
         val f = Feature.fromGeometry(Point.fromLngLat(lon, lat))
@@ -234,33 +240,57 @@ private class VectorHolder(ctx: Context) {
         st.getSourceAs<GeoJsonSource>(SRC_ME)?.setGeoJson(f)
     }
 
+    // ---------- kamera za autem ----------
+    // Własne śledzenie zamiast LocationComponent: przy każdym odczycie GPS kamera płynnie
+    // jedzie do auta i ZAWSZE wymusza pochylenie 3D, przybliżenie i kierunek – nic tego nie rozjedzie.
+    var following = false
+        private set
+    private var previewing = false
+    private var lastFix = 0L
+    private val autoReturn = Runnable { if (!following && !previewing) follow() }
+
+    private fun takeBearing(l: android.location.Location) {
+        if (l.hasBearing() && (!l.hasSpeed() || l.speed > 1.5f)) lastBearing = l.bearing
+    }
+
+    /** Przybliżenie: jak na postoju, przy szybszej jeździe lekko oddala (widać dalej drogę). */
+    private fun followZoom(l: android.location.Location): Double {
+        val base = if (Prefs.map3d.value) 16.8 else 16.0
+        val kmh = if (l.hasSpeed()) l.speed * 3.6 else 0.0
+        return base - ((kmh - 40.0) / 50.0).coerceIn(0.0, 1.0) * 0.6
+    }
+
+    fun cameraFor(l: android.location.Location): CameraPosition {
+        takeBearing(l)
+        val is3d = Prefs.map3d.value
+        val bearing = if (Prefs.mapHeadingUp.value) lastBearing.toDouble() else 0.0
+        return CameraPosition.Builder()
+            .target(LatLng(l.latitude, l.longitude))
+            .zoom(followZoom(l))
+            .tilt(if (is3d) 58.0 else 0.0)
+            .bearing(bearing)
+            .build()
+    }
+
     /** Kamera jedzie za autem (3D: pochylona, opcjonalnie obrót z kierunkiem jazdy). */
-    @SuppressLint("MissingPermission")
     fun follow() {
         val m = map ?: return
-        try {
-            val lc = m.locationComponent
-            if (!lc.isLocationComponentActivated) return
-            val is3d = Prefs.map3d.value
-            // od razu ustaw widok jak po dotknięciu „moja pozycja” (także przed pierwszym ruchem auta)
-            LocationRepository.location.value?.let { l ->
-                if (lc.lastKnownLocation == null) lc.forceLocationUpdate(l)
-                m.animateCamera(
-                    CameraUpdateFactory.newCameraPosition(
-                        CameraPosition.Builder().target(LatLng(l.latitude, l.longitude))
-                            .zoom(if (is3d) 16.8 else 16.0).tilt(if (is3d) 58.0 else 0.0)
-                            .bearing(if (Prefs.mapHeadingUp.value && l.hasBearing()) l.bearing.toDouble() else if (Prefs.mapHeadingUp.value) m.cameraPosition.bearing else 0.0)
-                            .build(),
-                    ),
-                    700,
-                )
-            }
-            lc.cameraMode = if (Prefs.mapHeadingUp.value) CameraMode.TRACKING_GPS else CameraMode.TRACKING
-            lc.zoomWhileTracking(if (is3d) 16.8 else 16.0, 900)
-            lc.tiltWhileTracking(if (is3d) 58.0 else 0.0, 900)
-            if (!Prefs.mapHeadingUp.value) m.animateCamera(CameraUpdateFactory.bearingTo(0.0), 600)
-        } catch (_: Exception) {
-        }
+        following = true
+        previewing = false
+        main.removeCallbacks(autoReturn)
+        try { m.locationComponent.cameraMode = CameraMode.NONE } catch (_: Exception) {}
+        val l = LocationRepository.location.value ?: return
+        m.animateCamera(CameraUpdateFactory.newCameraPosition(cameraFor(l)), 800)
+    }
+
+    /** Nowa pozycja GPS: kamera płynnie (liniowo, przez czas między odczytami) jedzie za autem. */
+    fun onLocation(l: android.location.Location) {
+        val m = map ?: return
+        if (!ready || !following) return
+        val now = android.os.SystemClock.uptimeMillis()
+        val dt = if (lastFix == 0L) 1000L else (now - lastFix).coerceIn(300L, 1500L)
+        lastFix = now
+        m.easeCamera(CameraUpdateFactory.newCameraPosition(cameraFor(l)), dt.toInt(), false)
     }
 
     /** Dzień / noc: kolory mapy, budynków i obwódki trasy. */
@@ -272,13 +302,15 @@ private class VectorHolder(ctx: Context) {
     }
 
     fun stopFollow() {
-        try { map?.locationComponent?.cameraMode = CameraMode.NONE } catch (_: Exception) {}
+        following = false
+        main.removeCallbacks(autoReturn)
     }
 
     fun showBounds(points: List<GeoPoint>) {
         val m = map ?: return
         if (points.size < 2) return
         stopFollow()
+        previewing = true
         val b = LatLngBounds.Builder()
         points.forEach { b.include(LatLng(it.latitude, it.longitude)) }
         try {
@@ -310,6 +342,7 @@ private class VectorHolder(ctx: Context) {
         const val SRC_ME = "caros-me"
         const val L_ME = "caros-me-car"
         const val IMG_EMPTY = "caros-empty"
+        const val AUTO_RETURN_MS = 12_000L
     }
 }
 
@@ -343,6 +376,7 @@ fun VectorMap(modifier: Modifier) {
         val l = loc ?: return@LaunchedEffect
         if (!ready) return@LaunchedEffect
         try { h.map?.locationComponent?.forceLocationUpdate(l) } catch (_: Exception) {}
+        h.onLocation(l)
         h.updateMe()
     }
 
