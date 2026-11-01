@@ -268,7 +268,7 @@ private class VectorHolder(ctx: Context) {
 
     private fun zoomForSpeed(kmh: Double): Double {
         // km/h → zoom (3D); między punktami płynnie
-        val pts = arrayOf(0.0 to 17.6, 15.0 to 17.5, 30.0 to 17.0, 50.0 to 16.5, 70.0 to 16.0, 90.0 to 15.6, 120.0 to 15.1, 150.0 to 14.8)
+        val pts = arrayOf(0.0 to 18.7, 15.0 to 18.5, 30.0 to 18.0, 50.0 to 17.4, 70.0 to 16.9, 90.0 to 16.4, 120.0 to 15.8, 150.0 to 15.3)
         if (kmh <= pts.first().first) return pts.first().second
         for (i in 1 until pts.size) {
             val (k1, z1) = pts[i]
