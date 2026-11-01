@@ -49,6 +49,7 @@ class MainActivity : ComponentActivity() {
         pl.mati.carlauncher.data.ThemeManager.start(this)
         pl.mati.carlauncher.data.CanRepository.init(this)
         pl.mati.carlauncher.data.OfflineMaps.init(this)
+        pl.mati.carlauncher.data.FuelRepository.load()
         window.decorView.postDelayed({
             Thread { pl.mati.carlauncher.data.CrashLog.reportPrevious(applicationContext) }.start()
         }, 5000)

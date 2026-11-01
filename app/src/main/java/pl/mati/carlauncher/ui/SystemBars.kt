@@ -317,6 +317,7 @@ private fun NotificationsColumn(modifier: Modifier) {
                             "update" -> UiState.openSettings("update")
                             "obd" -> UiState.go(Screen.VEHICLE)
                             "service" -> UiState.go(Screen.SERVICE)
+                            "fuel" -> UiState.go(Screen.FUEL)
                             else -> NotificationRepository.open(n)
                         }
                     }

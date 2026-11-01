@@ -256,6 +256,7 @@ val TILE_DEFS = listOf(
     "weather" to "Pogoda",
     "service" to "Najbliższy serwis",
     "today" to "Dziś przejechane",
+    "fuel" to "Zasięg (tankowania)",
 )
 
 @Composable
@@ -296,6 +297,13 @@ private fun VehicleTiles(modifier: Modifier) {
                     SmallTile("Dziś", km.toFloat().pl1(), "km", m, size) { UiState.go(Screen.TRIPS) }
                 }
                 "service" -> ServiceTile(m, size, odo, svcItems)
+                "fuel" -> {
+                    val fs by pl.mati.carlauncher.data.FuelRepository.stats.collectAsState()
+                    SmallTile(
+                        "Zasięg", fs.rangeKm?.let { kotlin.math.round(it).toInt() }?.toString() ?: "--", "km", m, size,
+                        valueColor = if ((fs.rangeKm ?: 999.0) < 80) androidx.compose.ui.graphics.Color(0xFFFF4D4F) else CarColors.Text,
+                    ) { UiState.go(Screen.FUEL) }
+                }
             }
         }
     }

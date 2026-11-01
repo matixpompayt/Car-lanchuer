@@ -21,6 +21,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Build
+import androidx.compose.material.icons.rounded.LocalGasStation
 import androidx.compose.material.icons.rounded.DirectionsCar
 import androidx.compose.material.icons.rounded.WbSunny
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -78,6 +79,7 @@ fun AppsScreen() {
         Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             SysTile(Icons.Rounded.DirectionsCar, "Dziennik tras", Modifier.weight(1f)) { UiState.go(Screen.TRIPS) }
             SysTile(Icons.Rounded.Build, "Serwis", Modifier.weight(1f)) { UiState.go(Screen.SERVICE) }
+            SysTile(Icons.Rounded.LocalGasStation, "Tankowania", Modifier.weight(1f)) { UiState.go(Screen.FUEL) }
             SysTile(Icons.Rounded.WbSunny, "Pogoda", Modifier.weight(1f)) { UiState.go(Screen.WEATHER) }
             SysTile(Icons.Rounded.Settings, "Ustawienia CAR OS", Modifier.weight(1f)) { UiState.openSettings("look") }
         }

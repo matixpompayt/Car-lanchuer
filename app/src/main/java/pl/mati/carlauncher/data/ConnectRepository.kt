@@ -179,6 +179,7 @@ object ConnectRepository {
                 .put("odoSet", ServiceRepository.odometerSet.value)
                 .put("body", Prefs.carBody.value).put("paint", Prefs.carPaint.value)
                 .put("svc", svc).put("items", items).put("trips", trips).put("favs", favs)
+                .put("fuel", FuelRepository.toJson())
                 .put("home", placeJson(p.home, p.homeLat, p.homeLon))
                 .put("work", placeJson(p.work, p.workLat, p.workLon))
                 .put("ver", BuildConfig.VERSION_NAME)
@@ -326,6 +327,16 @@ object ConnectRepository {
                     (if (work) "Adres pracy" else "Adres domu") +
                         (if (a.isBlank()) " usunięty z telefonu" else " z telefonu: $a"),
                 )
+                publishStatusSoon()
+            }
+            // tankowanie dodane / usunięte w telefonie
+            "fuel_add" -> {
+                FuelRepository.add(FuelRepository.Fill.from(o.getJSONObject("fill")))
+                Toaster.show("Tankowanie z telefonu zapisane")
+                publishStatusSoon()
+            }
+            "fuel_del" -> {
+                FuelRepository.remove(o.optString("id"))
                 publishStatusSoon()
             }
             "fav_del" -> {

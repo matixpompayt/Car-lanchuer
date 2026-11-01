@@ -212,6 +212,7 @@ object TripRepository {
             ConnectRepository.publishStatusSoon()
         }
         synchronized(path) { path.clear() }
+        try { FuelRepository.recompute() } catch (_: Exception) {}
         Prefs.store?.edit()?.remove("trip_current")?.remove("trip_current_path")?.apply()
         ServiceRepository.save()
     }

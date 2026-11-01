@@ -2,6 +2,14 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
+## next
+Tankowania i spalanie
+- Nowy ekran Tankowania (Aplikacje → Tankowania): litry, kwota, przebieg, „do pełna”
+- Średnie spalanie z tankowań do pełna, koszt kilometra, wydatki w miesiącu
+- Szacowany zasięg i przypomnienie „Czas zatankować”, gdy zostaje mniej niż 80 km
+- Kafel „Zasięg” do wyboru na ekranie głównym
+- Tankowania można dodawać też w CAR OS Connect – synchronizacja w obie strony
+
 ## 1.60 · 2026-11-01
 Mapy offline i komendy głosowe
 - Mapy offline: pobierz okolicę auta albo trasę dom ↔ praca (Wygląd → Mapa → Mapy offline); oglądane okolice zapamiętywane same (do 800 MB)
