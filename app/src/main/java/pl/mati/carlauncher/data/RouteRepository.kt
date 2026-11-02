@@ -45,6 +45,8 @@ object RouteRepository {
         val durationS: Double,
         val steps: List<Guidance.Step> = emptyList(),
         val id: Long = System.nanoTime(),
+        /** Trasa przeliczona w czasie jazdy (bez podglądu całej trasy na mapie). */
+        val rerouted: Boolean = false,
     )
 
     /** Planowana trasa: cel, przystanki, warianty do wyboru. */
@@ -386,13 +388,43 @@ object RouteRepository {
     private suspend fun reroute(r: Route) {
         val from = LocationRepository.location.value ?: return
         try {
-            val nr = fetchRoutes(from, r.stops, r.dest).firstOrNull() ?: return
+            val nr = fetchRoutes(from, r.stops, r.dest).firstOrNull()?.copy(rerouted = true) ?: return
             route.value = nr
             offRouteCount = 0
             if (ownGuidance) appCtx?.let { Guidance.begin(it, nr, rerouted = true) }
             startMonitor()
         } catch (_: Exception) {
         }
+    }
+
+    private data class Near(val dist: Double, val index: Int, val along: Double)
+
+    /** Najbliższy punkt na odcinkach trasy [from, to): odległość, indeks odcinka, przejechane metry trasy. */
+    private fun nearestOnRoute(r: Route, lat: Double, lon: Double, from: Int, to: Int): Near {
+        val pts = r.points
+        val a = from.coerceIn(0, pts.size - 1)
+        val b = to.coerceIn(a + 1, pts.size)
+        val kx = 111_320.0 * Math.cos(Math.toRadians(lat))
+        val ky = 110_540.0
+        var best = Double.MAX_VALUE
+        var bi = a
+        var along = r.cumulative[a]
+        for (i in a until b - 1) {
+            val ax = (pts[i].longitude - lon) * kx
+            val ay = (pts[i].latitude - lat) * ky
+            val dx = (pts[i + 1].longitude - lon) * kx - ax
+            val dy = (pts[i + 1].latitude - lat) * ky - ay
+            val len2 = dx * dx + dy * dy
+            val t = if (len2 < 0.01) 0.0 else ((-ax * dx - ay * dy) / len2).coerceIn(0.0, 1.0)
+            val d = Math.hypot(ax + t * dx, ay + t * dy)
+            if (d < best) {
+                best = d
+                bi = i
+                along = r.cumulative[i] + t * (r.cumulative[i + 1] - r.cumulative[i])
+            }
+        }
+        if (b - a == 1) best = dist(lat, lon, pts[a].latitude, pts[a].longitude)
+        return Near(best, bi, along)
     }
 
     /** Postęp, dojazd, zjechanie z trasy (przeliczenie), koniec nawigacji Google. */
@@ -407,32 +439,30 @@ object RouteRepository {
                 val r = route.value ?: break
                 val loc = LocationRepository.location.value
                 if (loc != null) {
-                    // najbliższy punkt trasy: najpierw w okolicy poprzedniego (szybko, bez skoków na pętlach)
-                    var best = Double.MAX_VALUE
-                    var idx = lastIdx
-                    val a = (lastIdx - 30).coerceAtLeast(0)
-                    val b = (lastIdx + 400).coerceAtMost(r.points.size)
-                    for (i in a until b) {
-                        val d = dist(loc.latitude, loc.longitude, r.points[i].latitude, r.points[i].longitude)
-                        if (d < best) { best = d; idx = i }
+                    // najbliższy ODCINEK trasy (nie punkt – na prostych punkty są co kilkaset metrów):
+                    // najpierw w okolicy poprzedniego miejsca (szybko, bez skoków na pętlach), w razie czego cała trasa
+                    var near = nearestOnRoute(r, loc.latitude, loc.longitude, lastIdx - 20, lastIdx + 300)
+                    if (near.dist > 60) {
+                        val all = nearestOnRoute(r, loc.latitude, loc.longitude, 0, r.points.size)
+                        if (all.dist < near.dist) near = all
                     }
-                    if (best > 80) for (i in r.points.indices) {
-                        val d = dist(loc.latitude, loc.longitude, r.points[i].latitude, r.points[i].longitude)
-                        if (d < best) { best = d; idx = i }
-                    }
-                    lastIdx = idx
-                    val remaining = max(0.0, r.distanceM - r.cumulative[idx]) + best.coerceAtMost(200.0)
+                    val best = near.dist
+                    lastIdx = near.index
+                    val remaining = max(0.0, r.distanceM - near.along)
                     val arrived = dist(loc.latitude, loc.longitude, r.dest.lat, r.dest.lon) < 40
                     progress.value = Progress(remaining, r.durationS * (remaining / max(1.0, r.distanceM)), arrived)
-                    if (own) Guidance.update(r, r.cumulative[idx], loc)
+                    if (own) Guidance.update(r, near.along, loc)
                     if (arrived) {
                         delay(15_000)
                         stop()
                         break
                     }
-                    offRouteCount = if (best > (if (own) 60 else 120)) offRouteCount + 1 else 0
+                    // zjechanie z trasy: wyraźnie dalej niż dokładność GPS, przez kilka sekund z rzędu
+                    val acc = if (loc.hasAccuracy()) loc.accuracy.toDouble() else 20.0
+                    val limit = if (own) maxOf(50.0, acc + 30.0) else 120.0
+                    offRouteCount = if (best > limit) offRouteCount + 1 else 0
                     val now = System.currentTimeMillis()
-                    if (offRouteCount >= (if (own) 4 else 3) && now - lastReroute > (if (own) 15_000 else 30_000)) {
+                    if (offRouteCount >= (if (own) 6 else 3) && now - lastReroute > 30_000) {
                         lastReroute = now
                         reroute(r)
                         break

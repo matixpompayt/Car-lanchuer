@@ -47,6 +47,7 @@ object Guidance {
     val state = MutableStateFlow<State?>(null)
 
     private val spoken = HashSet<String>()
+    private var lastRerouteSaid = 0L
     private var lastRouteId = 0L
     private var arrivedSaid = false
 
@@ -194,7 +195,11 @@ object Guidance {
             spoken.clear()
             arrivedSaid = false
         }
-        if (rerouted) NavVoice.say("Wyznaczono nową trasę")
+        if (rerouted) {
+            val now = System.currentTimeMillis()
+            if (now - lastRerouteSaid > 60_000) NavVoice.say("Wyznaczono nową trasę")
+            lastRerouteSaid = now
+        }
         else NavVoice.say(
             "Trasa do ${r.dest.name}. ${distancePl(r.distanceM)}, przyjazd około ${
                 java.text.SimpleDateFormat("H:mm", Locale("pl")).format(java.util.Date(System.currentTimeMillis() + (r.durationS * 1000).toLong()))

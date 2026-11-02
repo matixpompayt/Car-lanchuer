@@ -2,6 +2,13 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
+## next
+Poprawka nawigacji
+- Koniec ciągłego „Wyznaczono nową trasę”: CAR OS sprawdza odległość od drogi trasy, a nie od jej punktów (na prostych były co kilkaset metrów)
+- Zjechanie z trasy liczy się dopiero po kilku sekundach wyraźnie poza trasą (z uwzględnieniem dokładności GPS)
+- Przeliczona trasa nie oddala już mapy – kamera zostaje za autem
+- Dokładniejsza odległość do manewru
+
 ## 1.62 · 2026-11-01
 Auto na żywo i grafik w telefonie
 - W czasie jazdy CAR OS co minutę wysyła pozycję auta do CAR OS Connect (Połączenia → CAR OS Connect – można wyłączyć)

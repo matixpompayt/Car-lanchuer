@@ -593,8 +593,14 @@ fun VectorMap(modifier: Modifier) {
         }
         h.setLine(VectorHolder.SRC_ROUTE, listOf(r.points))
         h.setDest(r.dest.point)
+        // trasa przeliczona w czasie jazdy albo auto już jedzie – bez oddalania mapy
+        val moving = (LocationRepository.location.value?.speed ?: 0f) > 4f
+        if (r.rerouted || moving) {
+            h.follow()
+            return@LaunchedEffect
+        }
         h.showBounds(r.points)
-        delay(6000)
+        delay(5000)
         h.follow()
     }
 

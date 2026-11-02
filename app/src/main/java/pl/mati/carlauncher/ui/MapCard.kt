@@ -323,6 +323,10 @@ private fun OsmMap(modifier: Modifier) {
         holder.casing.setPoints(r.points)
         holder.line.setPoints(r.points)
         holder.dest.setPoints(listOf(r.dest.point, GeoPoint(r.dest.lat + 0.000001, r.dest.lon)))
+        if (r.rerouted) {
+            holder.map.invalidate()
+            return@LaunchedEffect
+        }
         holder.me.disableFollowLocation()
         holder.map.post {
             try {
