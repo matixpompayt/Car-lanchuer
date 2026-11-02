@@ -2,7 +2,7 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
-## next
+## 1.66 · 2026-11-02
 Poprawki pełnego ekranu
 - Manewr i pasek przyjazdu na właściwych miejscach (wcześniej odstępy rosły razem z powiększeniem – pasek zasłaniał auto)
 - Przyciski z tłem – widoczne także na ciemnej mapie
