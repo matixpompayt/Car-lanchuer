@@ -338,7 +338,7 @@ private fun LazyListScope.lookPage() {
                     "Usługa dostępności CAR OS",
                     if (on) "Włączona – zasłona powiadomień zamyka się od razu"
                     else "Android ${android.os.Build.VERSION.RELEASE} pozwala zamknąć zasłonę tylko przez nią. " +
-                        "Dotknij → Ułatwienia dostępu → „CAR OS – pasek systemowy i CamSam” → włącz",
+                        "Dotknij → Ułatwienia dostępu → „CAR OS – pasek systemowy” → włącz",
                     onClick = { pl.mati.carlauncher.data.ShadeGuard.openAccessibilitySettings(ctx) },
                 ) { CarSwitch(on) }
                 if (!on && android.os.Build.VERSION.SDK_INT >= 33) SettingRow(
@@ -705,7 +705,6 @@ private fun LazyListScope.alertsSection() {
     }
     item {
         val ctx = LocalContext.current
-        val a11y by pl.mati.carlauncher.data.ShadeGuard.connected.collectAsState()
         val seen by AlertRepository.lastSeen.collectAsState()
         val cam = remember { AlertRepository.installed(ctx) }
         var notifOk by remember { mutableStateOf(false) }
@@ -721,18 +720,14 @@ private fun LazyListScope.alertsSection() {
                 cam?.let { "Zainstalowany ($it)" } ?: "Nie znaleziono – zainstaluj CamSam PLUS w radiu (Sklep Play)",
             ) { StatusText(cam != null) }
             SettingRow(
-                "1. Dostęp do powiadomień",
-                "CAR OS czyta powiadomienia CamSam (odległość do fotoradaru)",
+                "Dostęp do powiadomień",
+                "CAR OS czyta ostrzeżenia z powiadomień CamSam (widżet CamSam może być wyłączony)",
                 onClick = { Launch.start(ctx, Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS")) },
             ) { StatusText(notifOk) }
-            SettingRow(
-                "2. Okienko CamSam (ułatwienia dostępu)",
-                "Najpewniejsze: CAR OS czyta okienko ostrzeżeń CamSam. Włącz „CAR OS – pasek systemowy i CamSam”",
-                onClick = { pl.mati.carlauncher.data.ShadeGuard.openAccessibilitySettings(ctx) },
-            ) { StatusText(a11y) }
             Text(
-                "W CamSam włącz pracę w tle i okienko ostrzeżeń (tryb widżetu / nakładka na inne aplikacje). " +
-                    "Ostatni sygnał z CamSam: " + (if (seen == 0L) "jeszcze nic" else formatTime(seen)),
+                "W CamSam PLUS włącz pracę w tle i powiadomienia z ostrzeżeniami. Baner pokaże się tylko przy prawdziwym ostrzeżeniu " +
+                    "(fotoradar, kontrola, pomiar odcinkowy, policja…). Ostatnie powiadomienie z CamSam: " +
+                    (if (seen == 0L) "jeszcze nic" else formatTime(seen)),
                 fontSize = 15.sp, color = CarColors.Muted,
             )
             SecondaryButton("Pokaż próbne ostrzeżenie", { AlertRepository.test() }, height = 52.dp)
