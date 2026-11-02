@@ -2,7 +2,7 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
-## next
+## 1.64 · 2026-11-02
 Mapa na pełny ekran i wirtualny licznik
 - Przycisk pełnego ekranu w rogu mapy – sama mapa z nawigacją na całym ekranie (wyjście tym samym przyciskiem albo „wstecz”)
 - Dopasowanie do wirtualnego licznika: obraz ściśnięty tak, żeby licznik, który go rozciąga, pokazywał go w normalnych proporcjach
