@@ -14,9 +14,15 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.FullscreenExit
+import androidx.compose.material.icons.rounded.MyLocation
+import androidx.compose.material.icons.rounded.VolumeOff
+import androidx.compose.material.icons.rounded.VolumeUp
 import androidx.compose.material.icons.rounded.Remove
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -66,10 +72,89 @@ fun FullMapOverlay() {
                 .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {},
         ) {
             Box(Modifier.fillMaxSize().squeezeX(f)) {
-                MapCard(Modifier.fillMaxSize(), full = true)
+                ClusterMap()
                 if (test) ClusterPattern()
             }
             if (test) ClusterControls(f)
+        }
+    }
+}
+
+/**
+ * Mapa na pełnym ekranie ułożona pod wirtualny licznik: licznik zasłania środek góry (zegar, temperatura)
+ * i dół (wskaźniki), boki są zaokrąglone – wszystko ważne jest w polu, które widać.
+ * Elementy powiększone (Wyświetlacz → Wirtualny licznik → Wielkość elementów).
+ */
+@Composable
+private fun ClusterMap() {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val accent = LocalAccent.current
+    val guide by pl.mati.carlauncher.data.Guidance.state.collectAsState()
+    val route by pl.mati.carlauncher.data.RouteRepository.route.collectAsState()
+    val prog by pl.mati.carlauncher.data.RouteRepository.progress.collectAsState()
+    val voice by Prefs.navVoice.collectAsState()
+    val scale by Prefs.clusterUiScale.collectAsState()
+    Box(Modifier.fillMaxSize()) {
+        VectorMap(Modifier.fillMaxSize(), full = true)
+        androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxSize()) {
+            val w = maxWidth
+            val h = maxHeight
+            val d = androidx.compose.ui.platform.LocalDensity.current
+            androidx.compose.runtime.CompositionLocalProvider(
+                androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(d.density * scale, d.fontScale),
+            ) {
+                // manewr: na górze, pod wycięciem licznika
+                guide?.let { g ->
+                    GuidanceBanner(
+                        g,
+                        Modifier.align(Alignment.TopStart).padding(start = w * 0.07f, top = h * 0.11f)
+                            .width(w * 0.62f),
+                    )
+                }
+                // ograniczenie prędkości: lewa strona, środek wysokości
+                SpeedLimitBadge(Modifier.align(Alignment.CenterStart).padding(start = w * 0.07f, top = h * 0.1f))
+                // przyciski: prawa strona
+                Column(
+                    Modifier.align(Alignment.CenterEnd).padding(end = w * 0.06f, bottom = h * 0.08f),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    RoundIconButton(Icons.Rounded.FullscreenExit, "Zamknij pełny ekran", 52.dp, {
+                        UiState.mapFull.value = false
+                        UiState.clusterTest.value = false
+                    })
+                    RoundIconButton(Icons.Rounded.MyLocation, "Wróć do auta", 52.dp, { UiState.recenter.value++ })
+                    if (route != null && guide != null) {
+                        RoundIconButton(
+                            if (voice) Icons.Rounded.VolumeUp else Icons.Rounded.VolumeOff,
+                            if (voice) "Wycisz głos" else "Włącz głos", 52.dp, { Prefs.setNavVoice(!voice) },
+                        )
+                    }
+                }
+                // przyjazd: dół środka, nad wskaźnikami licznika
+                val r = route
+                if (r != null) {
+                    val p = prog
+                    val remM = p?.remainingM ?: r.distanceM
+                    val remS = p?.remainingS ?: r.durationS
+                    Row(
+                        Modifier.align(Alignment.BottomCenter).padding(bottom = h * 0.30f)
+                            .clip(RoundedCornerShape(18.dp)).background(CarColors.Panel.copy(alpha = 0.94f))
+                            .padding(horizontal = 18.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    ) {
+                        if (p?.arrived == true) {
+                            Text("Jesteś na miejscu", fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                        } else {
+                            Text(formatEta(remS), fontSize = 24.sp, fontWeight = FontWeight.Bold, color = accent)
+                            Text("${(remS / 60).roundToInt()} min · ${formatDistance(remM)}", fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+                        }
+                        RoundIconButton(Icons.Rounded.Close, "Zakończ trasę", 38.dp, {
+                            pl.mati.carlauncher.data.RouteRepository.cancel(ctx)
+                        })
+                    }
+                }
+            }
         }
     }
 }
@@ -97,10 +182,16 @@ private fun ClusterControls(f: Float) {
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Text("Patrz na licznik: koła mają być okrągłe, kwadrat kwadratowy", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+            val ui by Prefs.clusterUiScale.collectAsState()
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                RoundIconButton(Icons.Rounded.Remove, "Mniej", 56.dp, { Prefs.setClusterStretch(f - 0.05f) })
-                Text(if (f <= 1.01f) "bez dopasowania" else String.format(PL, "%.2f×", f), fontSize = 26.sp, fontWeight = FontWeight.Bold, fontFamily = Condensed)
-                RoundIconButton(Icons.Rounded.Add, "Więcej", 56.dp, { Prefs.setClusterStretch(f + 0.05f) })
+                Text("Proporcje", fontSize = 17.sp, color = CarColors.Muted)
+                RoundIconButton(Icons.Rounded.Remove, "Mniej", 52.dp, { Prefs.setClusterStretch(f - 0.05f) })
+                Text(if (f <= 1.01f) "wył." else String.format(PL, "%.2f×", f), fontSize = 24.sp, fontWeight = FontWeight.Bold, fontFamily = Condensed)
+                RoundIconButton(Icons.Rounded.Add, "Więcej", 52.dp, { Prefs.setClusterStretch(f + 0.05f) })
+                Text("Wielkość", fontSize = 17.sp, color = CarColors.Muted)
+                RoundIconButton(Icons.Rounded.Remove, "Mniejsze", 52.dp, { Prefs.setClusterUiScale(ui - 0.1f) })
+                Text(String.format(PL, "%.1f×", ui), fontSize = 24.sp, fontWeight = FontWeight.Bold, fontFamily = Condensed)
+                RoundIconButton(Icons.Rounded.Add, "Większe", 52.dp, { Prefs.setClusterUiScale(ui + 0.1f) })
                 PrimaryButton("Gotowe", { UiState.clusterTest.value = false })
             }
         }

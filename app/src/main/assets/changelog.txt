@@ -2,6 +2,12 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
+## next
+Pełny ekran pod licznik
+- Mapa pełnoekranowa ułożona pod wirtualny licznik: manewr u góry pod wycięciem, przyjazd nad wskaźnikami, przyciski z boku
+- Większe napisy i przyciski (do ustawienia: Wyświetlacz → Wirtualny licznik → Wielkość elementów)
+- Kamera dużo bliżej auta i większe auto na mapie pełnoekranowej
+
 ## 1.64 · 2026-11-02
 Mapa na pełny ekran i wirtualny licznik
 - Przycisk pełnego ekranu w rogu mapy – sama mapa z nawigacją na całym ekranie (wyjście tym samym przyciskiem albo „wstecz”)

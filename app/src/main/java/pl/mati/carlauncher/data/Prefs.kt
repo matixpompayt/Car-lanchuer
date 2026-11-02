@@ -79,6 +79,8 @@ object Prefs {
     val shareLive = MutableStateFlow(true)
     /** Ile razy licznik rozciąga obraz z radia w poziomie (1 = bez dopasowania). */
     val clusterStretch = MutableStateFlow(1f)
+    /** Powiększenie przycisków i napisów na mapie pełnoekranowej (licznik). */
+    val clusterUiScale = MutableStateFlow(1.5f)
     /** Ikona auta na mapie: typ nadwozia i kolor lakieru. */
     val carBody = MutableStateFlow("minivan")
     val carPaint = MutableStateFlow(0xFFC3C8CF.toInt())
@@ -126,6 +128,7 @@ object Prefs {
         navVoice.value = p.getBoolean("nav_voice", true)
         shareLive.value = p.getBoolean("share_live", true)
         clusterStretch.value = p.getFloat("cluster_stretch", 1f)
+        clusterUiScale.value = p.getFloat("cluster_ui", 1.5f)
         carBody.value = p.getString("car_body", "minivan") ?: "minivan"
         carPaint.value = p.getInt("car_paint", 0xFFC3C8CF.toInt())
         speedLimits.value = p.getBoolean("speed_limits", true)
@@ -179,6 +182,11 @@ object Prefs {
         val r = (Math.round(v.coerceIn(1f, 2.2f) * 100) / 100f)
         clusterStretch.value = r
         edit { putFloat("cluster_stretch", r) }
+    }
+    fun setClusterUiScale(v: Float) {
+        val r = Math.round(v.coerceIn(1f, 2.5f) * 10) / 10f
+        clusterUiScale.value = r
+        edit { putFloat("cluster_ui", r) }
     }
     fun setShareLive(v: Boolean) { shareLive.value = v; edit { putBoolean("share_live", v) } }
     fun setNavVoice(v: Boolean) { navVoice.value = v; edit { putBoolean("nav_voice", v) } }

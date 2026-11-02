@@ -158,6 +158,7 @@ private class VectorHolder(ctx: Context) {
                 PropertyFactory.iconIgnorePlacement(true),
                 PropertyFactory.iconPitchAlignment(Property.ICON_PITCH_ALIGNMENT_VIEWPORT),
                 PropertyFactory.iconRotationAlignment(Property.ICON_ROTATION_ALIGNMENT_VIEWPORT),
+                PropertyFactory.iconSize(carScale),
             ),
         )
         m.addOnCameraMoveListener { updateMe() }
@@ -393,12 +394,16 @@ private class VectorHolder(ctx: Context) {
      * (widać więcej drogi przed autem). Prędkość wygładzona, żeby mapa nie „pompowała”.
      */
     private var smoothKmh = 0.0
+    /** Dodatkowe przybliżenie (mapa na pełnym ekranie / licznik). */
+    var zoomBoost = 0.0
+    /** Wielkość auta na mapie. */
+    var carScale = 1f
 
     private fun followZoom(l: android.location.Location): Double {
         val kmh = if (l.hasSpeed()) (l.speed * 3.6).coerceIn(0.0, 200.0) else 0.0
         smoothKmh += (kmh - smoothKmh) * 0.35
         val z = zoomForSpeed(smoothKmh)
-        return if (Prefs.map3d.value) z else z - 0.6
+        return ((if (Prefs.map3d.value) z else z - 0.6) + zoomBoost).coerceAtMost(21.0)
     }
 
     private fun zoomForSpeed(kmh: Double): Double {
@@ -532,7 +537,10 @@ fun VectorMap(modifier: Modifier, full: Boolean = false) {
     val loc by LocationRepository.location.collectAsState()
     val is3d by Prefs.map3d.collectAsState()
     val headingUp by Prefs.mapHeadingUp.collectAsState()
-    val h = remember { VectorHolder(ctx) }
+    // pełny ekran / licznik: kamera dużo bliżej i większe auto
+    val h = remember { VectorHolder(ctx).also { if (full) { it.zoomBoost = 1.4; it.carScale = 1.8f } } }
+    val recenter by UiState.recenter.collectAsState()
+    LaunchedEffect(recenter) { if (recenter > 0 && h.ready) h.follow() }
     val ready = h.ready
 
     // start: pierwsza pozycja → kamera jedzie za autem (jak po dotknięciu „moja pozycja”)
@@ -652,7 +660,8 @@ fun VectorMap(modifier: Modifier, full: Boolean = false) {
 
     Box(modifier) {
         AndroidView(factory = { h.view }, modifier = Modifier.fillMaxSize())
-        Column(
+        // na pełnym ekranie przyciski są w układzie licznika (ClusterMap)
+        if (!full) Column(
             Modifier.align(Alignment.CenterEnd).padding(end = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {

@@ -18,6 +18,8 @@ object UiState {
     val mapFull = MutableStateFlow(false)
     /** Wzór do dopasowania obrazu do licznika. */
     val clusterTest = MutableStateFlow(false)
+    /** Kolejne „wróć do auta” (przycisk w trybie pełnego ekranu). */
+    val recenter = MutableStateFlow(0)
 
     fun go(s: Screen) {
         controlCenter.value = false

@@ -423,6 +423,12 @@ private fun LazyListScope.displayPage() {
                 Text(if (f <= 1.01f) "wył." else String.format(PL, "%.2f×", f), fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
                 RoundIconButton(Icons.Rounded.Add, "Więcej", 44.dp, { Prefs.setClusterStretch(f + 0.05f) })
             }
+            val ui by Prefs.clusterUiScale.collectAsState()
+            SettingRow("Wielkość elementów na pełnym ekranie", "Manewr, przyjazd i przyciski na mapie pełnoekranowej (licznik)") {
+                RoundIconButton(Icons.Rounded.Remove, "Mniejsze", 44.dp, { Prefs.setClusterUiScale(ui - 0.1f) })
+                Text(String.format(PL, "%.1f×", ui), fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+                RoundIconButton(Icons.Rounded.Add, "Większe", 44.dp, { Prefs.setClusterUiScale(ui + 0.1f) })
+            }
             SecondaryButton("Ustaw na wzorze (patrząc na licznik)", {
                 if (f <= 1.01f) Prefs.setClusterStretch(1.5f)
                 UiState.clusterTest.value = true
