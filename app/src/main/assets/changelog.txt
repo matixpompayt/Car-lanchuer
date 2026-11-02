@@ -2,7 +2,7 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
-## next
+## 1.71 · 2026-11-02
 Znaki na mapie i częstsze ograniczenia prędkości
 - Na mapie: sygnalizacja świetlna, STOP, ustąp pierwszeństwa, przejścia dla pieszych, przejazdy kolejowe, fotoradary (OpenStreetMap; Wygląd → Mapa → Znaki na mapie)
 - Ograniczenie prędkości pokazuje się prawie zawsze: gdy droga nie ma znaku w mapie, CAR OS liczy je z przepisów (teren zabudowany 50, poza 90, ekspresówka 120/100, autostrada 140; w Niemczech 50/100) – z dopiskiem „wg przepisów”
