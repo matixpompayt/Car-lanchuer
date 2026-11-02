@@ -247,6 +247,8 @@ fun SpeedLimitBadge(modifier: Modifier) {
         ) {
             Text(lim.toString(), color = Color(0xFF111111), fontWeight = FontWeight.Bold, fontSize = if (lim!! >= 100) 26.sp else 30.sp)
         }
+        val est by SpeedLimitRepository.estimated.collectAsState()
+        if (est) Text("wg przepisów", fontSize = 12.sp, color = CarColors.Text2, modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(CarColors.Overlay).padding(horizontal = 6.dp, vertical = 2.dp))
         gps?.let { v ->
             Box(
                 Modifier.clip(RoundedCornerShape(12.dp)).background(if (over) Color(0xFFE0262B) else CarColors.Overlay).padding(horizontal = 10.dp, vertical = 4.dp),

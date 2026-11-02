@@ -72,6 +72,8 @@ object Prefs {
     val mapHeadingUp = MutableStateFlow(true)
     /** Przyciąganie pozycji auta do drogi na mapie. */
     val mapSnap = MutableStateFlow(true)
+    /** Światła, STOP, ustąp, przejścia, przejazdy, fotoradary na mapie (OSM). */
+    val mapSigns = MutableStateFlow(true)
     /** Kto prowadzi: "caros" (własna nawigacja z głosem) albo "google" (Mapy Google w tle). */
     val navEngine = MutableStateFlow("caros")
     val navVoice = MutableStateFlow(true)
@@ -124,6 +126,7 @@ object Prefs {
         map3d.value = p.getBoolean("map_3d", true)
         mapHeadingUp.value = p.getBoolean("map_heading_up", true)
         mapSnap.value = p.getBoolean("map_snap", true)
+        mapSigns.value = p.getBoolean("map_signs", true)
         navEngine.value = p.getString("nav_engine", "caros") ?: "caros"
         navVoice.value = p.getBoolean("nav_voice", true)
         shareLive.value = p.getBoolean("share_live", true)
@@ -190,6 +193,7 @@ object Prefs {
     }
     fun setShareLive(v: Boolean) { shareLive.value = v; edit { putBoolean("share_live", v) } }
     fun setNavVoice(v: Boolean) { navVoice.value = v; edit { putBoolean("nav_voice", v) } }
+    fun setMapSigns(v: Boolean) { mapSigns.value = v; edit { putBoolean("map_signs", v) } }
     fun setMapSnap(v: Boolean) { mapSnap.value = v; edit { putBoolean("map_snap", v) } }
     fun setMapHeadingUp(v: Boolean) { mapHeadingUp.value = v; edit { putBoolean("map_heading_up", v) } }
     fun setThemeMode(v: String) { themeMode.value = v; edit { putString("theme_mode", v) } }

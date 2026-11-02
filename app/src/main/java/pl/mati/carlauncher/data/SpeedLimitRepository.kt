@@ -30,8 +30,15 @@ object SpeedLimitRepository {
     val roadName = MutableStateFlow<String?>(null)
     /** Prędkość przekracza ograniczenie + tolerancję. */
     val over = MutableStateFlow(false)
+    /** Ograniczenie szacowane z przepisów (droga bez znaku w OSM). */
+    val estimated = MutableStateFlow(false)
 
-    private class Way(val id: Long, val limit: Int?, val name: String?, val lat: DoubleArray, val lon: DoubleArray)
+    /** Znak / sygnalizacja na mapie. kind: signals, stop, give_way, crossing, rail, camera. */
+    data class Sign(val id: Long, val kind: String, val lat: Double, val lon: Double)
+    val signs = MutableStateFlow<List<Sign>>(emptyList())
+
+    private class Way(val id: Long, val limit: Int?, val name: String?, val lat: DoubleArray, val lon: DoubleArray, val est: Boolean = false)
+    private class Place(val lat: Double, val lon: Double, val radius: Double)
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var started = false
@@ -65,7 +72,8 @@ object SpeedLimitRepository {
 
     private fun tick() {
         if (!Prefs.speedLimits.value) {
-            limit.value = null; over.value = false; return
+            limit.value = null; over.value = false
+            if (!Prefs.mapSigns.value) return
         }
         val l = LocationRepository.location.value ?: return
         val now = System.currentTimeMillis()
@@ -80,7 +88,8 @@ object SpeedLimitRepository {
         match(l)
         val speed = LocationRepository.gpsSpeed.value
         val lim = limit.value
-        val isOver = lim != null && speed != null && speed > lim + Prefs.speedTolerance.value
+        // sygnał dźwiękowy tylko przy znanym ograniczeniu (nie przy szacowanym)
+        val isOver = lim != null && speed != null && speed > lim + Prefs.speedTolerance.value && !estimated.value
         if (isOver && !over.value && Prefs.speedBeep.value) beep()
         over.value = isOver
     }
@@ -126,6 +135,7 @@ object SpeedLimitRepository {
         currentWay = chosen.id
         roadName.value = chosen.name
         limit.value = chosen.limit
+        estimated.value = chosen.est
     }
 
     private fun fetch(l: Location) {
@@ -139,7 +149,11 @@ object SpeedLimitRepository {
         }
         val q = String.format(
             Locale.US,
-            "[out:json][timeout:20];way(around:%d,%.6f,%.6f)[highway~\"^(motorway|trunk|primary|secondary|tertiary|unclassified|residential|living_street|road)(_link)?$\"];out tags geom qt;",
+            "[out:json][timeout:25];" +
+                "way(around:%1\$d,%2\$.6f,%3\$.6f)[highway~\"^(motorway|trunk|primary|secondary|tertiary|unclassified|residential|living_street|road)(_link)?$\"];out tags geom qt;" +
+                "node(around:%1\$d,%2\$.6f,%3\$.6f)[highway~\"^(traffic_signals|stop|give_way|crossing|speed_camera)$\"];out qt;" +
+                "node(around:%1\$d,%2\$.6f,%3\$.6f)[railway=level_crossing];out qt;" +
+                "node(around:4000,%2\$.6f,%3\$.6f)[place~\"^(city|town|village|hamlet|suburb|quarter|neighbourhood)$\"];out qt;",
             RADIUS, cLat, cLon,
         )
         var text: String? = null
@@ -150,6 +164,35 @@ object SpeedLimitRepository {
         if (text == null) return
         val arr = JSONObject(text).optJSONArray("elements") ?: return
         val out = ArrayList<Way>(arr.length())
+        // najpierw miejscowości i znaki (węzły)
+        val places = ArrayList<Place>()
+        val signList = ArrayList<Sign>()
+        for (i in 0 until arr.length()) {
+            val o = arr.getJSONObject(i)
+            if (o.optString("type") != "node") continue
+            val t = o.optJSONObject("tags") ?: continue
+            val la = o.optDouble("lat"); val lo = o.optDouble("lon")
+            val place = t.optString("place")
+            if (place.isNotBlank()) {
+                val r = when (place) { "city" -> 3500.0; "town" -> 1800.0; "suburb", "quarter" -> 1200.0; "village" -> 700.0; "hamlet" -> 300.0; else -> 500.0 }
+                places += Place(la, lo, r)
+                continue
+            }
+            val kind = when {
+                t.optString("railway") == "level_crossing" -> "rail"
+                else -> when (t.optString("highway")) {
+                    "traffic_signals" -> "signals"
+                    "stop" -> "stop"
+                    "give_way" -> "give_way"
+                    "speed_camera" -> "camera"
+                    "crossing" -> if (t.optString("crossing") in setOf("unmarked", "no", "informal", "traffic_signals")) null else "crossing"
+                    else -> null
+                }
+            } ?: continue
+            signList += Sign(o.optLong("id"), kind, la, lo)
+        }
+        signs.value = signList
+        val germany = isGermany(cLat, cLon)
         for (i in 0 until arr.length()) {
             val o = arr.getJSONObject(i)
             val geom = o.optJSONArray("geometry") ?: continue
@@ -163,12 +206,62 @@ object SpeedLimitRepository {
             }
             val name = tags.optString("ref").ifBlank { null }?.let { ref -> tags.optString("name").ifBlank { null }?.let { "$ref · $it" } ?: ref }
                 ?: tags.optString("name").ifBlank { null }
-            out += Way(o.getLong("id"), limitOf(tags), name, lat, lon)
+            val exact = limitOf(tags)
+            if (exact != null) {
+                out += Way(o.getLong("id"), exact, name, lat, lon)
+            } else {
+                val mid = lat.size / 2
+                val urban = tags.optString("zone:traffic").contains("urban", true) ||
+                    tags.optString("highway") == "residential" ||
+                    places.any { RouteRepository.dist(lat[mid], lon[mid], it.lat, it.lon) < it.radius }
+                out += Way(o.getLong("id"), defaultLimit(tags, urban, germany), name, lat, lon, est = true)
+            }
         }
         ways = out
         centerLat = cLat
         centerLon = cLon
         hasData = true
+    }
+
+    /**
+     * Gdy droga nie ma znaku w OSM – ograniczenie z przepisów:
+     * PL: teren zabudowany 50, poza 90, ekspresowa 120 (jednojezdniowa 100), autostrada 140;
+     * DE: w mieście 50, poza 100, autostrada bez limitu (nie pokazujemy).
+     */
+    private fun defaultLimit(t: JSONObject, urban: Boolean, germany: Boolean): Int? {
+        val hw = t.optString("highway").removeSuffix("_link")
+        val ref = t.optString("ref")
+        val oneway = t.optString("oneway") == "yes"
+        if (hw == "living_street") return if (germany) 7 else 20
+        if (hw == "motorway") return if (germany) null else 140
+        val expressway = !germany && (t.optString("motorroad") == "yes" || ref.startsWith("S"))
+        if (expressway) return if (oneway) 120 else 100
+        if (urban) return 50
+        if (germany && t.optString("motorroad") == "yes") return 100
+        return if (germany) 100 else 90
+    }
+
+    /** Czy punkt jest po niemieckiej stronie granicy (Odra / Nysa Łużycka – w przybliżeniu). */
+    fun isGermany(lat: Double, lon: Double): Boolean {
+        if (lon < 13.9) return true
+        if (lon > 15.1) return false
+        val border = listOf(
+            54.10 to 14.22, 53.75 to 14.27, 53.45 to 14.40, 53.25 to 14.44, 53.05 to 14.30, 52.90 to 14.14,
+            52.75 to 14.30, 52.65 to 14.50, 52.58 to 14.64, 52.35 to 14.55, 52.15 to 14.68, 51.95 to 14.72,
+            51.55 to 14.73, 51.30 to 14.97, 51.15 to 14.99, 50.85 to 14.82,
+        )
+        val sorted = border.sortedBy { it.first }
+        val b = when {
+            lat <= sorted.first().first -> sorted.first().second
+            lat >= sorted.last().first -> sorted.last().second
+            else -> {
+                val k = sorted.indexOfFirst { it.first >= lat }
+                val (a1, o1) = sorted[k - 1]
+                val (a2, o2) = sorted[k]
+                o1 + (o2 - o1) * (lat - a1) / (a2 - a1)
+            }
+        }
+        return lon < b
     }
 
     /** maxspeed z tagów OSM (+ polskie wartości domyślne). */
@@ -196,11 +289,7 @@ object SpeedLimitRepository {
             ?: parse(t.optString("zone:maxspeed").ifBlank { null })
             ?: parse(t.optString("maxspeed:type").ifBlank { null })
             ?: parse(t.optString("source:maxspeed").ifBlank { null })
-            ?: when (t.optString("highway")) {
-                "motorway" -> 140
-                "living_street" -> 20
-                else -> null
-            }
+            ?: null
     }
 
     private fun beep() {

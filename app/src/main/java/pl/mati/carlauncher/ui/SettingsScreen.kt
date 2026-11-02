@@ -298,6 +298,10 @@ private fun LazyListScope.lookPage() {
         }
     }
     item {
+        val v by Prefs.mapSigns.collectAsState()
+        SettingRow("Znaki na mapie", "Sygnalizacja świetlna, STOP, ustąp pierwszeństwa, przejścia, przejazdy kolejowe, fotoradary (OpenStreetMap)", onClick = { Prefs.setMapSigns(!v) }) { CarSwitch(v) }
+    }
+    item {
         val v by Prefs.mapSnap.collectAsState()
         SettingRow("Auto zawsze na drodze", "Wygładza pozycję GPS: przyciąga auto do najbliższej drogi i nie pływa na postoju", onClick = { Prefs.setMapSnap(!v) }) { CarSwitch(v) }
     }

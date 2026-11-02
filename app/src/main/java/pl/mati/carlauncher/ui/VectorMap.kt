@@ -150,6 +150,29 @@ private class VectorHolder(ctx: Context) {
             ),
         )
         // auto 3D na wierzchu (zawsze przodem do kamery – wybierana klatka z modelu)
+        // znaki: światła, STOP, ustąp, przejścia, przejazdy, fotoradary (pod autem)
+        SignIcons.KINDS.forEach { k -> st.addImage("sign_$k", SignIcons.bitmap(k, (40 * density).toInt())) }
+        st.addSource(GeoJsonSource(SRC_SIGNS))
+        st.addLayer(
+            org.maplibre.android.style.layers.SymbolLayer(L_SIGNS, SRC_SIGNS).withProperties(
+                PropertyFactory.iconImage(org.maplibre.android.style.expressions.Expression.concat(
+                    org.maplibre.android.style.expressions.Expression.literal("sign_"),
+                    org.maplibre.android.style.expressions.Expression.get("k"),
+                )),
+                PropertyFactory.iconAllowOverlap(true),
+                PropertyFactory.iconIgnorePlacement(true),
+                PropertyFactory.iconPitchAlignment(Property.ICON_PITCH_ALIGNMENT_VIEWPORT),
+                PropertyFactory.iconAnchor(Property.ICON_ANCHOR_BOTTOM),
+                PropertyFactory.iconSize(
+                    org.maplibre.android.style.expressions.Expression.interpolate(
+                        org.maplibre.android.style.expressions.Expression.linear(), org.maplibre.android.style.expressions.Expression.zoom(),
+                        org.maplibre.android.style.expressions.Expression.stop(14.5, 0.45),
+                        org.maplibre.android.style.expressions.Expression.stop(17, 0.8),
+                        org.maplibre.android.style.expressions.Expression.stop(19, 1.15),
+                    ),
+                ),
+            ).also { it.minZoom = 14.5f },
+        )
         st.addSource(GeoJsonSource(SRC_ME))
         st.addLayer(
             org.maplibre.android.style.layers.SymbolLayer(L_ME, SRC_ME).withProperties(
@@ -481,6 +504,13 @@ private class VectorHolder(ctx: Context) {
         st.getLayer(L_ALTS)?.setProperties(PropertyFactory.lineColor(android.graphics.Color.parseColor(if (light) "#9AA3AE" else "#66717F")))
     }
 
+    fun setSigns(list: List<pl.mati.carlauncher.data.SpeedLimitRepository.Sign>) {
+        val s = style?.getSourceAs<GeoJsonSource>(SRC_SIGNS) ?: return
+        s.setGeoJson(FeatureCollection.fromFeatures(list.map {
+            Feature.fromGeometry(Point.fromLngLat(it.lon, it.lat)).apply { addStringProperty("k", it.kind) }
+        }))
+    }
+
     fun stopFollow() {
         following = false
         main.removeCallbacks(autoReturn)
@@ -520,6 +550,8 @@ private class VectorHolder(ctx: Context) {
         const val L_ROUTE = "caros-route-line"
         const val L_DEST = "caros-dest-dot"
         const val SRC_ME = "caros-me"
+        const val SRC_SIGNS = "caros-signs"
+        const val L_SIGNS = "caros-signs-layer"
         const val L_ME = "caros-me-car"
         const val IMG_EMPTY = "caros-empty"
         const val AUTO_RETURN_MS = 12_000L
@@ -561,6 +593,13 @@ fun VectorMap(modifier: Modifier, full: Boolean = false) {
         try { h.map?.locationComponent?.forceLocationUpdate(l) } catch (_: Exception) {}
         h.onLocation(l)
         h.updateMe()
+    }
+
+    // znaki drogowe z OSM
+    val signs by pl.mati.carlauncher.data.SpeedLimitRepository.signs.collectAsState()
+    val signsOn by Prefs.mapSigns.collectAsState()
+    LaunchedEffect(signs, signsOn, ready) {
+        if (ready) h.setSigns(if (signsOn) signs else emptyList())
     }
 
     // kolor akcentu: trasa, cel, strzałka auta
