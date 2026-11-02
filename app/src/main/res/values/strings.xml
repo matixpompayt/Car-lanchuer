@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Car Launcher</string>
-    <string name="shade_guard_label">CAR OS – pasek systemowy i CamSam</string>
-    <string name="shade_guard_desc">Gdy CAR OS jest na ekranie, od razu zamyka wysuniętą zasłonę powiadomień Androida. Odczytuje też teksty z okienka ostrzeżeń CamSam (fotoradary), żeby pokazać je w CAR OS. Nie czyta innych aplikacji ani tego, co wpisujesz.</string>
+    <string name="shade_guard_label">CAR OS – pasek systemowy</string>
+    <string name="shade_guard_desc">Gdy CAR OS jest na ekranie, od razu zamyka wysuniętą zasłonę powiadomień Androida. Nie czyta treści innych aplikacji ani tego, co wpisujesz.</string>
 </resources>

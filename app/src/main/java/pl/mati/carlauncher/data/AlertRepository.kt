@@ -32,11 +32,11 @@ object AlertRepository {
         else -> null
     }
 
-    // Słowa, które oznaczają realne ostrzeżenie (a nie „aplikacja działa w tle”).
+    // Tylko słowa oznaczające realne ostrzeżenie. Sama odległość / prędkość („0 km/h”) to NIE ostrzeżenie.
     private val ALERT = Regex(
-        "(fotoradar|radar|kamer|kontrol|policj|patrol|odcink|pomiar|wypadek|korek|zator|robot|przeszkod|zagroż|uwaga|czerwon|" +
-            "speed|camera|cam\\b|blitzer|messung|kontrolle|polizei|ampel|police|accident|hazard|section|red light|" +
-            "\\d+\\s?m\\b|\\d+[.,]?\\d*\\s?km\\b)",
+        "(fotoradar|radar|kamer|kontrol|policj|patrol|odcinkow|pomiar|suszark|wypadek|korek|zator|roboty drogow|przeszkod|zagroż|" +
+            "czerwon|niebezpiecz|speed ?cam|speedcam|camera|blitzer|messung|kontrolle|polizei|ampel|police|accident|hazard|" +
+            "section control|red light|radarfalle|stau|unfall)",
         RegexOption.IGNORE_CASE,
     )
     private val IDLE = Regex(
@@ -101,8 +101,14 @@ object AlertRepository {
 
     private var lastA11y = 0L
 
-    /** Teksty z okienka CamSam na ekranie. */
+    /** Teksty z okienka CamSam na ekranie – NIE używane (ostrzeżenia tylko z powiadomień). */
+    @Suppress("unused")
     fun onOverlay(pkg: String, texts: List<String>) {
+        return
+    }
+
+    @Suppress("unused")
+    private fun onOverlayOld(pkg: String, texts: List<String>) {
         val app = appName(pkg) ?: return
         val now = System.currentTimeMillis()
         if (now - lastA11y < 400) return

@@ -2,6 +2,11 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
+## next
+CamSam tylko z powiadomień
+- Koniec stałego banera „0 km/h”: ostrzeżenia tylko z powiadomień CamSam, widżet CamSam może być wyłączony
+- Baner pokazuje się tylko przy prawdziwym ostrzeżeniu (fotoradar, kontrola, pomiar odcinkowy, policja…), a nie przy samej prędkości czy odległości
+
 ## 1.66 · 2026-11-02
 Poprawki pełnego ekranu
 - Manewr i pasek przyjazdu na właściwych miejscach (wcześniej odstępy rosły razem z powiększeniem – pasek zasłaniał auto)
