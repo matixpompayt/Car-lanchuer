@@ -692,6 +692,12 @@ private fun LazyListScope.speedSection() {
         SettingRow("Pokazuj ograniczenia", "Znak z limitem na mapie (dane OpenStreetMap, wymaga internetu)", onClick = { Prefs.setSpeedLimits(!v) }) { CarSwitch(v) }
     }
     item {
+        val st by pl.mati.carlauncher.data.SpeedLimitRepository.status.collectAsState()
+        val lim by pl.mati.carlauncher.data.SpeedLimitRepository.limit.collectAsState()
+        val road by pl.mati.carlauncher.data.SpeedLimitRepository.roadName.collectAsState()
+        SettingRow("Stan danych", st + "\nTeraz: " + (road ?: "nie dopasowano drogi") + " · " + (lim?.let { "$it km/h" } ?: "brak limitu")) {}
+    }
+    item {
         val t by Prefs.speedTolerance.collectAsState()
         SettingRow("Tolerancja", "Ostrzegaj powyżej limitu o $t km/h") {
             RoundIconButton(Icons.Rounded.Remove, "Mniej", 44.dp, { Prefs.setSpeedTolerance(t - 5) })

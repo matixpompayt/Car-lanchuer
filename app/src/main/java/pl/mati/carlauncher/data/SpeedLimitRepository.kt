@@ -36,6 +36,8 @@ object SpeedLimitRepository {
     /** Znak / sygnalizacja na mapie. kind: signals, stop, give_way, crossing, rail, camera. */
     data class Sign(val id: Long, val kind: String, val lat: Double, val lon: Double)
     val signs = MutableStateFlow<List<Sign>>(emptyList())
+    /** Stan pobierania danych OSM – do podglądu w ustawieniach. */
+    val status = MutableStateFlow("Brak danych – czekam na GPS")
 
     private class Way(val id: Long, val limit: Int?, val name: String?, val lat: DoubleArray, val lon: DoubleArray, val est: Boolean = false)
     private class Place(val lat: Double, val lon: Double, val radius: Double)
@@ -56,8 +58,13 @@ object SpeedLimitRepository {
     private const val REFETCH_M = 420.0
     private val mirrors = listOf(
         "https://overpass-api.de/api/interpreter",
-        "https://overpass.kumi.systems/api/interpreter",
+        "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
+        "https://overpass.private.coffee/api/interpreter",
     )
+    /** Serwer, który ostatnio odpowiedział – od niego zaczynamy. */
+    @Volatile private var goodMirror = 0
+    /** Drogi z poprzednich pobrań (id -> droga), żeby przerwa w internecie nie kasowała limitu. */
+    private val cache = LinkedHashMap<Long, Way>()
 
     fun start() {
         if (started) return
@@ -81,6 +88,7 @@ object SpeedLimitRepository {
         if (!fetching && moved > REFETCH_M && now - lastFetch > 15_000) {
             fetching = true
             lastFetch = now
+            if (!hasData) status.value = "Pobieram dane z OpenStreetMap…"
             scope.launch(Dispatchers.IO) {
                 try { fetch(l) } catch (_: Exception) {} finally { fetching = false }
             }
@@ -149,19 +157,30 @@ object SpeedLimitRepository {
         }
         val q = String.format(
             Locale.US,
-            "[out:json][timeout:25];" +
+            "[out:json][timeout:20];" +
                 "way(around:%1\$d,%2\$.6f,%3\$.6f)[highway~\"^(motorway|trunk|primary|secondary|tertiary|unclassified|residential|living_street|road)(_link)?$\"];out tags geom qt;" +
                 "node(around:%1\$d,%2\$.6f,%3\$.6f)[highway~\"^(traffic_signals|stop|give_way|crossing|speed_camera)$\"];out qt;" +
                 "node(around:%1\$d,%2\$.6f,%3\$.6f)[railway=level_crossing];out qt;" +
-                "node(around:4000,%2\$.6f,%3\$.6f)[place~\"^(city|town|village|hamlet|suburb|quarter|neighbourhood)$\"];out qt;",
+                "node(around:3000,%2\$.6f,%3\$.6f)[place~\"^(city|town|village|hamlet|suburb|quarter|neighbourhood)$\"];out qt;",
             RADIUS, cLat, cLon,
         )
         var text: String? = null
-        for (m in mirrors) {
-            text = try { post(m, "data=" + URLEncoder.encode(q, "UTF-8")) } catch (_: Exception) { null }
-            if (text != null) break
+        val errors = ArrayList<String>()
+        for (k in mirrors.indices) {
+            val idx = (goodMirror + k) % mirrors.size
+            val m = mirrors[idx]
+            text = try { post(m, "data=" + URLEncoder.encode(q, "UTF-8")) } catch (e: Exception) { errors += host(m) + ": " + (e.message ?: "błąd"); null }
+            // serwer przeciążony potrafi zwrócić 200 z pustym wynikiem i komunikatem "remark"
+            if (text != null && text.contains("\"remark\"") && !text.contains("\"geometry\"")) {
+                errors += host(m) + ": przeciążony"; text = null
+            }
+            if (text != null) { goodMirror = idx; break }
         }
-        if (text == null) return
+        if (text == null) {
+            status.value = "Błąd pobierania (" + time() + ") – " + errors.joinToString("; ") + if (cache.isNotEmpty()) " · używam zapisanych ${cache.size} dróg" else ""
+            lastFetch = System.currentTimeMillis() - 5_000 // ponów szybciej
+            return
+        }
         val arr = JSONObject(text).optJSONArray("elements") ?: return
         val out = ArrayList<Way>(arr.length())
         // najpierw miejscowości i znaki (węzły)
@@ -217,7 +236,18 @@ object SpeedLimitRepository {
                 out += Way(o.getLong("id"), defaultLimit(tags, urban, germany), name, lat, lon, est = true)
             }
         }
-        ways = out
+        // scal z wcześniejszymi i wyrzuć drogi dalej niż 6 km
+        synchronized(cache) {
+            for (w in out) cache[w.id] = w
+            val it = cache.values.iterator()
+            while (it.hasNext()) {
+                val w = it.next()
+                if (RouteRepository.dist(w.lat[0], w.lon[0], cLat, cLon) > 6000) it.remove()
+            }
+            ways = cache.values.toList()
+        }
+        val known = out.count { !it.est }
+        status.value = "OK (" + time() + ", " + host(mirrors[goodMirror]) + ") – ${out.size} dróg, $known ze znakiem, ${out.size - known} wg przepisów"
         centerLat = cLat
         centerLon = cLon
         hasData = true
@@ -292,6 +322,9 @@ object SpeedLimitRepository {
             ?: null
     }
 
+    private fun host(u: String) = try { URL(u).host } catch (_: Exception) { u }
+    private fun time() = java.text.SimpleDateFormat("HH:mm:ss", Locale.ROOT).format(java.util.Date())
+
     private fun beep() {
         try {
             val tg = tone ?: ToneGenerator(AudioManager.STREAM_MUSIC, 90).also { tone = it }
@@ -302,14 +335,14 @@ object SpeedLimitRepository {
     private fun post(url: String, body: String): String {
         val c = URL(url).openConnection() as HttpURLConnection
         c.connectTimeout = 10_000
-        c.readTimeout = 25_000
+        c.readTimeout = 22_000
         c.requestMethod = "POST"
         c.doOutput = true
         c.setRequestProperty("User-Agent", "CarOS/1.1 (Android head unit launcher; pl.mati.carlauncher)")
         c.setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
         try {
             c.outputStream.use { it.write(body.toByteArray()) }
-            if (c.responseCode !in 200..299) throw java.io.IOException("HTTP ${c.responseCode}")
+            if (c.responseCode !in 200..299) throw java.io.IOException("HTTP ${c.responseCode}" + if (c.responseCode == 429) " (limit zapytań)" else if (c.responseCode == 504) " (przeciążony)" else "")
             return c.inputStream.bufferedReader().use { it.readText() }
         } finally {
             c.disconnect()

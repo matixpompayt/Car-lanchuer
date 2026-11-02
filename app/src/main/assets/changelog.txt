@@ -2,6 +2,12 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
+## next
+Pewniejsze ograniczenia prędkości
+- Nowe serwery danych OSM (stary zapasowy przestał działać) i automatyczne przełączanie przy przeciążeniu
+- Pobrane drogi zostają w pamięci – chwilowy brak internetu nie kasuje limitu
+- Ustawienia → Ograniczenia prędkości → Stan danych: widać, czy dane się pobierają i skąd
+
 ## 1.72 · 2026-11-02
 Własny układ na liczniku
 - Na mapie pełnoekranowej każdy element (manewr, przyjazd, ograniczenie, przyciski) przesuwasz palcem i powiększasz osobno
