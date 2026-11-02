@@ -2,7 +2,7 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
-## next
+## 1.67 · 2026-11-02
 CamSam tylko z powiadomień
 - Koniec stałego banera „0 km/h”: ostrzeżenia tylko z powiadomień CamSam, widżet CamSam może być wyłączony
 - Baner pokazuje się tylko przy prawdziwym ostrzeżeniu (fotoradar, kontrola, pomiar odcinkowy, policja…), a nie przy samej prędkości czy odległości
