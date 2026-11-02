@@ -77,6 +77,8 @@ object Prefs {
     val navVoice = MutableStateFlow(true)
     /** Pozycja auta na żywo w CAR OS Connect (gdy auto jedzie). */
     val shareLive = MutableStateFlow(true)
+    /** Ile razy licznik rozciąga obraz z radia w poziomie (1 = bez dopasowania). */
+    val clusterStretch = MutableStateFlow(1f)
     /** Ikona auta na mapie: typ nadwozia i kolor lakieru. */
     val carBody = MutableStateFlow("minivan")
     val carPaint = MutableStateFlow(0xFFC3C8CF.toInt())
@@ -123,6 +125,7 @@ object Prefs {
         navEngine.value = p.getString("nav_engine", "caros") ?: "caros"
         navVoice.value = p.getBoolean("nav_voice", true)
         shareLive.value = p.getBoolean("share_live", true)
+        clusterStretch.value = p.getFloat("cluster_stretch", 1f)
         carBody.value = p.getString("car_body", "minivan") ?: "minivan"
         carPaint.value = p.getInt("car_paint", 0xFFC3C8CF.toInt())
         speedLimits.value = p.getBoolean("speed_limits", true)
@@ -172,6 +175,11 @@ object Prefs {
     fun setMapEngine(v: String) { mapEngine.value = v; edit { putString("map_engine", v) } }
     fun setMap3d(v: Boolean) { map3d.value = v; edit { putBoolean("map_3d", v) } }
     fun setNavEngine(v: String) { navEngine.value = v; edit { putString("nav_engine", v) } }
+    fun setClusterStretch(v: Float) {
+        val r = (Math.round(v.coerceIn(1f, 2.2f) * 100) / 100f)
+        clusterStretch.value = r
+        edit { putFloat("cluster_stretch", r) }
+    }
     fun setShareLive(v: Boolean) { shareLive.value = v; edit { putBoolean("share_live", v) } }
     fun setNavVoice(v: Boolean) { navVoice.value = v; edit { putBoolean("nav_voice", v) } }
     fun setMapSnap(v: Boolean) { mapSnap.value = v; edit { putBoolean("map_snap", v) } }

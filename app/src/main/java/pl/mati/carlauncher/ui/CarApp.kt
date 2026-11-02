@@ -139,6 +139,7 @@ private fun Shell() {
                 }
             }
         }
+        FullMapOverlay()
         RoadAlertBanner()
         HomeSuggestionBanner()
         ControlCenter()

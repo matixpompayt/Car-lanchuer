@@ -14,6 +14,10 @@ object UiState {
     val setupStep = MutableStateFlow(0)
     val bootMessage = MutableStateFlow<String?>(null)
     val controlCenter = MutableStateFlow(false)
+    /** Mapa na pełnym ekranie (np. do pokazania na wirtualnym liczniku). */
+    val mapFull = MutableStateFlow(false)
+    /** Wzór do dopasowania obrazu do licznika. */
+    val clusterTest = MutableStateFlow(false)
 
     fun go(s: Screen) {
         controlCenter.value = false

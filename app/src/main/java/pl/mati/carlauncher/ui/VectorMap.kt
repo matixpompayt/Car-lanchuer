@@ -16,6 +16,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Explore
 import androidx.compose.material.icons.rounded.MyLocation
+import androidx.compose.material.icons.rounded.Fullscreen
+import androidx.compose.material.icons.rounded.FullscreenExit
 import androidx.compose.material.icons.rounded.Navigation
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -521,7 +523,7 @@ private class VectorHolder(ctx: Context) {
 
 /** Mapa wektorowa 3D (OpenFreeMap): ciemny styl CAR OS, budynki 3D, trasa i warianty. */
 @Composable
-fun VectorMap(modifier: Modifier) {
+fun VectorMap(modifier: Modifier, full: Boolean = false) {
     val ctx = LocalContext.current
     val lifecycle = (ctx as? ComponentActivity)?.lifecycle
     val accent = LocalAccent.current
@@ -654,6 +656,19 @@ fun VectorMap(modifier: Modifier) {
             Modifier.align(Alignment.CenterEnd).padding(end = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            // pełny ekran
+            Box(
+                Modifier.size(52.dp).clip(CircleShape).background(CarColors.Overlay).clickable {
+                    UiState.mapFull.value = !full
+                    if (full) UiState.clusterTest.value = false
+                },
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    if (full) Icons.Rounded.FullscreenExit else Icons.Rounded.Fullscreen,
+                    if (full) "Zamknij pełny ekran" else "Mapa na pełny ekran", tint = CarColors.Text, modifier = Modifier.size(28.dp),
+                )
+            }
             // 2D / 3D
             Box(
                 Modifier.size(52.dp).clip(CircleShape).background(CarColors.Overlay).clickable { Prefs.setMap3d(!is3d) },

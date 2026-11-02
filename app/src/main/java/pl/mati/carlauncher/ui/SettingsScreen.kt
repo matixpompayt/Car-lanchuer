@@ -401,6 +401,41 @@ private fun LazyListScope.lookPage() {
 }
 
 private fun LazyListScope.displayPage() {
+    item { SectionLabel("Wirtualny licznik") }
+    item {
+        val ctx = LocalContext.current
+        val f by Prefs.clusterStretch.collectAsState()
+        val displays = remember {
+            try {
+                ctx.getSystemService(android.hardware.display.DisplayManager::class.java)?.displays?.map { d ->
+                    val m = android.util.DisplayMetrics()
+                    @Suppress("DEPRECATION") d.getRealMetrics(m)
+                    "${d.name} ${m.widthPixels}×${m.heightPixels}"
+                }.orEmpty()
+            } catch (_: Exception) { emptyList() }
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            SettingRow(
+                "Dopasowanie obrazu do licznika",
+                "Mapa na pełnym ekranie (przycisk w rogu mapy) ściśnięta tak, żeby na liczniku wyglądała normalnie – na radiu będzie węższa",
+            ) {
+                RoundIconButton(Icons.Rounded.Remove, "Mniej", 44.dp, { Prefs.setClusterStretch(f - 0.05f) })
+                Text(if (f <= 1.01f) "wył." else String.format(PL, "%.2f×", f), fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+                RoundIconButton(Icons.Rounded.Add, "Więcej", 44.dp, { Prefs.setClusterStretch(f + 0.05f) })
+            }
+            SecondaryButton("Ustaw na wzorze (patrząc na licznik)", {
+                if (f <= 1.01f) Prefs.setClusterStretch(1.5f)
+                UiState.clusterTest.value = true
+                UiState.mapFull.value = true
+            }, height = 52.dp)
+            Text(
+                "Ekrany widziane przez radio: " + displays.joinToString(" · ").ifBlank { "?" } +
+                    if (displays.size > 1) " – licznik może być osobnym ekranem, daj znać" else "",
+                fontSize = 14.sp, color = CarColors.Muted,
+            )
+        }
+    }
+
     item { SectionLabel("Jasność") }
     item {
         val ctx = LocalContext.current

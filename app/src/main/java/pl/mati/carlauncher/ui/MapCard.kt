@@ -77,7 +77,13 @@ fun formatEta(secondsFromNow: Double): String {
 }
 
 @Composable
-fun MapCard(modifier: Modifier) {
+fun MapCard(modifier: Modifier, full: Boolean = false) {
+    // mapa na pełnym ekranie – tu tylko puste tło (jedna mapa naraz)
+    val mapFull by UiState.mapFull.collectAsState()
+    if (mapFull && !full) {
+        CarCard(modifier, color = CarColors.MapBg) {}
+        return
+    }
     val googleNav by NavRepository.state.collectAsState()
     val guide by pl.mati.carlauncher.data.Guidance.state.collectAsState()
     val route by RouteRepository.route.collectAsState()
@@ -89,7 +95,7 @@ fun MapCard(modifier: Modifier) {
 
     val engine by Prefs.mapEngine.collectAsState()
     CarCard(modifier, color = CarColors.MapBg) {
-        if (engine == "osm") OsmMap(Modifier.fillMaxSize()) else VectorMap(Modifier.fillMaxSize())
+        if (engine == "osm") OsmMap(Modifier.fillMaxSize()) else VectorMap(Modifier.fillMaxSize(), full)
 
         // Następny manewr (z powiadomienia Map Google / Waze)
         nav?.let { n ->
