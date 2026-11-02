@@ -2,6 +2,10 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
+## next
+Bluetooth od razu na muzyce
+- Przycisk Bluetooth w odtwarzaczu otwiera aplikację BT radia od razu na zakładce z muzyką (zamiast „Połącz”)
+
 ## 1.69 · 2026-11-02
 CamSam – więcej rodzajów ostrzeżeń
 - Rozpoznawane też: odstęp, koniec korku, gołoledź, zła widoczność, kombinowany fotoradar, czerwone światło (nazwy jak w CamSam)

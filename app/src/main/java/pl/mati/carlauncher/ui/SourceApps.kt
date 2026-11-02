@@ -63,11 +63,39 @@ object SourceApps {
 
     fun open(ctx: Context, kind: Kind): Boolean {
         val comp = resolve(ctx, kind) ?: return false
+        // Bluetooth: od razu zakładka z muzyką (osobna aktywność w aplikacji radia), a nie „Połącz”
+        if (kind == Kind.BT && openBtMusic(ctx, comp.substringBefore("/"), comp.substringAfter("/"))) return true
         val i = Intent(Intent.ACTION_MAIN)
             .addCategory(Intent.CATEGORY_LAUNCHER)
             .setClassName(comp.substringBefore("/"), comp.substringAfter("/"))
             .addFlags(Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
         return Launch.start(ctx, i)
+    }
+
+    private val MUSIC_ACT = Regex("(music|a2dp|avrcp|btaudio|media|player|song)", RegexOption.IGNORE_CASE)
+
+    /** Szuka w aplikacji BT aktywności z muzyką (np. com.ts.bt…BtMusicActivity) i ją otwiera. */
+    private fun openBtMusic(ctx: Context, pkg: String, main: String): Boolean {
+        val acts = try {
+            @Suppress("DEPRECATION")
+            ctx.packageManager.getPackageInfo(pkg, android.content.pm.PackageManager.GET_ACTIVITIES).activities?.toList().orEmpty()
+        } catch (_: Exception) {
+            emptyList()
+        }
+        // tylko muzyka BLUETOOTH (w TopWay radio, USB i BT to jedna aplikacja – nie otwieraj odtwarzacza USB)
+        val btName = Regex("(bt|blue|a2dp|avrcp)", RegexOption.IGNORE_CASE)
+        val cands = acts.filter {
+            val n = it.name.lowercase()
+            it.exported && it.name != main && MUSIC_ACT.containsMatchIn(n.substringAfterLast('.')) &&
+                (btName.containsMatchIn(n.substringAfterLast('.')) || btName.containsMatchIn(n.substringBeforeLast('.').substringAfterLast('.')))
+        }
+            .sortedByDescending { (if (it.name.contains("bt", true)) 2 else 0) + (if (it.name.contains("music", true)) 1 else 0) }
+        for (a in cands) {
+            val i = Intent(Intent.ACTION_MAIN).setClassName(pkg, a.name)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+            if (Launch.start(ctx, i)) return true
+        }
+        return false
     }
 
     fun pkgOf(ctx: Context, kind: Kind): String? = resolve(ctx, kind)?.substringBefore("/")
