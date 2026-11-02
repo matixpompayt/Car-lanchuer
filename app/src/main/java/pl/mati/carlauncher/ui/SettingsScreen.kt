@@ -433,6 +433,10 @@ private fun LazyListScope.displayPage() {
                 Text(String.format(PL, "%.1f×", ui), fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
                 RoundIconButton(Icons.Rounded.Add, "Większe", 44.dp, { Prefs.setClusterUiScale(ui + 0.1f) })
             }
+            SecondaryButton("Ustaw elementy na liczniku (przeciągnij palcem)", {
+                ClusterLayout.editing.value = true
+                UiState.mapFull.value = true
+            }, height = 52.dp)
             SecondaryButton("Ustaw na wzorze (patrząc na licznik)", {
                 if (f <= 1.01f) Prefs.setClusterStretch(1.5f)
                 UiState.clusterTest.value = true

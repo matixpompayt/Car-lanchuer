@@ -2,6 +2,12 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
+## next
+Własny układ na liczniku
+- Na mapie pełnoekranowej każdy element (manewr, przyjazd, ograniczenie, przyciski) przesuwasz palcem i powiększasz osobno
+- Włączanie: przycisk z ołówkiem na mapie pełnoekranowej albo Wyświetlacz → Wirtualny licznik → Ustaw elementy
+- „Domyślne” przywraca układ startowy
+
 ## 1.71 · 2026-11-02
 Znaki na mapie i częstsze ograniczenia prędkości
 - Na mapie: sygnalizacja świetlna, STOP, ustąp pierwszeństwa, przejścia dla pieszych, przejazdy kolejowe, fotoradary (OpenStreetMap; Wygląd → Mapa → Znaki na mapie)

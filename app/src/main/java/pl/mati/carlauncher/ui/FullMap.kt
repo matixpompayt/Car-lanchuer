@@ -20,6 +20,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.material.icons.rounded.FullscreenExit
 import androidx.compose.material.icons.rounded.MyLocation
 import androidx.compose.material.icons.rounded.VolumeOff
@@ -64,6 +70,7 @@ fun FullMapOverlay() {
     val test by UiState.clusterTest.collectAsState()
     val f by Prefs.clusterStretch.collectAsState()
     BackHandler(enabled = full) {
+        if (ClusterLayout.editing.value) { ClusterLayout.save(); ClusterLayout.editing.value = false; return@BackHandler }
         UiState.mapFull.value = false
         UiState.clusterTest.value = false
     }
@@ -77,14 +84,68 @@ fun FullMapOverlay() {
                 if (test) ClusterPattern()
             }
             if (test) ClusterControls(f)
+            val editing by ClusterLayout.editing.collectAsState()
+            if (editing) LayoutEditorBar()
         }
     }
 }
 
+/** Układ elementów na mapie pełnoekranowej (licznik): pozycja (ułamek ekranu) i wielkość – ustawiane palcem. */
+object ClusterLayout {
+    data class Item(val x: Float, val y: Float, val s: Float)
+    val NAMES = linkedMapOf("banner" to "Manewr", "eta" to "Przyjazd", "speed" to "Ograniczenie", "buttons" to "Przyciski")
+    private val DEFAULT = mapOf(
+        "banner" to Item(0.07f, 0.12f, 1f),
+        "eta" to Item(0.36f, 0.56f, 1f),
+        "speed" to Item(0.07f, 0.42f, 1f),
+        "buttons" to Item(0.88f, 0.26f, 1f),
+    )
+    val items = androidx.compose.runtime.mutableStateMapOf<String, Item>()
+    val editing = kotlinx.coroutines.flow.MutableStateFlow(false)
+    val selected = kotlinx.coroutines.flow.MutableStateFlow("banner")
+    private var loaded = false
+
+    fun load() {
+        if (loaded) return
+        loaded = true
+        items.putAll(DEFAULT)
+        try {
+            val o = org.json.JSONObject(Prefs.store?.getString("cluster_layout", "{}") ?: "{}")
+            o.keys().forEach { k ->
+                val a = o.getJSONArray(k)
+                items[k] = Item(a.getDouble(0).toFloat(), a.getDouble(1).toFloat(), a.getDouble(2).toFloat())
+            }
+        } catch (_: Exception) {}
+    }
+
+    fun get(k: String): Item = items[k] ?: DEFAULT.getValue(k)
+
+    fun move(k: String, dx: Float, dy: Float) {
+        val i = get(k)
+        items[k] = i.copy(x = (i.x + dx).coerceIn(-0.05f, 0.98f), y = (i.y + dy).coerceIn(-0.05f, 0.98f))
+    }
+
+    fun resize(k: String, d: Float) {
+        val i = get(k)
+        items[k] = i.copy(s = (Math.round((i.s + d).coerceIn(0.5f, 2.5f) * 10) / 10f))
+    }
+
+    fun reset() {
+        items.clear()
+        items.putAll(DEFAULT)
+        save()
+    }
+
+    fun save() {
+        val o = org.json.JSONObject()
+        items.forEach { (k, v) -> o.put(k, org.json.JSONArray().put(v.x.toDouble()).put(v.y.toDouble()).put(v.s.toDouble())) }
+        Prefs.store?.edit()?.putString("cluster_layout", o.toString())?.apply()
+    }
+}
+
 /**
- * Mapa na pełnym ekranie ułożona pod wirtualny licznik: licznik zasłania środek góry (zegar, temperatura)
- * i dół (wskaźniki), boki są zaokrąglone – wszystko ważne jest w polu, które widać.
- * Elementy powiększone (Wyświetlacz → Wirtualny licznik → Wielkość elementów).
+ * Mapa na pełnym ekranie pod wirtualny licznik. Każdy element (manewr, przyjazd, ograniczenie, przyciski)
+ * można przesunąć palcem i powiększyć/zmniejszyć w trybie „Ustaw elementy”.
  */
 @Composable
 private fun ClusterMap() {
@@ -95,67 +156,122 @@ private fun ClusterMap() {
     val prog by pl.mati.carlauncher.data.RouteRepository.progress.collectAsState()
     val voice by Prefs.navVoice.collectAsState()
     val scale by Prefs.clusterUiScale.collectAsState()
+    val editing by ClusterLayout.editing.collectAsState()
+    val selected by ClusterLayout.selected.collectAsState()
+    remember { ClusterLayout.load(); 0 }
     Box(Modifier.fillMaxSize()) {
         VectorMap(Modifier.fillMaxSize(), full = true)
         androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxSize()) {
-            // ułamki ekranu liczone w jednostkach PO powiększeniu (inaczej odstępy też by rosły)
-            val w = maxWidth / scale
-            val h = maxHeight / scale
+            val wPx = constraints.maxWidth.toFloat()
+            val hPx = constraints.maxHeight.toFloat()
+            val bannerW = maxWidth * 0.58f / scale
             val d = androidx.compose.ui.platform.LocalDensity.current
+
+            /** Element w swojej pozycji; w trybie ustawiania – ramka i przeciąganie. */
+            @Composable
+            fun Placed(key: String, content: @Composable () -> Unit) {
+                val it = ClusterLayout.get(key)
+                val sel = editing && selected == key
+                Box(
+                    Modifier
+                        .offset { androidx.compose.ui.unit.IntOffset((it.x * wPx).roundToInt(), (it.y * hPx).roundToInt()) }
+                        .graphicsLayer {
+                            scaleX = it.s; scaleY = it.s
+                            transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0f)
+                        }
+                        .then(
+                            if (editing) Modifier
+                                .border(3.dp, if (sel) accent else Color.White.copy(alpha = 0.6f), RoundedCornerShape(12.dp))
+                                .pointerInput(key) {
+                                    detectDragGestures(onDragStart = { ClusterLayout.selected.value = key }) { ch, drag ->
+                                        ch.consume()
+                                        val cur = ClusterLayout.get(key)
+                                        ClusterLayout.move(key, drag.x * cur.s / wPx, drag.y * cur.s / hPx)
+                                    }
+                                }
+                                .clickable { ClusterLayout.selected.value = key }
+                            else Modifier,
+                        ),
+                ) { content() }
+            }
+
             androidx.compose.runtime.CompositionLocalProvider(
                 androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(d.density * scale, d.fontScale),
             ) {
-                // manewr: na górze, pod wycięciem licznika
-                guide?.let { g ->
-                    GuidanceBanner(
-                        g,
-                        Modifier.align(Alignment.TopStart).padding(start = w * 0.07f, top = h * 0.12f)
-                            .width(w * 0.58f),
-                    )
+                val g = guide ?: if (editing) pl.mati.carlauncher.data.Guidance.State(0, "right", "Skręć w prawo", "Jana Pawła II", 300.0, null, null) else null
+                if (g != null) Placed("banner") { GuidanceBanner(g, Modifier.width(bannerW)) }
+
+                Placed("speed") {
+                    if (editing) Box(
+                        Modifier.size(74.dp).clip(androidx.compose.foundation.shape.CircleShape).background(Color.White)
+                            .border(9.dp, Color(0xFFE0262B), androidx.compose.foundation.shape.CircleShape),
+                        contentAlignment = Alignment.Center,
+                    ) { Text("50", color = Color(0xFF111111), fontWeight = FontWeight.Bold, fontSize = 30.sp) }
+                    else SpeedLimitBadge(Modifier)
                 }
-                // ograniczenie prędkości: lewa strona, środek wysokości
-                SpeedLimitBadge(Modifier.align(Alignment.CenterStart).padding(start = w * 0.07f, top = h * 0.1f))
-                // przyciski: prawa strona
-                Column(
-                    Modifier.align(Alignment.CenterEnd).padding(end = w * 0.06f, bottom = h * 0.08f),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    MapButton(Icons.Rounded.FullscreenExit, "Zamknij pełny ekran") {
-                        UiState.mapFull.value = false
-                        UiState.clusterTest.value = false
-                    }
-                    MapButton(Icons.Rounded.MyLocation, "Wróć do auta") { UiState.recenter.value++ }
-                    if (route != null && guide != null) {
-                        MapButton(if (voice) Icons.Rounded.VolumeUp else Icons.Rounded.VolumeOff, if (voice) "Wycisz głos" else "Włącz głos") {
-                            Prefs.setNavVoice(!voice)
+
+                Placed("buttons") {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        MapButton(Icons.Rounded.FullscreenExit, "Zamknij pełny ekran") {
+                            if (!editing) { UiState.mapFull.value = false; UiState.clusterTest.value = false }
                         }
+                        MapButton(Icons.Rounded.MyLocation, "Wróć do auta") { if (!editing) UiState.recenter.value++ }
+                        if (route != null && guide != null) {
+                            MapButton(if (voice) Icons.Rounded.VolumeUp else Icons.Rounded.VolumeOff, if (voice) "Wycisz głos" else "Włącz głos") {
+                                if (!editing) Prefs.setNavVoice(!voice)
+                            }
+                        }
+                        MapButton(Icons.Rounded.Edit, "Ustaw elementy") { ClusterLayout.editing.value = true }
                     }
                 }
-                // przyjazd: dół środka, nad wskaźnikami licznika
+
                 val r = route
-                if (r != null) {
-                    val p = prog
-                    val remM = p?.remainingM ?: r.distanceM
-                    val remS = p?.remainingS ?: r.durationS
-                    Row(
-                        Modifier.align(Alignment.BottomCenter).padding(bottom = h * 0.33f)
-                            .clip(RoundedCornerShape(18.dp)).background(CarColors.Panel.copy(alpha = 0.94f))
-                            .padding(horizontal = 18.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(14.dp),
-                    ) {
-                        if (p?.arrived == true) {
-                            Text("Jesteś na miejscu", fontSize = 22.sp, fontWeight = FontWeight.Bold)
-                        } else {
-                            Text(formatEta(remS), fontSize = 24.sp, fontWeight = FontWeight.Bold, color = accent)
-                            Text("${(remS / 60).roundToInt()} min · ${formatDistance(remM)}", fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+                if (r != null || editing) {
+                    Placed("eta") {
+                        val p = prog
+                        val remM = p?.remainingM ?: r?.distanceM ?: 8400.0
+                        val remS = p?.remainingS ?: r?.durationS ?: 720.0
+                        Row(
+                            Modifier.clip(RoundedCornerShape(18.dp)).background(CarColors.Panel.copy(alpha = 0.94f))
+                                .padding(horizontal = 18.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(14.dp),
+                        ) {
+                            if (p?.arrived == true) {
+                                Text("Jesteś na miejscu", fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                            } else {
+                                Text(formatEta(remS), fontSize = 24.sp, fontWeight = FontWeight.Bold, color = accent)
+                                Text("${(remS / 60).roundToInt()} min · ${formatDistance(remM)}", fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+                            }
+                            RoundIconButton(Icons.Rounded.Close, "Zakończ trasę", 38.dp, {
+                                if (!editing) pl.mati.carlauncher.data.RouteRepository.cancel(ctx)
+                            })
                         }
-                        RoundIconButton(Icons.Rounded.Close, "Zakończ trasę", 38.dp, {
-                            pl.mati.carlauncher.data.RouteRepository.cancel(ctx)
-                        })
                     }
                 }
             }
+        }
+    }
+}
+
+/** Pasek trybu ustawiania elementów (na radiu, nie ściskany). */
+@Composable
+private fun LayoutEditorBar() {
+    val sel by ClusterLayout.selected.collectAsState()
+    val it = ClusterLayout.get(sel)
+    Box(Modifier.fillMaxSize().padding(top = 18.dp), contentAlignment = Alignment.TopCenter) {
+        Row(
+            Modifier.clip(RoundedCornerShape(24.dp)).background(CarColors.Panel).padding(horizontal = 18.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text("Przeciągnij elementy palcem", fontSize = 17.sp, color = CarColors.Muted)
+            ClusterLayout.NAMES.forEach { (k, n) -> CarChip(n, sel == k, { ClusterLayout.selected.value = k }) }
+            RoundIconButton(Icons.Rounded.Remove, "Mniejszy", 48.dp, { ClusterLayout.resize(sel, -0.1f) })
+            Text(String.format(PL, "%.1f×", it.s), fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            RoundIconButton(Icons.Rounded.Add, "Większy", 48.dp, { ClusterLayout.resize(sel, 0.1f) })
+            SecondaryButton("Domyślne", { ClusterLayout.reset() }, height = 48.dp)
+            PrimaryButton("Gotowe", { ClusterLayout.save(); ClusterLayout.editing.value = false })
         }
     }
 }
