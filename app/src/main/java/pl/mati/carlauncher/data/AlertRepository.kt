@@ -36,7 +36,7 @@ object AlertRepository {
     private val ALERT = Regex(
         "(fotoradar|radar|kamer|kontrol|policj|patrol|odcinkow|pomiar|suszark|wypadek|korek|zator|roboty drogow|przeszkod|zagroż|" +
             "czerwon|niebezpiecz|speed ?cam|speedcam|camera|blitzer|messung|kontrolle|polizei|ampel|police|accident|hazard|" +
-            "section control|red light|radarfalle|stau|unfall)",
+            "section control|red light|radarfalle|stau|unfall|odstęp|odstep|koniec korku|gołoled|gololed|widoczno|kombinowan|światło|swiatlo|glatteis|baustelle|sicht|abstand)",
         RegexOption.IGNORE_CASE,
     )
     private val IDLE = Regex(
