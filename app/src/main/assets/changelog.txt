@@ -2,7 +2,7 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
-## next
+## 1.72 · 2026-11-02
 Własny układ na liczniku
 - Na mapie pełnoekranowej każdy element (manewr, przyjazd, ograniczenie, przyciski) przesuwasz palcem i powiększasz osobno
 - Włączanie: przycisk z ołówkiem na mapie pełnoekranowej albo Wyświetlacz → Wirtualny licznik → Ustaw elementy
