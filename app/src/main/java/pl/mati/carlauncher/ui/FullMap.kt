@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
@@ -97,8 +98,9 @@ private fun ClusterMap() {
     Box(Modifier.fillMaxSize()) {
         VectorMap(Modifier.fillMaxSize(), full = true)
         androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxSize()) {
-            val w = maxWidth
-            val h = maxHeight
+            // ułamki ekranu liczone w jednostkach PO powiększeniu (inaczej odstępy też by rosły)
+            val w = maxWidth / scale
+            val h = maxHeight / scale
             val d = androidx.compose.ui.platform.LocalDensity.current
             androidx.compose.runtime.CompositionLocalProvider(
                 androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(d.density * scale, d.fontScale),
@@ -107,8 +109,8 @@ private fun ClusterMap() {
                 guide?.let { g ->
                     GuidanceBanner(
                         g,
-                        Modifier.align(Alignment.TopStart).padding(start = w * 0.07f, top = h * 0.11f)
-                            .width(w * 0.62f),
+                        Modifier.align(Alignment.TopStart).padding(start = w * 0.07f, top = h * 0.12f)
+                            .width(w * 0.58f),
                     )
                 }
                 // ograniczenie prędkości: lewa strona, środek wysokości
@@ -118,16 +120,15 @@ private fun ClusterMap() {
                     Modifier.align(Alignment.CenterEnd).padding(end = w * 0.06f, bottom = h * 0.08f),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    RoundIconButton(Icons.Rounded.FullscreenExit, "Zamknij pełny ekran", 52.dp, {
+                    MapButton(Icons.Rounded.FullscreenExit, "Zamknij pełny ekran") {
                         UiState.mapFull.value = false
                         UiState.clusterTest.value = false
-                    })
-                    RoundIconButton(Icons.Rounded.MyLocation, "Wróć do auta", 52.dp, { UiState.recenter.value++ })
+                    }
+                    MapButton(Icons.Rounded.MyLocation, "Wróć do auta") { UiState.recenter.value++ }
                     if (route != null && guide != null) {
-                        RoundIconButton(
-                            if (voice) Icons.Rounded.VolumeUp else Icons.Rounded.VolumeOff,
-                            if (voice) "Wycisz głos" else "Włącz głos", 52.dp, { Prefs.setNavVoice(!voice) },
-                        )
+                        MapButton(if (voice) Icons.Rounded.VolumeUp else Icons.Rounded.VolumeOff, if (voice) "Wycisz głos" else "Włącz głos") {
+                            Prefs.setNavVoice(!voice)
+                        }
                     }
                 }
                 // przyjazd: dół środka, nad wskaźnikami licznika
@@ -137,7 +138,7 @@ private fun ClusterMap() {
                     val remM = p?.remainingM ?: r.distanceM
                     val remS = p?.remainingS ?: r.durationS
                     Row(
-                        Modifier.align(Alignment.BottomCenter).padding(bottom = h * 0.30f)
+                        Modifier.align(Alignment.BottomCenter).padding(bottom = h * 0.33f)
                             .clip(RoundedCornerShape(18.dp)).background(CarColors.Panel.copy(alpha = 0.94f))
                             .padding(horizontal = 18.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
@@ -157,6 +158,16 @@ private fun ClusterMap() {
             }
         }
     }
+}
+
+/** Okrągły przycisk z tłem – widoczny na jasnej i ciemnej mapie. */
+@Composable
+private fun MapButton(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, onClick: () -> Unit) {
+    Box(
+        Modifier.size(54.dp).clip(androidx.compose.foundation.shape.CircleShape).background(CarColors.Panel.copy(alpha = 0.92f))
+            .clickable(onClickLabel = label, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) { androidx.compose.material3.Icon(icon, label, tint = CarColors.Text, modifier = Modifier.size(30.dp)) }
 }
 
 /** Wzór: koła i kwadrat – na liczniku mają wyglądać okrągło i kwadratowo. */

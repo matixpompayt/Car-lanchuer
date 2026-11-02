@@ -2,6 +2,11 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
+## next
+Poprawki pełnego ekranu
+- Manewr i pasek przyjazdu na właściwych miejscach (wcześniej odstępy rosły razem z powiększeniem – pasek zasłaniał auto)
+- Przyciski z tłem – widoczne także na ciemnej mapie
+
 ## 1.65 · 2026-11-02
 Pełny ekran pod licznik
 - Mapa pełnoekranowa ułożona pod wirtualny licznik: manewr u góry pod wycięciem, przyjazd nad wskaźnikami, przyciski z boku
