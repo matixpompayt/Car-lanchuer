@@ -2,7 +2,7 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
-## next
+## 1.63 · 2026-11-02
 Poprawka nawigacji
 - Koniec ciągłego „Wyznaczono nową trasę”: CAR OS sprawdza odległość od drogi trasy, a nie od jej punktów (na prostych były co kilkaset metrów)
 - Zjechanie z trasy liczy się dopiero po kilku sekundach wyraźnie poza trasą (z uwzględnieniem dokładności GPS)
