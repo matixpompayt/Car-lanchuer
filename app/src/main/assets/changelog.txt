@@ -2,7 +2,7 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
-## next
+## 1.70 · 2026-11-02
 Bluetooth od razu na muzyce
 - Przycisk Bluetooth w odtwarzaczu otwiera aplikację BT radia od razu na zakładce z muzyką (zamiast „Połącz”)
 
