@@ -2,7 +2,7 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
-## next
+## 1.74 · 2026-11-03
 Ograniczenia prędkości bez internetu
 - Radio pobiera plik z drogami i limitami (Zachodniopomorskie, Lubuskie, Brandenburgia, Berlin) – działa bez zasięgu i bez przeciążonych serwerów
 - Plik aktualizuje się sam co tydzień; poza tym obszarem limity jak dotąd z internetu
