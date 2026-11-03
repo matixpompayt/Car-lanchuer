@@ -1,0 +1,65 @@
+name: Dane ograniczeń offline
+
+# Co tydzień buduje plik ograniczeń prędkości z OpenStreetMap (Geofabrik) i wrzuca go
+# do wydania „speed-data” (prerelease – nie zmienia /releases/latest, z którego aktualizuje się CAR OS).
+on:
+  schedule:
+    - cron: "17 2 * * 1"
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ["tools/speedlimits/**", ".github/workflows/speed-data.yml"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: speed-data
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Narzędzia
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq osmium-tool
+          pip install --quiet osmium
+
+      - name: Pobierz mapy (Geofabrik)
+        run: |
+          mkdir -p osm
+          get() { curl -fsSL --retry 3 -o "osm/$1.osm.pbf" "https://download.geofabrik.de/$2-latest.osm.pbf"; }
+          get zachodniopomorskie europe/poland/zachodniopomorskie
+          get lubuskie europe/poland/lubuskie
+          get brandenburg europe/germany/brandenburg
+          get berlin europe/germany/berlin
+          ls -lh osm
+
+      - name: Odfiltruj drogi, znaki i miejscowości
+        run: |
+          for f in osm/*.osm.pbf; do
+            osmium tags-filter "$f" w/highway n/place n/highway n/railway=level_crossing -o "${f%.osm.pbf}.f.pbf" --overwrite
+          done
+          ls -lh osm/*.f.pbf
+
+      - name: Zbuduj plik
+        run: |
+          mkdir -p out
+          python3 tools/speedlimits/build.py out/speedlimits.bin \
+            "Zachodniopomorskie, Lubuskie, Brandenburgia, Berlin" \
+            osm/zachodniopomorskie.f.pbf:PL osm/lubuskie.f.pbf:PL osm/brandenburg.f.pbf:DE osm/berlin.f.pbf:DE
+
+      - name: Opublikuj w wydaniu speed-data
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if ! gh release view speed-data >/dev/null 2>&1; then
+            gh release create speed-data --prerelease --latest=false \
+              --title "Dane ograniczeń prędkości (offline)" \
+              --notes "Plik dla CAR OS – aktualizowany automatycznie co tydzień z OpenStreetMap (© współtwórcy OpenStreetMap, ODbL). Radio pobiera go samo."
+          fi
+          gh release upload speed-data out/speedlimits.bin --clobber

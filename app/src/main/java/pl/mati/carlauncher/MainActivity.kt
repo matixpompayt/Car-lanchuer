@@ -82,6 +82,7 @@ class MainActivity : ComponentActivity() {
         TripRepository.dir = File(filesDir, "trips")
         TripRepository.start()
         ForecastRepository.start()
+        pl.mati.carlauncher.data.OfflineSpeed.init(this)
         pl.mati.carlauncher.data.SpeedLimitRepository.start()
         pl.mati.carlauncher.data.ThemeManager.start(this)
         pl.mati.carlauncher.data.ConnectRepository.init()

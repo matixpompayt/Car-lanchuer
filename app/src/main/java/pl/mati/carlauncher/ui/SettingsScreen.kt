@@ -692,6 +692,20 @@ private fun LazyListScope.speedSection() {
         SettingRow("Pokazuj ograniczenia", "Znak z limitem na mapie (dane OpenStreetMap, wymaga internetu)", onClick = { Prefs.setSpeedLimits(!v) }) { CarSwitch(v) }
     }
     item {
+        val inf by pl.mati.carlauncher.data.OfflineSpeed.info.collectAsState()
+        val prog by pl.mati.carlauncher.data.OfflineSpeed.progress.collectAsState()
+        val err by pl.mati.carlauncher.data.OfflineSpeed.error.collectAsState()
+        val sub = when {
+            prog != null -> "Pobieranie… ${(prog!! * 100).toInt()}%"
+            inf != null -> inf!!.regions + "\nDane z " + java.text.SimpleDateFormat("d.MM.yyyy", java.util.Locale.ROOT).format(java.util.Date(inf!!.builtAt)) +
+                " · " + String.format(java.util.Locale.ROOT, "%.1f MB", inf!!.bytes / 1_000_000.0) + " · aktualizacja sama co tydzień"
+            else -> "Nie pobrano – limity działają bez internetu po pobraniu (OpenStreetMap)"
+        } + (err?.let { "\n$it" } ?: "")
+        SettingRow("Ograniczenia offline", sub) {
+            SecondaryButton(if (inf == null) "Pobierz" else "Sprawdź", { pl.mati.carlauncher.data.OfflineSpeed.updateNow() }, height = 52.dp)
+        }
+    }
+    item {
         val st by pl.mati.carlauncher.data.SpeedLimitRepository.status.collectAsState()
         val lim by pl.mati.carlauncher.data.SpeedLimitRepository.limit.collectAsState()
         val road by pl.mati.carlauncher.data.SpeedLimitRepository.roadName.collectAsState()

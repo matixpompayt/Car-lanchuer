@@ -39,7 +39,7 @@ object SpeedLimitRepository {
     /** Stan pobierania danych OSM – do podglądu w ustawieniach. */
     val status = MutableStateFlow("Brak danych – czekam na GPS")
 
-    private class Way(val id: Long, val limit: Int?, val name: String?, val lat: DoubleArray, val lon: DoubleArray, val est: Boolean = false)
+    class Way(val id: Long, val limit: Int?, val name: String?, val lat: DoubleArray, val lon: DoubleArray, val est: Boolean = false)
     private class Place(val lat: Double, val lon: Double, val radius: Double)
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -83,6 +83,34 @@ object SpeedLimitRepository {
             if (!Prefs.mapSigns.value) return
         }
         val l = LocationRepository.location.value ?: return
+        // najpierw dane offline (plik z GitHuba); online tylko poza ich obszarem
+        val off = try { OfflineSpeed.around(l.latitude, l.longitude) } catch (_: Exception) { null }
+        if (off != null) {
+            if (off !== lastOff) {
+                lastOff = off
+                ways = off.ways
+                signs.value = off.signs
+                val inf = OfflineSpeed.info.value
+                val known = off.ways.count { !it.est }
+                status.value = "Offline" + (inf?.let { " (dane z " + java.text.SimpleDateFormat("d.MM", Locale.ROOT).format(java.util.Date(it.builtAt)) + ")" } ?: "") +
+                    " – ${off.ways.size} dróg w okolicy, $known ze znakiem"
+            }
+        } else {
+            if (lastOff != null) { lastOff = null; hasData = false; ways = synchronized(cache) { cache.values.toList() } }
+            onlineTick(l)
+        }
+        match(l)
+        val speed = LocationRepository.gpsSpeed.value
+        val lim = limit.value
+        // sygnał dźwiękowy tylko przy znanym ograniczeniu (nie przy szacowanym)
+        val isOver = lim != null && speed != null && speed > lim + Prefs.speedTolerance.value && !estimated.value
+        if (isOver && !over.value && Prefs.speedBeep.value) beep()
+        over.value = isOver
+    }
+
+    @Volatile private var lastOff: OfflineSpeed.Area? = null
+
+    private fun onlineTick(l: Location) {
         val now = System.currentTimeMillis()
         val moved = if (hasData) RouteRepository.dist(l.latitude, l.longitude, centerLat, centerLon) else Double.MAX_VALUE
         if (!fetching && moved > REFETCH_M && now - lastFetch > 15_000) {
@@ -93,13 +121,6 @@ object SpeedLimitRepository {
                 try { fetch(l) } catch (_: Exception) {} finally { fetching = false }
             }
         }
-        match(l)
-        val speed = LocationRepository.gpsSpeed.value
-        val lim = limit.value
-        // sygnał dźwiękowy tylko przy znanym ograniczeniu (nie przy szacowanym)
-        val isOver = lim != null && speed != null && speed > lim + Prefs.speedTolerance.value && !estimated.value
-        if (isOver && !over.value && Prefs.speedBeep.value) beep()
-        over.value = isOver
     }
 
     private fun match(l: Location) {
@@ -210,7 +231,7 @@ object SpeedLimitRepository {
             } ?: continue
             signList += Sign(o.optLong("id"), kind, la, lo)
         }
-        signs.value = signList
+        if (lastOff == null) signs.value = signList
         val germany = isGermany(cLat, cLon)
         for (i in 0 until arr.length()) {
             val o = arr.getJSONObject(i)
@@ -244,10 +265,10 @@ object SpeedLimitRepository {
                 val w = it.next()
                 if (RouteRepository.dist(w.lat[0], w.lon[0], cLat, cLon) > 6000) it.remove()
             }
-            ways = cache.values.toList()
+            if (lastOff == null) ways = cache.values.toList()
         }
         val known = out.count { !it.est }
-        status.value = "OK (" + time() + ", " + host(mirrors[goodMirror]) + ") – ${out.size} dróg, $known ze znakiem, ${out.size - known} wg przepisów"
+        if (lastOff == null) status.value = "OK (" + time() + ", " + host(mirrors[goodMirror]) + ") – ${out.size} dróg, $known ze znakiem, ${out.size - known} wg przepisów"
         centerLat = cLat
         centerLon = cLon
         hasData = true
