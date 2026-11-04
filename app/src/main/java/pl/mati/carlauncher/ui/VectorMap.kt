@@ -519,7 +519,7 @@ private class VectorHolder(ctx: Context) {
             st.addSource(org.maplibre.android.style.sources.RasterSource(SRC_RADAR, ts, 256))
             val layer = org.maplibre.android.style.layers.RasterLayer(L_RADAR, SRC_RADAR).withProperties(
                 PropertyFactory.rasterOpacity(0.62f),
-                PropertyFactory.rasterFadeDuration(0),
+                PropertyFactory.rasterFadeDuration(0f),
             )
             if (st.getLayer(L_ALTS) != null) st.addLayerBelow(layer, L_ALTS) else st.addLayer(layer)
         } catch (_: Exception) {}
