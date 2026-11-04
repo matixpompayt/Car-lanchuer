@@ -735,11 +735,11 @@ fun VectorMap(modifier: Modifier, full: Boolean = false) {
         AndroidView(factory = { h.view }, modifier = Modifier.fillMaxSize())
         // podpis radaru (wymagany przez RainViewer) + godzina klatki
         if (radarOn) {
-            val txt = radar?.let { "Radar opadów " + java.text.SimpleDateFormat("HH:mm", java.util.Locale.ROOT).format(java.util.Date(it.time)) + " · Weather data by RainViewer" }
+            val txt = radar?.let { "Radar " + java.text.SimpleDateFormat("HH:mm", java.util.Locale.ROOT).format(java.util.Date(it.time)) + " · Weather data by RainViewer" }
                 ?: "Radar opadów – wczytuję…"
             Text(
                 txt, fontSize = 13.sp, color = CarColors.Text,
-                modifier = Modifier.align(Alignment.TopStart).padding(14.dp).clip(RoundedCornerShape(10.dp)).background(CarColors.Overlay).padding(horizontal = 10.dp, vertical = 5.dp),
+                modifier = Modifier.align(Alignment.TopEnd).padding(top = 14.dp, end = 16.dp).clip(RoundedCornerShape(10.dp)).background(CarColors.Overlay).padding(horizontal = 10.dp, vertical = 5.dp),
             )
         }
         // na pełnym ekranie przyciski są w układzie licznika (ClusterMap)
