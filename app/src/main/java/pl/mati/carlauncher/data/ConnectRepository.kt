@@ -292,6 +292,24 @@ object ConnectRepository {
         }
     }
 
+    /** Raport danych z radia (CAN) do telefonu, w częściach jak kopia. false = brak parowania. */
+    fun publishReport(text: String): Boolean {
+        if (key(false) == null) return false
+        return try {
+            val gz = gzip(text.toByteArray())
+            val size = 1900
+            val n = (gz.size + size - 1) / size
+            val id = System.currentTimeMillis().toString()
+            for (i in 0 until n) {
+                val part = gz.copyOfRange(i * size, minOf(gz.size, (i + 1) * size))
+                send(JSONObject().put("type", "rp").put("id", id).put("i", i).put("n", n).put("d", Base64.encodeToString(part, Base64.NO_WRAP)))
+            }
+            true
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     private fun send(o: JSONObject) {
         val k = key(false) ?: return
         val body = encrypt(k, o.toString())

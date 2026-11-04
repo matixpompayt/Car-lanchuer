@@ -123,12 +123,17 @@ private fun ScannerContent() {
                     note?.let { Text(it, fontSize = 15.sp, color = LocalAccent.current, maxLines = 1, overflow = TextOverflow.Ellipsis) }
                 }
                 CarChip("Tylko zmieniające się", onlyChanging, { onlyChanging = !onlyChanging })
-                SecondaryButton(if (saving) "Zapisuję…" else "Zapisz raport", {
+                SecondaryButton(if (saving) "Wysyłam…" else "Wyślij raport", {
                     if (saving) return@SecondaryButton
                     saving = true
                     scope.launch {
                         val path = withContext(Dispatchers.IO) { CanRepository.saveReport(ctx) }
-                        note = if (path != null) "Raport zapisany: $path – wyślij mi ten plik" else "Nie udało się zapisać raportu"
+                        val sent = withContext(Dispatchers.IO) { pl.mati.carlauncher.data.ConnectRepository.publishReport(CanRepository.report(ctx)) }
+                        note = when {
+                            sent -> "Raport wysłany do CAR OS Connect – w telefonie: Ustawienia → Raport danych z radia → Udostępnij"
+                            path != null -> "Raport zapisany: $path (telefon nie sparowany)"
+                            else -> "Nie udało się zapisać raportu"
+                        }
                         saving = false
                     }
                 }, height = 52.dp, icon = Icons.Rounded.Save)
@@ -201,7 +206,7 @@ private fun ScannerContent() {
                     Text(
                         "Jak szukać: włącz silnik i dodaj gazu – obroty to liczba, która rośnie z gazem (np. 800 → 2500). " +
                             "Temperatura płynu powoli rośnie po zapaleniu. Włącz „Tylko zmieniające się”. " +
-                            "Jeśli nic nie pasuje – „Zapisz raport” i wyślij mi plik z Pobrane/CarOS.",
+                            "Jeśli nic nie pasuje – zrób to przy włączonym silniku i naciśnij „Wyślij raport” (trafi do CAR OS Connect w telefonie).",
                         fontSize = 13.sp, color = CarColors.Muted,
                     )
                 }

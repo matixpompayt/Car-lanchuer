@@ -2,6 +2,10 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
+## next
+Raport danych z radia na telefon
+- Dane z radia (CAN) → „Wyślij raport”: raport trafia do CAR OS Connect, skąd łatwo go udostępnić
+
 ## 1.76 · 2026-11-04
 Radar opadów, turbo, akumulator i trasy na mapie
 - Radar opadów na mapie (przycisk z parasolem): deszcz i śnieg z ostatnich minut, dane RainViewer
