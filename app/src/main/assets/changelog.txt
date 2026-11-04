@@ -2,6 +2,14 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
+## next
+Radar opadów, turbo, akumulator i trasy na mapie
+- Radar opadów na mapie (przycisk z parasolem): deszcz i śnieg z ostatnich minut, dane RainViewer
+- Timer schłodzenia turbo: po mocnej jeździe pokazuje, ile odczekać na wolnych obrotach przed zgaszeniem
+- Kontrola akumulatora przy każdym uruchomieniu: napięcie spoczynkowe, przy rozruchu i ładowanie; wynik też w CAR OS Connect
+- Dziennik tras: dotknij jazdy, żeby zobaczyć ją na mapie, z paliwem i kosztem (szacunek z tankowań)
+- Podsumowanie dnia, tygodnia i miesiąca pokazuje też litry i koszt paliwa
+
 ## 1.74 · 2026-11-03
 Ograniczenia prędkości bez internetu
 - Radio pobiera plik z drogami i limitami (Zachodniopomorskie, Lubuskie, Brandenburgia, Berlin) – działa bez zasięgu i bez przeciążonych serwerów

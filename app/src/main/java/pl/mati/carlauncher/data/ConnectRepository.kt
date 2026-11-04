@@ -248,6 +248,7 @@ object ConnectRepository {
                 .put("body", Prefs.carBody.value).put("paint", Prefs.carPaint.value)
                 .put("svc", svc).put("items", items).put("trips", trips).put("favs", favs)
                 .put("fuel", FuelRepository.toJson())
+                .put("bat", CarCare.batteryJson())
                 .put("shifts", try { shiftsJson() } catch (_: Exception) { JSONArray() })
                 .put("commute", Prefs.store?.getInt("commute_s", 0)?.takeIf { it > 0 } ?: JSONObject.NULL)
                 .put("home", placeJson(p.home, p.homeLat, p.homeLon))

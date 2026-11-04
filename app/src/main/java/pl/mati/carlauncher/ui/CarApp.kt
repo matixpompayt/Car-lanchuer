@@ -142,6 +142,7 @@ private fun Shell() {
         FullMapOverlay()
         RoadAlertBanner()
         HomeSuggestionBanner()
+        TurboBanner()
         ControlCenter()
         VolumeHud()
         ServiceAlertOverlay()

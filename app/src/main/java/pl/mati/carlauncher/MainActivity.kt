@@ -81,6 +81,7 @@ class MainActivity : ComponentActivity() {
         ServiceRepository.load()
         TripRepository.dir = File(filesDir, "trips")
         TripRepository.start()
+        pl.mati.carlauncher.data.CarCare.start(this)
         ForecastRepository.start()
         pl.mati.carlauncher.data.OfflineSpeed.init(this)
         pl.mati.carlauncher.data.SpeedLimitRepository.start()

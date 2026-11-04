@@ -1,6 +1,7 @@
 package pl.mati.carlauncher.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -51,7 +52,9 @@ fun TripsScreen() {
     val trips by TripRepository.trips.collectAsState()
     val current by TripRepository.current.collectAsState()
     var confirmClear by remember { mutableStateOf(false) }
+    var open by remember { mutableStateOf<TripRepository.Trip?>(null) }
 
+    Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("Dziennik tras", fontSize = 30.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
@@ -94,9 +97,11 @@ fun TripsScreen() {
                     lastDay = d
                     item(key = "h${t.start}") { SectionLabel(d) }
                 }
-                item(key = t.start) { TripRow(t, live = false) }
+                item(key = t.start) { TripRow(t, live = false) { open = t } }
             }
         }
+    }
+    open?.let { t -> TripDetailDialog(t) { open = null } }
     }
 }
 
@@ -177,15 +182,21 @@ private fun SummaryCard(label: String, s: TripRepository.Summary, modifier: Modi
             Caption(label)
             ValueText((s.distanceM / 1000).toFloat().pl1(), "km", 40.sp)
             Text("${s.count} jazd · ${formatDurationLong(s.durationS)}", fontSize = 15.sp, color = CarColors.Muted)
+            val (l, c) = tripFuel(s.distanceM)
+            if (l != null || c != null) Text(
+                listOfNotNull(l?.let { String.format(PL, "~%.1f l", it) }, c?.let { String.format(PL, "~%.0f zł paliwa", it) }).joinToString(" · "),
+                fontSize = 15.sp, color = CarColors.Muted,
+            )
         }
     }
 }
 
 @Composable
-private fun TripRow(t: TripRepository.Trip, live: Boolean) {
+private fun TripRow(t: TripRepository.Trip, live: Boolean, onClick: (() -> Unit)? = null) {
     val accent = LocalAccent.current
     Row(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(CarColors.Card).padding(horizontal = 18.dp, vertical = 14.dp),
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(CarColors.Card)
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier).padding(horizontal = 18.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(18.dp),
     ) {
@@ -200,7 +211,8 @@ private fun TripRow(t: TripRepository.Trip, live: Boolean) {
             Text(
                 "${formatDurationLong(t.durationS)} · śr. ${t.avgKmh.roundToInt()} km/h · maks. ${t.maxSpeed} km/h" +
                     (t.maxCoolant?.let { " · płyn maks. $it °C" } ?: "") +
-                    (if (!live && t.distanceM >= 1000) " · płynność ${t.score}" else ""),
+                    (if (!live && t.distanceM >= 1000) " · płynność ${t.score}" else "") +
+                    (if (!live) tripFuel(t.distanceM).second?.let { String.format(PL, " · ~%.2f zł", it) } ?: "" else ""),
                 fontSize = 15.sp, color = CarColors.Muted,
             )
         }

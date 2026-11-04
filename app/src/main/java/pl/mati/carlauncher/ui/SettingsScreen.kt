@@ -150,7 +150,7 @@ fun SettingsScreen() {
                 "disp" -> displayPage()
                 "sound" -> soundPage()
                 "conn" -> connPage()
-                "car" -> { carPage(); speedSection(); alertsSection() }
+                "car" -> { carPage(); careSection(); speedSection(); alertsSection() }
                 "auto" -> autostartPage()
                 "update" -> updatePage()
                 "connect" -> connectPage()
@@ -275,6 +275,10 @@ private fun LazyListScope.lookPage() {
     item {
         val v by Prefs.mapHeadingUp.collectAsState()
         SettingRow("Mapa obraca się z kierunkiem jazdy", "Wyłączone = północ zawsze u góry", onClick = { Prefs.setMapHeadingUp(!v) }) { CarSwitch(v) }
+    }
+    item {
+        val v by Prefs.mapRadar.collectAsState()
+        SettingRow("Radar opadów", "Deszcz i śnieg na mapie (RainViewer, odświeżany co 5 min) – też przyciskiem z parasolem na mapie", onClick = { Prefs.setMapRadar(!v) }) { CarSwitch(v) }
     }
     item { OfflineMapsCard() }
     item { SectionLabel("Nawigacja") }
@@ -680,6 +684,33 @@ private fun LazyListScope.carPage() {
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+private fun LazyListScope.careSection() {
+    item { SectionLabel("Turbo i akumulator") }
+    item {
+        val v by Prefs.turboTimer.collectAsState()
+        SettingRow("Timer schłodzenia turbo", "Po mocnej jeździe (autostrada, wysokie obroty) pokazuje, ile odczekać na wolnych obrotach przed zgaszeniem", onClick = { Prefs.setTurboTimer(!v) }) { CarSwitch(v) }
+    }
+    item {
+        val b by pl.mati.carlauncher.data.CarCare.battery.collectAsState()
+        val v by pl.mati.carlauncher.data.CarCare.voltage.collectAsState()
+        val hist by pl.mati.carlauncher.data.CarCare.batteryHistory.collectAsState()
+        val now = v?.let { "Teraz " + String.format(java.util.Locale("pl", "PL"), "%.1f V", it) } ?: "Brak odczytu napięcia – potrzebny adapter OBD albo napięcie przypisane w „Dane z radia (CAN)”"
+        val last = b?.let {
+            fun f(x: Float?) = x?.let { y -> String.format(java.util.Locale("pl", "PL"), "%.1f", y) } ?: "–"
+            "\n" + it.msg + "\nOstatni pomiar " + java.text.SimpleDateFormat("d.MM HH:mm", java.util.Locale.ROOT).format(java.util.Date(it.time)) +
+                ": spoczynkowe ${f(it.rest)} V · rozruch ${f(it.crank)} V · ładowanie ${f(it.charge)} V"
+        } ?: "\nPomiar robi się sam przy każdym uruchomieniu auta"
+        val trend = hist.mapNotNull { it.rest }.take(7).reversed().takeIf { it.size >= 2 }
+            ?.joinToString(" → ") { String.format(java.util.Locale("pl", "PL"), "%.2f", it) }?.let { "\nSpoczynkowe (ostatnie): $it V" } ?: ""
+        SettingRow("Akumulator", now + last + trend) {
+            b?.let {
+                val col = when (it.level) { 2 -> androidx.compose.ui.graphics.Color(0xFFE0262B); 1 -> androidx.compose.ui.graphics.Color(0xFFF5A623); else -> androidx.compose.ui.graphics.Color(0xFF34C759) }
+                Box(Modifier.size(18.dp).clip(androidx.compose.foundation.shape.CircleShape).background(col))
             }
         }
     }
