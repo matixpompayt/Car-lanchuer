@@ -2,7 +2,7 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
-## next
+## 1.76 · 2026-11-04
 Radar opadów, turbo, akumulator i trasy na mapie
 - Radar opadów na mapie (przycisk z parasolem): deszcz i śnieg z ostatnich minut, dane RainViewer
 - Timer schłodzenia turbo: po mocnej jeździe pokazuje, ile odczekać na wolnych obrotach przed zgaszeniem
