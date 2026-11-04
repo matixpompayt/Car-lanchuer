@@ -2,7 +2,7 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
-## next
+## 1.78 · 2026-11-04
 Poprawka radaru
 - Podpis radaru opadów przeniesiony w prawy górny róg – nie chowa się już pod znakiem ograniczenia
 
