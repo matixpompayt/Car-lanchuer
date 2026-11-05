@@ -2,7 +2,7 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
-## next
+## 1.80 · 2026-11-05
 Własny układ kafli
 - Przytrzymaj kafel na ekranie głównym: zmiana kafla (dotknij), usuwanie (✕), przesuwanie strzałkami, „Dodaj kafel”
 - Nowe kafle: tydzień i miesiąc (km), temperatura zewnętrzna, akumulator, najbliższa zmiana
