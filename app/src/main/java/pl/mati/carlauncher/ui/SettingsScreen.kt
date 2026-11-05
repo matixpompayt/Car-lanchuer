@@ -276,10 +276,6 @@ private fun LazyListScope.lookPage() {
         val v by Prefs.mapHeadingUp.collectAsState()
         SettingRow("Mapa obraca się z kierunkiem jazdy", "Wyłączone = północ zawsze u góry", onClick = { Prefs.setMapHeadingUp(!v) }) { CarSwitch(v) }
     }
-    item {
-        val v by Prefs.mapRadar.collectAsState()
-        SettingRow("Radar opadów", "Deszcz i śnieg na mapie (RainViewer, odświeżany co 5 min) – też przyciskiem z parasolem na mapie", onClick = { Prefs.setMapRadar(!v) }) { CarSwitch(v) }
-    }
     item { OfflineMapsCard() }
     item { SectionLabel("Nawigacja") }
     item {

@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.rounded.Umbrella
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Explore
 import androidx.compose.material.icons.rounded.MyLocation
@@ -506,25 +505,6 @@ private class VectorHolder(ctx: Context) {
         st.getLayer(L_ALTS)?.setProperties(PropertyFactory.lineColor(android.graphics.Color.parseColor(if (light) "#9AA3AE" else "#66717F")))
     }
 
-    /** Radar opadów: warstwa rastrowa pod trasą (null = usuń). */
-    fun setRadar(tiles: String?) {
-        val st = style ?: return
-        try {
-            st.getLayer(L_RADAR)?.let { st.removeLayer(it) }
-            st.getSource(SRC_RADAR)?.let { st.removeSource(it) }
-            if (tiles == null) return
-            val ts = org.maplibre.android.style.sources.TileSet("2.1.0", tiles)
-            ts.setMaxZoom(7f)
-            ts.setMinZoom(0f)
-            st.addSource(org.maplibre.android.style.sources.RasterSource(SRC_RADAR, ts, 256))
-            val layer = org.maplibre.android.style.layers.RasterLayer(L_RADAR, SRC_RADAR).withProperties(
-                PropertyFactory.rasterOpacity(0.62f),
-                PropertyFactory.rasterFadeDuration(0f),
-            )
-            if (st.getLayer(L_ALTS) != null) st.addLayerBelow(layer, L_ALTS) else st.addLayer(layer)
-        } catch (_: Exception) {}
-    }
-
     fun setSigns(list: List<pl.mati.carlauncher.data.SpeedLimitRepository.Sign>) {
         val s = style?.getSourceAs<GeoJsonSource>(SRC_SIGNS) ?: return
         s.setGeoJson(FeatureCollection.fromFeatures(list.map {
@@ -574,8 +554,6 @@ private class VectorHolder(ctx: Context) {
         const val SRC_SIGNS = "caros-signs"
         const val L_SIGNS = "caros-signs-layer"
         const val L_ME = "caros-me-car"
-        const val SRC_RADAR = "caros-radar"
-        const val L_RADAR = "caros-radar-layer"
         const val IMG_EMPTY = "caros-empty"
         const val AUTO_RETURN_MS = 12_000L
     }
@@ -623,17 +601,6 @@ fun VectorMap(modifier: Modifier, full: Boolean = false) {
     val signsOn by Prefs.mapSigns.collectAsState()
     LaunchedEffect(signs, signsOn, ready) {
         if (ready) h.setSigns(if (signsOn) signs else emptyList())
-    }
-
-    // radar opadów (RainViewer)
-    val radarOn by Prefs.mapRadar.collectAsState()
-    val radar by pl.mati.carlauncher.data.RadarRepository.frame.collectAsState()
-    DisposableEffect(radarOn) {
-        pl.mati.carlauncher.data.RadarRepository.setActive(radarOn)
-        onDispose { }
-    }
-    LaunchedEffect(radarOn, radar?.tiles, ready) {
-        if (ready) h.setRadar(if (radarOn) radar?.tiles else null)
     }
 
     // kolor akcentu: trasa, cel, strzałka auta
@@ -733,15 +700,6 @@ fun VectorMap(modifier: Modifier, full: Boolean = false) {
 
     Box(modifier) {
         AndroidView(factory = { h.view }, modifier = Modifier.fillMaxSize())
-        // podpis radaru (wymagany przez RainViewer) + godzina klatki
-        if (radarOn) {
-            val txt = radar?.let { "Radar " + java.text.SimpleDateFormat("HH:mm", java.util.Locale.ROOT).format(java.util.Date(it.time)) + " · Weather data by RainViewer" }
-                ?: "Radar opadów – wczytuję…"
-            Text(
-                txt, fontSize = 13.sp, color = CarColors.Text,
-                modifier = Modifier.align(Alignment.TopEnd).padding(top = 14.dp, end = 16.dp).clip(RoundedCornerShape(10.dp)).background(CarColors.Overlay).padding(horizontal = 10.dp, vertical = 5.dp),
-            )
-        }
         // na pełnym ekranie przyciski są w układzie licznika (ClusterMap)
         if (!full) Column(
             Modifier.align(Alignment.CenterEnd).padding(end = 16.dp),
@@ -775,14 +733,6 @@ fun VectorMap(modifier: Modifier, full: Boolean = false) {
                     if (headingUp) "Mapa obraca się z autem" else "Północ u góry",
                     tint = if (headingUp) accent else CarColors.Text, modifier = Modifier.size(26.dp),
                 )
-            }
-            // radar opadów
-            Box(
-                Modifier.size(52.dp).clip(CircleShape).background(CarColors.Overlay).clickable { Prefs.setMapRadar(!radarOn) },
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(Icons.Rounded.Umbrella, if (radarOn) "Ukryj radar opadów" else "Pokaż radar opadów",
-                    tint = if (radarOn) accent else CarColors.Text, modifier = Modifier.size(26.dp))
             }
             // wróć do auta
             Box(
