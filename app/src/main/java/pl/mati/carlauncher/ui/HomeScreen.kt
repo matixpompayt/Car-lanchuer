@@ -1,6 +1,20 @@
 package pl.mati.carlauncher.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.ChevronLeft
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.height
 import androidx.compose.ui.graphics.Brush
@@ -257,54 +271,234 @@ val TILE_DEFS = listOf(
     "service" to "Najbliższy serwis",
     "today" to "Dziś przejechane",
     "fuel" to "Zasięg (tankowania)",
+    "week" to "Ten tydzień (km)",
+    "month" to "Ten miesiąc (km)",
+    "outside" to "Temperatura zewnętrzna (CAN)",
+    "battery" to "Akumulator",
+    "shift" to "Najbliższa zmiana",
 )
 
 @Composable
 private fun VehicleTiles(modifier: Modifier) {
-    val d by pl.mati.carlauncher.data.Vehicle.data.collectAsState()
-    val gps by LocationRepository.gpsSpeed.collectAsState()
     val keysStr by Prefs.homeTiles.collectAsState()
-    val temp by WeatherRepository.temperature.collectAsState()
-    val trips by TripRepository.trips.collectAsState()
-    val cur by TripRepository.current.collectAsState()
-    val odo by ServiceRepository.odometerKm.collectAsState()
-    val svcItems by ServiceRepository.items.collectAsState()
-    val keys = keysStr.split(",").filter { k -> TILE_DEFS.any { it.first == k } }.take(4)
-    if (keys.isEmpty()) return
+    val keys = keysStr.split(",").filter { k -> TILE_DEFS.any { it.first == k } }.distinct().take(4)
+    var editing by remember { mutableStateOf(false) }
+    /** Wybór kafla: indeks do podmiany, -1 = dodaj nowy, null = zamknięte. */
+    var pickFor by remember { mutableStateOf<Int?>(null) }
     val size = if (keys.size >= 4) 34.sp else 44.sp
+    fun save(l: List<String>) = Prefs.setHomeTiles(l.joinToString(","))
 
-    Row(modifier, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        keys.forEach { k ->
-            val m = Modifier.weight(1f)
-            when (k) {
-                "speed" -> {
-                    val over by pl.mati.carlauncher.data.SpeedLimitRepository.over.collectAsState()
-                    val lim by pl.mati.carlauncher.data.SpeedLimitRepository.limit.collectAsState()
-                    SmallTile(
-                        if (lim != null) "Prędkość · max $lim" else "Prędkość", (d.speed ?: gps)?.toString() ?: "--", "km/h", m, size,
-                        valueColor = if (over) androidx.compose.ui.graphics.Color(0xFFFF4D4F) else CarColors.Text,
-                        labelColor = if (over) androidx.compose.ui.graphics.Color(0xFFFF4D4F) else CarColors.Muted,
-                    ) { UiState.go(Screen.VEHICLE) }
-                }
-                "coolant" -> SmallTile("Płyn chł.", d.coolant?.toString() ?: "--", "°C", m, size) { UiState.go(Screen.VEHICLE) }
-                "boost" -> SmallTile("Doład.", d.boostBar?.pl1() ?: "--", "bar", m, size) { UiState.go(Screen.VEHICLE) }
-                "voltage" -> SmallTile("Napięcie", d.voltage?.pl1() ?: "--", "V", m, size) { UiState.go(Screen.VEHICLE) }
-                "load" -> SmallTile("Obciąż.", d.load?.toString() ?: "--", "%", m, size) { UiState.go(Screen.VEHICLE) }
-                "rpm" -> SmallTile("Obroty", d.rpm?.toString() ?: "--", "", m, size) { UiState.go(Screen.VEHICLE) }
-                "weather" -> SmallTile("Pogoda", temp?.toString() ?: "--", "°C", m, size) { UiState.go(Screen.WEATHER) }
-                "today" -> {
-                    val km = remember(trips.size, cur?.distanceM?.toInt()) { TripRepository.summary(TripRepository.startOfDay()).distanceM / 1000 }
-                    SmallTile("Dziś", km.toFloat().pl1(), "km", m, size) { UiState.go(Screen.TRIPS) }
-                }
-                "service" -> ServiceTile(m, size, odo, svcItems)
-                "fuel" -> {
-                    val fs by pl.mati.carlauncher.data.FuelRepository.stats.collectAsState()
-                    SmallTile(
-                        "Zasięg", fs.rangeKm?.let { kotlin.math.round(it).toInt() }?.toString() ?: "--", "km", m, size,
-                        valueColor = if ((fs.rangeKm ?: 999.0) < 80) androidx.compose.ui.graphics.Color(0xFFFF4D4F) else CarColors.Text,
-                    ) { UiState.go(Screen.FUEL) }
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (editing) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Dotknij kafla, żeby go zmienić · ✕ usuwa · strzałki przesuwają", fontSize = 14.sp, color = CarColors.Muted, modifier = Modifier.weight(1f))
+                PrimaryButton("Gotowe", { editing = false })
+            }
+        }
+        Row(Modifier.fillMaxWidth().height(androidx.compose.foundation.layout.IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            keys.forEachIndexed { i, k ->
+                val wiggle = if (editing) {
+                    val t = rememberInfiniteTransition(label = "wig$i")
+                    val r by t.animateFloat(-0.8f, 0.8f, infiniteRepeatable(tween(260 + i * 40), RepeatMode.Reverse), label = "r$i")
+                    r
+                } else 0f
+                Box(
+                    Modifier.weight(1f).fillMaxHeight()
+                        .graphicsLayer { rotationZ = wiggle }
+                        .longPressToEdit { editing = true },
+                ) {
+                    TileContent(k, Modifier.fillMaxWidth().fillMaxHeight(), size)
+                    if (editing) TileEditOverlay(
+                        canLeft = i > 0, canRight = i < keys.lastIndex,
+                        onTap = { pickFor = i },
+                        onRemove = { save(keys - k) },
+                        onLeft = { val l = keys.toMutableList(); java.util.Collections.swap(l, i, i - 1); save(l) },
+                        onRight = { val l = keys.toMutableList(); java.util.Collections.swap(l, i, i + 1); save(l) },
+                    )
                 }
             }
+            if ((editing && keys.size < 4) || keys.isEmpty()) {
+                AddTile(Modifier.weight(1f).fillMaxHeight()) { editing = true; pickFor = -1 }
+            }
+        }
+    }
+    pickFor?.let { idx ->
+        TilePicker(
+            current = keys.getOrNull(idx), used = keys,
+            onPick = { k ->
+                val l = keys.toMutableList()
+                if (idx >= 0 && idx < l.size) {
+                    val other = l.indexOf(k)
+                    if (other >= 0 && other != idx) l[other] = l[idx]   // zamiana miejscami, jeśli już jest na ekranie
+                    l[idx] = k
+                } else if (k !in l) l += k
+                save(l.take(4))
+                pickFor = null
+            },
+            onDismiss = { pickFor = null },
+        )
+    }
+}
+
+/** Przytrzymanie kafla (bez kliknięcia pod spodem) włącza edycję. */
+private fun Modifier.longPressToEdit(onLong: () -> Unit): Modifier = pointerInput(Unit) {
+    awaitEachGesture {
+        awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+        val up = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
+            waitForUpOrCancellation(PointerEventPass.Initial)
+        }
+        if (up == null) {
+            onLong()
+            // połknij resztę gestu, żeby kafel nie otworzył ekranu
+            while (true) {
+                val e = awaitPointerEvent(PointerEventPass.Initial)
+                e.changes.forEach { it.consume() }
+                if (e.changes.none { it.pressed }) break
+            }
+        }
+    }
+}
+
+@Composable
+private fun TileEditOverlay(canLeft: Boolean, canRight: Boolean, onTap: () -> Unit, onRemove: () -> Unit, onLeft: () -> Unit, onRight: () -> Unit) {
+    val accent = LocalAccent.current
+    Box(
+        Modifier.fillMaxSize().clip(RoundedCornerShape(20.dp)).background(CarColors.Bg.copy(alpha = 0.45f))
+            .border(2.dp, accent, RoundedCornerShape(20.dp)).clickable(onClick = onTap),
+    ) {
+        Box(
+            Modifier.align(Alignment.TopEnd).padding(6.dp).size(32.dp).clip(CircleShape).background(CarColors.Red).clickable(onClick = onRemove),
+            contentAlignment = Alignment.Center,
+        ) { Icon(Icons.Rounded.Close, "Usuń kafel", tint = Color.White, modifier = Modifier.size(20.dp)) }
+        Row(Modifier.align(Alignment.BottomCenter).padding(bottom = 6.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            if (canLeft) Box(
+                Modifier.size(34.dp).clip(CircleShape).background(CarColors.Panel).clickable(onClick = onLeft),
+                contentAlignment = Alignment.Center,
+            ) { Icon(Icons.Rounded.ChevronLeft, "W lewo", tint = CarColors.Text, modifier = Modifier.size(24.dp)) }
+            if (canRight) Box(
+                Modifier.size(34.dp).clip(CircleShape).background(CarColors.Panel).clickable(onClick = onRight),
+                contentAlignment = Alignment.Center,
+            ) { Icon(Icons.Rounded.ChevronRight, "W prawo", tint = CarColors.Text, modifier = Modifier.size(24.dp)) }
+        }
+    }
+}
+
+@Composable
+private fun AddTile(modifier: Modifier, onClick: () -> Unit) {
+    val accent = LocalAccent.current
+    Box(
+        modifier.heightIn(min = 96.dp).clip(RoundedCornerShape(20.dp)).border(2.dp, accent.copy(alpha = 0.6f), RoundedCornerShape(20.dp))
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(Icons.Rounded.Add, null, tint = accent, modifier = Modifier.size(32.dp))
+            Text("Dodaj kafel", fontSize = 15.sp, color = accent, fontWeight = FontWeight.SemiBold)
+        }
+    }
+}
+
+@Composable
+private fun TilePicker(current: String?, used: List<String>, onPick: (String) -> Unit, onDismiss: () -> Unit) {
+    val accent = LocalAccent.current
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+        Column(
+            Modifier.width(760.dp).clip(RoundedCornerShape(26.dp)).background(CarColors.Panel)
+                .border(1.dp, CarColors.Border, RoundedCornerShape(26.dp)).padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(if (current == null) "Dodaj kafel" else "Zmień kafel", fontSize = 26.sp, fontWeight = FontWeight.Bold, color = CarColors.Text)
+            TILE_DEFS.chunked(3).forEach { row ->
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    row.forEach { (k, label) ->
+                        val sel = k == current
+                        val onScreen = k in used && !sel
+                        Column(
+                            Modifier.weight(1f).clip(RoundedCornerShape(16.dp))
+                                .background(if (sel) accent.copy(alpha = 0.18f) else CarColors.Card)
+                                .border(1.dp, if (sel) accent else CarColors.Border, RoundedCornerShape(16.dp))
+                                .clickable { onPick(k) }.padding(horizontal = 14.dp, vertical = 12.dp),
+                        ) {
+                            Text(label, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, color = if (sel) accent else CarColors.Text, maxLines = 1)
+                            if (sel || onScreen) Text(if (sel) "teraz tutaj" else "na ekranie – zamieni miejscami", fontSize = 13.sp, color = CarColors.Muted, maxLines = 1)
+                        }
+                    }
+                    repeat(3 - row.size) { Box(Modifier.weight(1f)) }
+                }
+            }
+            Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) { SecondaryButton("Anuluj", onDismiss, height = 52.dp) }
+        }
+    }
+}
+
+/** Treść jednego kafla wg klucza. */
+@Composable
+private fun TileContent(k: String, m: Modifier, size: androidx.compose.ui.unit.TextUnit) {
+    val d by pl.mati.carlauncher.data.Vehicle.data.collectAsState()
+    val gps by LocationRepository.gpsSpeed.collectAsState()
+    when (k) {
+        "speed" -> {
+            val over by pl.mati.carlauncher.data.SpeedLimitRepository.over.collectAsState()
+            val lim by pl.mati.carlauncher.data.SpeedLimitRepository.limit.collectAsState()
+            SmallTile(
+                if (lim != null) "Prędkość · max $lim" else "Prędkość", (d.speed ?: gps)?.toString() ?: "--", "km/h", m, size,
+                valueColor = if (over) Color(0xFFFF4D4F) else CarColors.Text,
+                labelColor = if (over) Color(0xFFFF4D4F) else CarColors.Muted,
+            ) { UiState.go(Screen.VEHICLE) }
+        }
+        "coolant" -> SmallTile("Płyn chł.", d.coolant?.toString() ?: "--", "°C", m, size) { UiState.go(Screen.VEHICLE) }
+        "boost" -> SmallTile("Doład.", d.boostBar?.pl1() ?: "--", "bar", m, size) { UiState.go(Screen.VEHICLE) }
+        "voltage" -> SmallTile("Napięcie", d.voltage?.pl1() ?: "--", "V", m, size) { UiState.go(Screen.VEHICLE) }
+        "load" -> SmallTile("Obciąż.", d.load?.toString() ?: "--", "%", m, size) { UiState.go(Screen.VEHICLE) }
+        "rpm" -> SmallTile("Obroty", d.rpm?.toString() ?: "--", "", m, size) { UiState.go(Screen.VEHICLE) }
+        "outside" -> SmallTile("Na zewnątrz", d.outside?.toString() ?: "--", "°C", m, size) { UiState.go(Screen.VEHICLE) }
+        "weather" -> {
+            val temp by WeatherRepository.temperature.collectAsState()
+            SmallTile("Pogoda", temp?.toString() ?: "--", "°C", m, size) { UiState.go(Screen.WEATHER) }
+        }
+        "today", "week", "month" -> {
+            val trips by TripRepository.trips.collectAsState()
+            val cur by TripRepository.current.collectAsState()
+            val km = remember(k, trips.size, cur?.distanceM?.toInt()) {
+                val from = when (k) { "week" -> TripRepository.startOfWeek(); "month" -> TripRepository.startOfMonth(); else -> TripRepository.startOfDay() }
+                TripRepository.summary(from).distanceM / 1000
+            }
+            val label = when (k) { "week" -> "Tydzień"; "month" -> "Miesiąc"; else -> "Dziś" }
+            SmallTile(label, if (km >= 100) km.toInt().toString() else km.toFloat().pl1(), "km", m, size) { UiState.go(Screen.TRIPS) }
+        }
+        "service" -> {
+            val odo by ServiceRepository.odometerKm.collectAsState()
+            val svcItems by ServiceRepository.items.collectAsState()
+            ServiceTile(m, size, odo, svcItems)
+        }
+        "fuel" -> {
+            val fs by pl.mati.carlauncher.data.FuelRepository.stats.collectAsState()
+            SmallTile(
+                "Zasięg", fs.rangeKm?.let { kotlin.math.round(it).toInt() }?.toString() ?: "--", "km", m, size,
+                valueColor = if ((fs.rangeKm ?: 999.0) < 80) Color(0xFFFF4D4F) else CarColors.Text,
+            ) { UiState.go(Screen.FUEL) }
+        }
+        "battery" -> {
+            val v by pl.mati.carlauncher.data.CarCare.voltage.collectAsState()
+            val b by pl.mati.carlauncher.data.CarCare.battery.collectAsState()
+            val shown = v ?: b?.rest
+            val col = when (b?.level) { 2 -> Color(0xFFFF4D4F); 1 -> CarColors.Orange; else -> CarColors.Text }
+            SmallTile(
+                when (b?.level) { 2 -> "Akumulator · słaby"; 1 -> "Akumulator · uwaga"; else -> "Akumulator" },
+                shown?.pl1() ?: "--", "V", m, size, valueColor = col, labelColor = if ((b?.level ?: 0) > 0) col else CarColors.Muted,
+            ) { UiState.openSettings("car") }
+        }
+        "shift" -> {
+            val now = rememberNow()
+            val info = remember(now.value / 60_000) {
+                val t = java.time.LocalDateTime.now()
+                val todayMin = t.hour * 60 + t.minute
+                val today = pl.mati.carlauncher.data.WorkSchedule.shiftStartingOn(t.toLocalDate())?.takeIf { !it.off && it.start > todayMin }
+                if (today != null) "Zmiana dziś" to pl.mati.carlauncher.data.WorkSchedule.hm(today.start)
+                else pl.mati.carlauncher.data.WorkSchedule.shiftStartingOn(t.toLocalDate().plusDays(1))?.takeIf { !it.off }
+                    ?.let { "Zmiana jutro" to pl.mati.carlauncher.data.WorkSchedule.hm(it.start) } ?: ("Zmiana" to "--")
+            }
+            SmallTile(info.first, info.second, "", m, size) { UiState.openSettings("auto") }
         }
     }
 }
