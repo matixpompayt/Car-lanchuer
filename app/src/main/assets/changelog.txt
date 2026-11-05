@@ -2,7 +2,7 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
-## next
+## 1.87 · 2026-11-05
 Poprawka motywu Pełna mapa
 - Bez pływającego kafla prędkości – nie zasłania już znaku ograniczenia (prędkość jest pod znakiem)
 
