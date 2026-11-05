@@ -2,7 +2,7 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
-## next
+## 1.83 · 2026-11-05
 Wygląd 2.0 dla całego systemu
 - Pasek aplikacji na dole zamiast bocznego: auto z temperaturą, ekran główny, nawigacja, muzyka, telefon, aplikacje, mikrofon i głośność
 - Nowe kolory: czysta czerń w nocy i biel w dzień, karty bez obramowań, okrągłe przyciski
