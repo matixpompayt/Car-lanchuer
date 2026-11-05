@@ -77,11 +77,11 @@ fun formatEta(secondsFromNow: Double): String {
 }
 
 @Composable
-fun MapCard(modifier: Modifier, full: Boolean = false) {
+fun MapCard(modifier: Modifier, full: Boolean = false, showSpeed: Boolean = true, radius: androidx.compose.ui.unit.Dp = 24.dp) {
     // mapa na pełnym ekranie – tu tylko puste tło (jedna mapa naraz)
     val mapFull by UiState.mapFull.collectAsState()
     if (mapFull && !full) {
-        CarCard(modifier, color = CarColors.MapBg) {}
+        CarCard(modifier, color = CarColors.MapBg, radius = radius) {}
         return
     }
     val googleNav by NavRepository.state.collectAsState()
@@ -94,7 +94,7 @@ fun MapCard(modifier: Modifier, full: Boolean = false) {
     val accent = LocalAccent.current
 
     val engine by Prefs.mapEngine.collectAsState()
-    CarCard(modifier, color = CarColors.MapBg) {
+    CarCard(modifier, color = CarColors.MapBg, radius = radius) {
         if (engine == "osm") OsmMap(Modifier.fillMaxSize()) else VectorMap(Modifier.fillMaxSize(), full)
 
         // Następny manewr (z powiadomienia Map Google / Waze)
@@ -137,7 +137,7 @@ fun MapCard(modifier: Modifier, full: Boolean = false) {
         val bannerUp = nav != null || guide != null
 
         // Ograniczenie prędkości (OSM) + aktualna prędkość
-        SpeedLimitBadge(Modifier.align(Alignment.TopStart).padding(top = if (bannerUp) 128.dp else 16.dp, start = 16.dp))
+        if (showSpeed) SpeedLimitBadge(Modifier.align(Alignment.TopStart).padding(top = if (bannerUp) 128.dp else 16.dp, start = 16.dp))
 
         // Pogoda na trasie
         val rw by ForecastRepository.routeWeather.collectAsState()

@@ -90,6 +90,8 @@ import pl.mati.carlauncher.data.WeatherRepository
 
 @Composable
 fun HomeScreen() {
+    val ui2 by Prefs.ui2.collectAsState()
+    if (ui2) { HomeScreen2(); return }
     val editing by UiState.homeEdit.collectAsState()
     val split by Prefs.homeSplit.collectAsState()
     val swap by Prefs.homeSwap.collectAsState()
@@ -536,9 +538,12 @@ private fun TilePicker(current: String?, used: List<String>, onPick: (String) ->
     }
 }
 
+/** Kafle bez tła (wygląd 2.0). */
+val LocalMinimalTiles = androidx.compose.runtime.staticCompositionLocalOf { false }
+
 /** Treść jednego kafla wg klucza. */
 @Composable
-private fun TileContent(k: String, m: Modifier, size: androidx.compose.ui.unit.TextUnit) {
+internal fun TileContent(k: String, m: Modifier, size: androidx.compose.ui.unit.TextUnit) {
     val d by pl.mati.carlauncher.data.Vehicle.data.collectAsState()
     val gps by LocationRepository.gpsSpeed.collectAsState()
     when (k) {
@@ -620,6 +625,13 @@ private fun SmallTile(
     blink: Boolean = false,
     onClick: () -> Unit,
 ) {
+    if (LocalMinimalTiles.current) {
+        Column(modifier.clip(RoundedCornerShape(14.dp)).clickable(onClick = onClick).padding(horizontal = 6.dp, vertical = 6.dp)) {
+            Caption(label, color = labelColor)
+            ValueText(value, unit, size, Modifier.fillMaxWidth(), color = valueColor)
+        }
+        return
+    }
     val bg = if (blink) {
         val t = rememberInfiniteTransition(label = "blink")
         val f by t.animateFloat(0f, 1f, infiniteRepeatable(tween(700), RepeatMode.Reverse), label = "f")

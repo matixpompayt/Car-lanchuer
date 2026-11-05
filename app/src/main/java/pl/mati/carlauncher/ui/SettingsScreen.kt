@@ -220,6 +220,11 @@ private fun AppPickerOverlay() {
 }
 
 private fun LazyListScope.lookPage() {
+    item { SectionLabel("Wygląd 2.0 (test)") }
+    item {
+        val v by Prefs.ui2.collectAsState()
+        SettingRow("Nowy ekran główny", "Minimalistyczny: duża prędkość i dane po lewej, mapa prawie na cały ekran, muzyka na dole. Wyłącz, żeby wrócić do obecnego.", onClick = { Prefs.setUi2(!v) }) { CarSwitch(v) }
+    }
     item { SectionLabel("Dzień / noc") }
     item {
         val mode by Prefs.themeMode.collectAsState()

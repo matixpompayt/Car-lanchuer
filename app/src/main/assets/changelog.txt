@@ -2,6 +2,11 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
+## next
+Wygląd 2.0 (test)
+- Nowy, minimalistyczny ekran główny: duża prędkość z ograniczeniem i nazwą drogi, dane bez ramek, muzyka na dole, mapa prawie na cały ekran
+- Włączanie: Ustawienia → Wygląd → Wygląd 2.0 (test); stary ekran zostaje
+
 ## 1.81 · 2026-11-05
 Własny ekran główny
 - Przytrzymaj kafel albo kartę muzyki – edycja całego ekranu głównego
