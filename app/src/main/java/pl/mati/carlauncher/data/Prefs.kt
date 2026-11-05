@@ -52,6 +52,8 @@ object Prefs {
     val homeSplit = MutableStateFlow(0.6f)
     /** Testowy wygląd 2.0 ekranu głównego (styl minimalistyczny). */
     val ui2 = MutableStateFlow(false)
+    /** Motyw systemu: "classic" (CAR OS 1) albo "minimal" (2.0). */
+    val uiTheme = MutableStateFlow("classic")
     val homeSwap = MutableStateFlow(false)
     val homeShowMap = MutableStateFlow(true)
     val homeShowMedia = MutableStateFlow(true)
@@ -118,7 +120,8 @@ object Prefs {
         roadAlerts.value = p.getBoolean("road_alerts", true)
         homeTiles.value = p.getString("home_tiles", "speed,coolant,boost") ?: "speed,coolant,boost"
         homeSplit.value = p.getFloat("home_split", 0.6f)
-        ui2.value = p.getBoolean("ui2", false)
+        uiTheme.value = p.getString("ui_theme", null) ?: if (p.getBoolean("ui2", false)) "minimal" else "classic"
+        ui2.value = uiTheme.value == "minimal"
         homeSwap.value = p.getBoolean("home_swap", false)
         homeShowMap.value = p.getBoolean("home_map", true)
         homeShowMedia.value = p.getBoolean("home_media", true)
@@ -183,7 +186,7 @@ object Prefs {
     fun setReverseCam(v: Boolean) { reverseCam.value = v; edit { putBoolean("reverse_cam", v) } }
     fun setHomeTiles(v: String) { homeTiles.value = v; edit { putString("home_tiles", v) } }
     fun setHomeSplit(v: Float) { val c = v.coerceIn(0.35f, 0.8f); homeSplit.value = c; edit { putFloat("home_split", c) } }
-    fun setUi2(v: Boolean) { ui2.value = v; edit { putBoolean("ui2", v) } }
+    fun setUiTheme(t: String) { uiTheme.value = t; ui2.value = t == "minimal"; edit { putString("ui_theme", t) } }
     fun setHomeSwap(v: Boolean) { homeSwap.value = v; edit { putBoolean("home_swap", v) } }
     fun setHomeShowMap(v: Boolean) { homeShowMap.value = v; edit { putBoolean("home_map", v) } }
     fun setHomeShowMedia(v: Boolean) { homeShowMedia.value = v; edit { putBoolean("home_media", v) } }

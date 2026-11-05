@@ -2,6 +2,10 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
+## next
+Motywy systemu
+- Ustawienia → Wygląd → Motyw systemu: Klasyczny (CAR OS 1) albo Minimal (pasek na dole, czerń / biel) – z podglądem
+
 ## 1.83 · 2026-11-05
 Wygląd 2.0 dla całego systemu
 - Pasek aplikacji na dole zamiast bocznego: auto z temperaturą, ekran główny, nawigacja, muzyka, telefon, aplikacje, mikrofon i głośność

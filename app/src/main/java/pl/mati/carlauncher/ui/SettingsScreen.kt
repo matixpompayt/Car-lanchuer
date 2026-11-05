@@ -220,10 +220,14 @@ private fun AppPickerOverlay() {
 }
 
 private fun LazyListScope.lookPage() {
-    item { SectionLabel("Wygląd 2.0 (test)") }
+    item { SectionLabel("Motyw systemu") }
     item {
-        val v by Prefs.ui2.collectAsState()
-        SettingRow("Wygląd 2.0", "Cały system w nowym stylu: czarne i białe tło bez ramek, pasek aplikacji na dole (auto, aplikacje, mikrofon, głośność), nowy ekran główny z dużą prędkością i mapą. Wyłącz, żeby wrócić do obecnego.", onClick = { Prefs.setUi2(!v) }) { CarSwitch(v) }
+        val t by Prefs.uiTheme.collectAsState()
+        Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            UI_THEMES.forEach { th ->
+                ThemeCard(th, t == th.id, Modifier.weight(1f)) { Prefs.setUiTheme(th.id) }
+            }
+        }
     }
     item { SectionLabel("Dzień / noc") }
     item {
