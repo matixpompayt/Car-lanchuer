@@ -48,6 +48,11 @@ object Prefs {
     val mapsInBackground = MutableStateFlow(true)
     val roadAlerts = MutableStateFlow(true)
     val homeTiles = MutableStateFlow("speed,coolant,boost")
+    /** Układ ekranu głównego: udział mapy w szerokości, mapa po prawej, widoczność mapy i muzyki. */
+    val homeSplit = MutableStateFlow(0.6f)
+    val homeSwap = MutableStateFlow(false)
+    val homeShowMap = MutableStateFlow(true)
+    val homeShowMedia = MutableStateFlow(true)
     val autoResumeMusic = MutableStateFlow(true)
     val suggestHome = MutableStateFlow(true)
     val homeFrom = MutableStateFlow(14)
@@ -110,6 +115,10 @@ object Prefs {
         mapsInBackground.value = p.getBoolean("maps_bg", true)
         roadAlerts.value = p.getBoolean("road_alerts", true)
         homeTiles.value = p.getString("home_tiles", "speed,coolant,boost") ?: "speed,coolant,boost"
+        homeSplit.value = p.getFloat("home_split", 0.6f)
+        homeSwap.value = p.getBoolean("home_swap", false)
+        homeShowMap.value = p.getBoolean("home_map", true)
+        homeShowMedia.value = p.getBoolean("home_media", true)
         autoResumeMusic.value = p.getBoolean("auto_music", true)
         suggestHome.value = p.getBoolean("suggest_home", true)
         homeFrom.value = p.getInt("home_from", 14)
@@ -170,6 +179,13 @@ object Prefs {
     fun setUpdateWifiOnly(v: Boolean) { updateWifiOnly.value = v; edit { putBoolean("update_wifi_only", v) } }
     fun setReverseCam(v: Boolean) { reverseCam.value = v; edit { putBoolean("reverse_cam", v) } }
     fun setHomeTiles(v: String) { homeTiles.value = v; edit { putString("home_tiles", v) } }
+    fun setHomeSplit(v: Float) { val c = v.coerceIn(0.35f, 0.8f); homeSplit.value = c; edit { putFloat("home_split", c) } }
+    fun setHomeSwap(v: Boolean) { homeSwap.value = v; edit { putBoolean("home_swap", v) } }
+    fun setHomeShowMap(v: Boolean) { homeShowMap.value = v; edit { putBoolean("home_map", v) } }
+    fun setHomeShowMedia(v: Boolean) { homeShowMedia.value = v; edit { putBoolean("home_media", v) } }
+    fun resetHomeLayout() {
+        setHomeSplit(0.6f); setHomeSwap(false); setHomeShowMap(true); setHomeShowMedia(true); setHomeTiles("speed,coolant,boost")
+    }
     fun setAutoResumeMusic(v: Boolean) { autoResumeMusic.value = v; edit { putBoolean("auto_music", v) } }
     fun setSuggestHome(v: Boolean) { suggestHome.value = v; edit { putBoolean("suggest_home", v) } }
     fun setHomeFrom(v: Int) { homeFrom.value = v.coerceIn(0, 23); edit { putInt("home_from", homeFrom.value) } }

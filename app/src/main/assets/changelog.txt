@@ -2,6 +2,13 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
+## next
+Własny ekran główny
+- Przytrzymaj kafel albo kartę muzyki – edycja całego ekranu głównego
+- Mapa: − / + albo przeciąganie uchwytu zmienia jej szerokość, ⇄ przenosi ją na drugą stronę, ✕ ukrywa
+- Muzykę też można ukryć; ukryte karty wracają przyciskami „+ Mapa” / „+ Muzyka”, „Domyślny” przywraca układ
+- Do 8 kafli (dwa rzędy); bez karty muzyki kafle robią się większe
+
 ## 1.80 · 2026-11-05
 Własny układ kafli
 - Przytrzymaj kafel na ekranie głównym: zmiana kafla (dotknij), usuwanie (✕), przesuwanie strzałkami, „Dodaj kafel”

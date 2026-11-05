@@ -1,6 +1,10 @@
 package pl.mati.carlauncher.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.material.icons.rounded.Remove
+import androidx.compose.material.icons.rounded.SwapHoriz
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.width
@@ -86,15 +90,109 @@ import pl.mati.carlauncher.data.WeatherRepository
 
 @Composable
 fun HomeScreen() {
-    Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-        MapCard(Modifier.weight(1.55f).fillMaxHeight())
-        Column(
-            Modifier.weight(1f).fillMaxHeight(),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+    val editing by UiState.homeEdit.collectAsState()
+    val split by Prefs.homeSplit.collectAsState()
+    val swap by Prefs.homeSwap.collectAsState()
+    val showMap by Prefs.homeShowMap.collectAsState()
+    val showMedia by Prefs.homeShowMedia.collectAsState()
+    androidx.compose.runtime.DisposableEffect(Unit) { onDispose { UiState.homeEdit.value = false } }
+
+    Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        if (editing) HomeEditBar(showMap, showMedia)
+        var rowWidth by remember { mutableIntStateOf(1) }
+        Row(
+            Modifier.weight(1f).fillMaxWidth().onSizeChanged { rowWidth = maxOf(1, it.width) },
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            MediaCard(Modifier.weight(1f).fillMaxWidth())
-            VehicleTiles(Modifier.fillMaxWidth())
+            val mapW = if (showMap) split else 0f
+            val map: @Composable () -> Unit = {
+                Box(Modifier.weight(mapW).fillMaxHeight()) {
+                    MapCard(Modifier.fillMaxSize())
+                    if (editing) CardEditOverlay(
+                        "Mapa", onHide = { Prefs.setHomeShowMap(false) },
+                        onSmaller = { Prefs.setHomeSplit(split - 0.05f) }, onBigger = { Prefs.setHomeSplit(split + 0.05f) },
+                        onSwap = { Prefs.setHomeSwap(!swap) },
+                    )
+                }
+            }
+            val handle: @Composable () -> Unit = {
+                if (editing) SplitHandle(swap) { dx -> Prefs.homeSplit.value.let { Prefs.setHomeSplit(it + (if (swap) -dx else dx) / rowWidth) } }
+            }
+            val right: @Composable () -> Unit = {
+                Column(
+                    Modifier.weight(if (showMap) 1f - split else 1f).fillMaxHeight(),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    if (showMedia) Box(Modifier.weight(1f).fillMaxWidth().longPressToEdit { UiState.homeEdit.value = true }) {
+                        MediaCard(Modifier.fillMaxSize())
+                        if (editing) CardEditOverlay("Muzyka", onHide = { Prefs.setHomeShowMedia(false) })
+                    }
+                    VehicleTiles(if (showMedia) Modifier.fillMaxWidth() else Modifier.fillMaxWidth().weight(1f), fill = !showMedia)
+                }
+            }
+            if (showMap && !swap) { map(); handle(); right() }
+            else if (showMap) { right(); handle(); map() }
+            else right()
         }
+    }
+}
+
+/** Pasek edycji: przywracanie ukrytych kart, układ domyślny, koniec edycji. */
+@Composable
+private fun HomeEditBar(showMap: Boolean, showMedia: Boolean) {
+    Row(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(CarColors.Panel).padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Text("Edycja ekranu: przeciągnij uchwyt albo − / +, ✕ ukrywa, ⇄ zamienia strony", fontSize = 14.sp, color = CarColors.Muted, modifier = Modifier.weight(1f))
+        if (!showMap) SecondaryButton("Mapa", { Prefs.setHomeShowMap(true) }, height = 48.dp, icon = Icons.Rounded.Add)
+        if (!showMedia) SecondaryButton("Muzyka", { Prefs.setHomeShowMedia(true) }, height = 48.dp, icon = Icons.Rounded.Add)
+        SecondaryButton("Domyślny", { Prefs.resetHomeLayout() }, height = 48.dp)
+        PrimaryButton("Gotowe", { UiState.homeEdit.value = false })
+    }
+}
+
+/** Nakładka edycji na dużą kartę (mapa / muzyka). */
+@Composable
+private fun CardEditOverlay(
+    title: String,
+    onHide: () -> Unit,
+    onSmaller: (() -> Unit)? = null,
+    onBigger: (() -> Unit)? = null,
+    onSwap: (() -> Unit)? = null,
+) {
+    val accent = LocalAccent.current
+    Box(
+        Modifier.fillMaxSize().clip(RoundedCornerShape(24.dp)).background(CarColors.Bg.copy(alpha = 0.55f))
+            .border(2.dp, accent, RoundedCornerShape(24.dp))
+            .pointerInput(Unit) { awaitEachGesture { awaitFirstDown(); } },  // blokuje mapę / przyciski pod spodem
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Text(title, fontSize = 26.sp, fontWeight = FontWeight.Bold, color = CarColors.Text)
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                if (onSmaller != null) RoundIconButton(Icons.Rounded.Remove, "Mniejsza", 56.dp, onSmaller)
+                if (onBigger != null) RoundIconButton(Icons.Rounded.Add, "Większa", 56.dp, onBigger)
+                if (onSwap != null) RoundIconButton(Icons.Rounded.SwapHoriz, "Zamień strony", 56.dp, onSwap)
+                Box(
+                    Modifier.size(56.dp).clip(CircleShape).background(CarColors.Red).clickable(onClick = onHide),
+                    contentAlignment = Alignment.Center,
+                ) { Icon(Icons.Rounded.Close, "Ukryj", tint = Color.White, modifier = Modifier.size(28.dp)) }
+            }
+        }
+    }
+}
+
+/** Uchwyt między kolumnami – przeciąganie zmienia szerokość mapy. */
+@Composable
+private fun SplitHandle(swap: Boolean, onDrag: (Float) -> Unit) {
+    val accent = LocalAccent.current
+    Box(
+        Modifier.width(28.dp).fillMaxHeight()
+            .pointerInput(swap) { detectHorizontalDragGestures { ch, dx -> ch.consume(); onDrag(dx) } },
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(Modifier.width(8.dp).height(90.dp).clip(RoundedCornerShape(4.dp)).background(accent))
     }
 }
 
@@ -260,6 +358,8 @@ private fun MediaCard(modifier: Modifier) {
 }
 
 /** Kafle do wyboru na ekranie głównym (Ustawienia → Wygląd). */
+const val MAX_TILES = 8
+
 val TILE_DEFS = listOf(
     "speed" to "Prędkość",
     "coolant" to "Płyn chłodzący",
@@ -279,24 +379,29 @@ val TILE_DEFS = listOf(
 )
 
 @Composable
-private fun VehicleTiles(modifier: Modifier) {
+private fun VehicleTiles(modifier: Modifier, fill: Boolean = false) {
     val keysStr by Prefs.homeTiles.collectAsState()
-    val keys = keysStr.split(",").filter { k -> TILE_DEFS.any { it.first == k } }.distinct().take(4)
-    var editing by remember { mutableStateOf(false) }
+    val keys = keysStr.split(",").filter { k -> TILE_DEFS.any { it.first == k } }.distinct().take(MAX_TILES)
+    val editing by UiState.homeEdit.collectAsState()
     /** Wybór kafla: indeks do podmiany, -1 = dodaj nowy, null = zamknięte. */
     var pickFor by remember { mutableStateOf<Int?>(null) }
-    val size = if (keys.size >= 4) 34.sp else 44.sp
+    val perRow = minOf(4, maxOf(1, keys.size + (if (editing && keys.size < MAX_TILES) 1 else 0)))
+    val size = if (perRow >= 4) 34.sp else 44.sp
     fun save(l: List<String>) = Prefs.setHomeTiles(l.joinToString(","))
 
     Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        if (editing) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Dotknij kafla, żeby go zmienić · ✕ usuwa · strzałki przesuwają", fontSize = 14.sp, color = CarColors.Muted, modifier = Modifier.weight(1f))
-                PrimaryButton("Gotowe", { editing = false })
-            }
-        }
-        Row(Modifier.fillMaxWidth().height(androidx.compose.foundation.layout.IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            keys.forEachIndexed { i, k ->
+        val slots: List<String?> = keys + (if ((editing && keys.size < MAX_TILES) || keys.isEmpty()) listOf(null) else emptyList())
+        slots.chunked(4).forEachIndexed { rowIdx, rowSlots ->
+        Row(
+            Modifier.fillMaxWidth().then(if (fill) Modifier.weight(1f) else Modifier.height(androidx.compose.foundation.layout.IntrinsicSize.Min)),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            rowSlots.forEachIndexed { j, k ->
+                val i = rowIdx * 4 + j
+                if (k == null) {
+                    AddTile(Modifier.weight(1f).fillMaxHeight()) { UiState.homeEdit.value = true; pickFor = -1 }
+                    return@forEachIndexed
+                }
                 val wiggle = if (editing) {
                     val t = rememberInfiniteTransition(label = "wig$i")
                     val r by t.animateFloat(-0.8f, 0.8f, infiniteRepeatable(tween(260 + i * 40), RepeatMode.Reverse), label = "r$i")
@@ -305,7 +410,7 @@ private fun VehicleTiles(modifier: Modifier) {
                 Box(
                     Modifier.weight(1f).fillMaxHeight()
                         .graphicsLayer { rotationZ = wiggle }
-                        .longPressToEdit { editing = true },
+                        .longPressToEdit { UiState.homeEdit.value = true },
                 ) {
                     TileContent(k, Modifier.fillMaxWidth().fillMaxHeight(), size)
                     if (editing) TileEditOverlay(
@@ -317,9 +422,9 @@ private fun VehicleTiles(modifier: Modifier) {
                     )
                 }
             }
-            if ((editing && keys.size < 4) || keys.isEmpty()) {
-                AddTile(Modifier.weight(1f).fillMaxHeight()) { editing = true; pickFor = -1 }
-            }
+            // pusta reszta wiersza – kafle w kolejnych wierszach tej samej szerokości
+            repeat(perRow - rowSlots.size) { Box(Modifier.weight(1f)) }
+        }
         }
     }
     pickFor?.let { idx ->
@@ -332,7 +437,7 @@ private fun VehicleTiles(modifier: Modifier) {
                     if (other >= 0 && other != idx) l[other] = l[idx]   // zamiana miejscami, jeśli już jest na ekranie
                     l[idx] = k
                 } else if (k !in l) l += k
-                save(l.take(4))
+                save(l.take(MAX_TILES))
                 pickFor = null
             },
             onDismiss = { pickFor = null },

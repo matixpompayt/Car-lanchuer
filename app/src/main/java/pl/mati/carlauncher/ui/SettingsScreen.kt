@@ -374,7 +374,7 @@ private fun LazyListScope.lookPage() {
         val v by Prefs.bootAnim.collectAsState()
         SettingRow("Animacja uruchamiania", "Logo CAR OS przy starcie radia", onClick = { Prefs.setBootAnim(!v) }) { CarSwitch(v) }
     }
-    item { SectionLabel("Kafle ekranu głównego (maks. 4) – albo przytrzymaj kafel na ekranie głównym") }
+    item { SectionLabel("Kafle ekranu głównego (maks. 8) – albo przytrzymaj kafel na ekranie głównym") }
     item {
         val str by Prefs.homeTiles.collectAsState()
         val on = str.split(",").filter { k -> TILE_DEFS.any { it.first == k } }
@@ -387,7 +387,7 @@ private fun LazyListScope.lookPage() {
                 SettingRow(
                     label, if (enabled) "Pozycja ${idx + 1}" else null,
                     onClick = {
-                        val next = if (enabled) on - key else if (on.size >= 4) { Toaster.show("Maksymalnie 4 kafle"); on } else on + key
+                        val next = if (enabled) on - key else if (on.size >= 8) { Toaster.show("Maksymalnie 8 kafli"); on } else on + key
                         Prefs.setHomeTiles(next.joinToString(","))
                     },
                 ) {

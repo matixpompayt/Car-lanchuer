@@ -20,6 +20,8 @@ object UiState {
     val clusterTest = MutableStateFlow(false)
     /** Kolejne „wróć do auta” (przycisk w trybie pełnego ekranu). */
     val recenter = MutableStateFlow(0)
+    /** Edycja układu ekranu głównego (przytrzymanie kafla / karty muzyki). */
+    val homeEdit = MutableStateFlow(false)
 
     fun go(s: Screen) {
         controlCenter.value = false
