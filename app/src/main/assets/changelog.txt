@@ -2,7 +2,7 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
-## next
+## 1.79 · 2026-11-05
 Bez radaru opadów
 - Usunięty radar opadów z mapy (przycisk z parasolem i opcja w ustawieniach)
 
