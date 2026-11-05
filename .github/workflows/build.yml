@@ -3,6 +3,8 @@ name: Build APK
 on:
   push:
     branches: [main]
+    # strona (docs/) i README nie budują nowej wersji aplikacji
+    paths-ignore: ["docs/**", "**.md"]
   workflow_dispatch:
 
 permissions:
