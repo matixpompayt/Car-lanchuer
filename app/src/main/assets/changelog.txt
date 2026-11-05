@@ -2,7 +2,7 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
-## next
+## 1.81 · 2026-11-05
 Własny ekran główny
 - Przytrzymaj kafel albo kartę muzyki – edycja całego ekranu głównego
 - Mapa: − / + albo przeciąganie uchwytu zmienia jej szerokość, ⇄ przenosi ją na drugą stronę, ✕ ukrywa
