@@ -101,6 +101,39 @@ object Palettes {
         Color(0xFF13293D), Color(0xFF64D2FF),
     )
 
+    /** VW Nocny: czerń, niebieskie podświetlenie (jak zegary Tourana), cienkie niebieskie linie. */
+    val VW = Palette(
+        "vw", "VW", false,
+        Color(0xFF000000), Color(0xFF000000), Color(0xFF02050B),
+        Color(0xFF050A14), Color(0xFF08101E), Color(0xFF060C18), Color(0xFF0C1626), Color(0xFF040910),
+        Color(0xFF173A6B), Color(0xFFB4D8FF), Color(0xFF7DB4F5), Color(0xFF4C82C8), Color(0xFF2E5488),
+        Color(0xFF0E2140), Color(0xFF1A3560), Color(0xEB000308),
+        Color(0xFF4CD964), Color(0xFFFF9500), Color(0xFFFF2D2D), Color(0xFF3A0A0A), Color(0xFF5A0E0E),
+        Color(0xFF0B2140), Color(0xFF8FC3FF),
+    )
+
+    /** Sport: karbonowa czerń, ostre szarości. */
+    val SPORT = Palette(
+        "sport", "Sport", false,
+        Color(0xFF0A0A0A), Color(0xFF050505), Color(0xFF101010),
+        Color(0xFF161616), Color(0xFF1C1C1C), Color(0xFF141414), Color(0xFF242424), Color(0xFF0E0E0E),
+        Color(0xFF2C2C2C), Color(0xFFFFFFFF), Color(0xFFD6D6D6), Color(0xFF8C8C8C), Color(0xFF5C5C5C),
+        Color(0xFF262626), Color(0xFF333333), Color(0xEB0A0A0A),
+        Color(0xFF39E75F), Color(0xFFFF8C00), Color(0xFFFF1E1E), Color(0xFF3D0707), Color(0xFF5C0A0A),
+        Color(0xFF13283D), Color(0xFF6CC4FF),
+    )
+
+    /** Retro 80s: fiolet nocy, neonowy róż (ramki) i cyjan; karty półprzezroczyste nad siatką. */
+    val RETRO = Palette(
+        "retro", "Retro", false,
+        Color(0xFF12052A), Color(0xFF0A0218), Color(0xFF16062F),
+        Color(0xD91E0B3C), Color(0xD924104A), Color(0xF01C0A3A), Color(0xFF2E1458), Color(0xFF150630),
+        Color(0xFFFF2E97), Color(0xFFF8F0FF), Color(0xFFE6CCFF), Color(0xFFB892E8), Color(0xFF7A5AA8),
+        Color(0xFF3A1A66), Color(0xFF4A2580), Color(0xEB1A0838),
+        Color(0xFF2BFFB8), Color(0xFFFFB000), Color(0xFFFF3B6B), Color(0xFF4A0A2A), Color(0xFF6A0A3A),
+        Color(0xFF1A2A5A), Color(0xFF00F0FF),
+    )
+
     /** Wygląd 2.0 – dzień: jasnoszary i biały, bez obramowań. */
     val LIGHT2 = Palette(
         "light2", "Biel", true,
@@ -131,8 +164,8 @@ object Palettes {
 object CarColors {
     /** Aktualny zestaw kolorów (zmiana = przemalowanie całego interfejsu). */
     var palette by mutableStateOf(Palettes.DARK)
-    /** Wygląd 2.0 (test): inny układ (pasek na dole), kształty i kolory. */
-    var ui2 by mutableStateOf(false)
+    /** Motyw systemu (układ, kształty, czcionki, tło). */
+    var theme by mutableStateOf(SysThemes.CLASSIC)
 
     val isLight get() = palette.light
     val Bg get() = palette.bg
@@ -188,7 +221,7 @@ val Wallpapers: List<Pair<String, Brush>> = listOf(
 val LocalAccent = staticCompositionLocalOf { Color(0xFF2FD3F0) }
 
 /** Wąski krój na liczby (systemowy, bez pobierania czcionek). */
-val Condensed: FontFamily = FontFamily(Typeface.create("sans-serif-condensed", Typeface.BOLD))
+val Condensed: FontFamily get() = CarColors.theme.numFont
 
 /** Projekt jest rysowany w 1280 dp szerokości i skalowany do ekranu, niezależnie od DPI radia. */
 const val DESIGN_WIDTH = 1280f
@@ -199,9 +232,14 @@ fun CarRoot(content: @Composable () -> Unit) {
     val light by ThemeManager.light.collectAsState()
     val variant by Prefs.lightVariant.collectAsState()
     val anim by Prefs.animations.collectAsState()
-    val ui2 by Prefs.ui2.collectAsState()
-    CarColors.ui2 = ui2
-    val target = if (ui2) (if (light) Palettes.LIGHT2 else Palettes.DARK2) else if (light) Palettes.light(variant) else Palettes.DARK
+    val themeId by Prefs.uiTheme.collectAsState()
+    val th = SysThemes.byId(themeId)
+    CarColors.theme = th
+    val target = when {
+        th.dark == null -> if (light) Palettes.light(variant) else Palettes.DARK
+        light && th.light != null -> th.light
+        else -> th.dark ?: Palettes.DARK
+    }
     var first by remember { mutableStateOf(true) }
     // dzień ↔ noc: wszystkie kolory przechodzą płynnie (ok. 1 s), przy starcie od razu właściwy tryb
     LaunchedEffect(target) {
@@ -219,8 +257,9 @@ fun CarRoot(content: @Composable () -> Unit) {
     }
     MaterialTheme(colorScheme = if (CarColors.isLight) lightColorScheme() else darkColorScheme()) {
         CompositionLocalProvider(
-            LocalAccent provides CarColors.accentFor(Color(accentInt), CarColors.isLight),
+            LocalAccent provides (th.accent ?: CarColors.accentFor(Color(accentInt), CarColors.isLight)),
             LocalContentColor provides CarColors.Text,
+            androidx.compose.material3.LocalTextStyle provides (th.bodyFont?.let { androidx.compose.material3.LocalTextStyle.current.copy(fontFamily = it) } ?: androidx.compose.material3.LocalTextStyle.current),
         ) {
             BoxWithConstraints(Modifier.fillMaxSize().background(CarColors.Bg)) {
                 val scale = constraints.maxWidth / DESIGN_WIDTH

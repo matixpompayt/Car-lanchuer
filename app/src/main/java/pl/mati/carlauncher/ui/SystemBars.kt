@@ -104,7 +104,7 @@ fun StatusBar() {
     Box(
         Modifier
             .fillMaxWidth()
-            .height(if (CarColors.ui2) 46.dp else 52.dp)
+            .height(if (CarColors.theme.compactStatus) 46.dp else 52.dp)
             .pointerInput(Unit) { detectTapGestures { UiState.controlCenter.value = true } }
             .pointerInput(Unit) {
                 detectVerticalDragGestures(
@@ -121,7 +121,7 @@ fun StatusBar() {
             Modifier.fillMaxSize().padding(horizontal = 24.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(formatTime(now), fontSize = if (CarColors.ui2) 22.sp else 26.sp, fontWeight = if (CarColors.ui2) FontWeight.Bold else FontWeight.SemiBold)
+            Text(formatTime(now), fontSize = if (CarColors.theme.compactStatus) 22.sp else 26.sp, fontWeight = if (CarColors.theme.compactStatus) FontWeight.Bold else FontWeight.SemiBold)
             Spacer(Modifier.width(12.dp))
             Text(formatDate(now), fontSize = 18.sp, color = CarColors.Muted)
             Spacer(Modifier.weight(1f))
@@ -171,7 +171,7 @@ fun ControlCenter() {
     }
     AnimatedVisibility(open, enter = slideInVertically { -it }, exit = slideOutVertically { -it }) {
         var drag by remember { mutableFloatStateOf(0f) }
-        Box(Modifier.fillMaxWidth().padding(start = if (CarColors.ui2) 24.dp else 124.dp, end = 24.dp)) {
+        Box(Modifier.fillMaxWidth().padding(start = CarColors.theme.insetStart, end = CarColors.theme.insetEnd)) {
             Row(
                 Modifier
                     .fillMaxWidth()
@@ -391,7 +391,7 @@ fun RoadAlertBanner() {
         delay(60_000)
         if (AlertRepository.current.value?.time == a.time) AlertRepository.dismiss()
     }
-    Box(Modifier.fillMaxWidth().padding(start = if (CarColors.ui2) 24.dp else 124.dp, end = 24.dp, top = 58.dp), contentAlignment = Alignment.TopCenter) {
+    Box(Modifier.fillMaxWidth().padding(start = CarColors.theme.insetStart, end = CarColors.theme.insetEnd, top = 58.dp + CarColors.theme.insetTop), contentAlignment = Alignment.TopCenter) {
         AnimatedVisibility(alert != null, enter = fadeIn() + slideInVertically { -it }, exit = fadeOut() + slideOutVertically { -it }) {
             val a = alert
             if (a != null) {
@@ -429,7 +429,7 @@ fun HomeSuggestionBanner() {
     val accent = LocalAccent.current
     var last by remember { mutableStateOf<pl.mati.carlauncher.data.WorkSchedule.Suggestion?>(null) }
     sug?.let { last = it }
-    Box(Modifier.fillMaxSize().padding(start = if (CarColors.ui2) 24.dp else 124.dp, end = 24.dp, bottom = if (CarColors.ui2) 110.dp else 28.dp), contentAlignment = Alignment.BottomCenter) {
+    Box(Modifier.fillMaxSize().padding(start = CarColors.theme.insetStart, end = CarColors.theme.insetEnd, bottom = CarColors.theme.insetBottom), contentAlignment = Alignment.BottomCenter) {
         AnimatedVisibility(sug != null, enter = fadeIn() + slideInVertically { it }, exit = fadeOut() + slideOutVertically { it }) {
             val s = last ?: return@AnimatedVisibility
             Row(

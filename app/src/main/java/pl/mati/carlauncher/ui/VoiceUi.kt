@@ -71,7 +71,7 @@ fun VoiceOverlay() {
     val show = st.phase != VoiceCommands.Phase.IDLE
     var last by remember { mutableStateOf(st) }
     if (show) last = st
-    Box(Modifier.fillMaxSize().padding(start = if (CarColors.ui2) 24.dp else 124.dp, end = 24.dp, bottom = if (CarColors.ui2) 108.dp else 26.dp), contentAlignment = Alignment.BottomCenter) {
+    Box(Modifier.fillMaxSize().padding(start = CarColors.theme.insetStart, end = CarColors.theme.insetEnd, bottom = CarColors.theme.insetBottom), contentAlignment = Alignment.BottomCenter) {
         AnimatedVisibility(show, enter = fadeIn() + slideInVertically { it }, exit = fadeOut() + slideOutVertically { it }) {
             val s = last
             val level by animateFloatAsState(s.level, tween(120), label = "lvl")

@@ -90,8 +90,14 @@ import pl.mati.carlauncher.data.WeatherRepository
 
 @Composable
 fun HomeScreen() {
-    val ui2 by Prefs.ui2.collectAsState()
-    if (ui2) { HomeScreen2(); return }
+    when (CarColors.theme.home) {
+        HomeStyle.MINIMAL -> { HomeScreen2(); return }
+        HomeStyle.VW -> { HomeVw(); return }
+        HomeStyle.SPORT -> { HomeSport(); return }
+        HomeStyle.FULLMAP -> { HomeFullMap(); return }
+        HomeStyle.RETRO -> { HomeRetro(); return }
+        HomeStyle.CLASSIC -> Unit
+    }
     val editing by UiState.homeEdit.collectAsState()
     val split by Prefs.homeSplit.collectAsState()
     val swap by Prefs.homeSwap.collectAsState()

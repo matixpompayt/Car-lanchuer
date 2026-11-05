@@ -77,7 +77,10 @@ fun formatEta(secondsFromNow: Double): String {
 }
 
 @Composable
-fun MapCard(modifier: Modifier, full: Boolean = false, showSpeed: Boolean = true, radius: androidx.compose.ui.unit.Dp = 24.dp) {
+fun MapCard(
+    modifier: Modifier, full: Boolean = false, showSpeed: Boolean = true, radius: androidx.compose.ui.unit.Dp = 24.dp,
+    topPad: androidx.compose.ui.unit.Dp = 0.dp, bottomPad: androidx.compose.ui.unit.Dp = 0.dp,
+) {
     // mapa na pełnym ekranie – tu tylko puste tło (jedna mapa naraz)
     val mapFull by UiState.mapFull.collectAsState()
     if (mapFull && !full) {
@@ -103,7 +106,7 @@ fun MapCard(modifier: Modifier, full: Boolean = false, showSpeed: Boolean = true
             Row(
                 Modifier
                     .align(Alignment.TopCenter)
-                    .padding(16.dp)
+                    .padding(start = 16.dp, end = 16.dp, top = 16.dp + topPad, bottom = 16.dp)
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(18.dp))
                     .background(CarColors.Overlay)
@@ -132,12 +135,12 @@ fun MapCard(modifier: Modifier, full: Boolean = false, showSpeed: Boolean = true
         }
 
         guide?.let { g ->
-            GuidanceBanner(g, Modifier.align(Alignment.TopCenter).padding(16.dp).fillMaxWidth())
+            GuidanceBanner(g, Modifier.align(Alignment.TopCenter).padding(start = 16.dp, end = 16.dp, top = 16.dp + topPad, bottom = 16.dp).fillMaxWidth())
         }
         val bannerUp = nav != null || guide != null
 
         // Ograniczenie prędkości (OSM) + aktualna prędkość
-        if (showSpeed) SpeedLimitBadge(Modifier.align(Alignment.TopStart).padding(top = if (bannerUp) 128.dp else 16.dp, start = 16.dp))
+        if (showSpeed) SpeedLimitBadge(Modifier.align(Alignment.TopStart).padding(top = (if (bannerUp) 128.dp else 16.dp) + topPad, start = 16.dp))
 
         // Pogoda na trasie
         val rw by ForecastRepository.routeWeather.collectAsState()
@@ -145,7 +148,7 @@ fun MapCard(modifier: Modifier, full: Boolean = false, showSpeed: Boolean = true
             Row(
                 Modifier
                     .align(Alignment.TopEnd)
-                    .padding(top = if (bannerUp) 128.dp else 16.dp, end = 16.dp)
+                    .padding(top = (if (bannerUp) 128.dp else 16.dp) + topPad, end = 16.dp)
                     .clip(RoundedCornerShape(16.dp))
                     .background(if (w.rain) CarColors.RainBg.copy(alpha = 0.92f) else CarColors.Overlay)
                     .clickable { UiState.go(Screen.WEATHER) }
@@ -162,7 +165,7 @@ fun MapCard(modifier: Modifier, full: Boolean = false, showSpeed: Boolean = true
         Row(
             Modifier
                 .align(Alignment.BottomCenter)
-                .padding(16.dp)
+                .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 16.dp + bottomPad)
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(18.dp))
                 .background(CarColors.Overlay)

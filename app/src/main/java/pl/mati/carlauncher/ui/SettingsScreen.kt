@@ -223,9 +223,12 @@ private fun LazyListScope.lookPage() {
     item { SectionLabel("Motyw systemu") }
     item {
         val t by Prefs.uiTheme.collectAsState()
-        Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            UI_THEMES.forEach { th ->
-                ThemeCard(th, t == th.id, Modifier.weight(1f)) { Prefs.setUiTheme(th.id) }
+        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            SysThemes.ALL.chunked(3).forEach { row ->
+                Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                    row.forEach { th -> ThemeCard(th, t == th.id, Modifier.weight(1f)) { Prefs.setUiTheme(th.id) } }
+                    repeat(3 - row.size) { Box(Modifier.weight(1f)) }
+                }
             }
         }
     }

@@ -110,10 +110,14 @@ private fun Shell() {
         }
     }
 
-    val ui2 = CarColors.ui2
-    val bgBrush = if (ui2) androidx.compose.ui.graphics.SolidColor(CarColors.Bg)
-    else if (CarColors.isLight) Brush.linearGradient(listOf(CarColors.Card2, CarColors.Bg), Offset(0f, 0f), Offset(900f, 1400f))
-    else Wallpapers[wall.coerceIn(0, Wallpapers.lastIndex)].second
+    val th = CarColors.theme
+    val bgBrush: Brush = when (th.bg) {
+        BgStyle.WALLPAPER -> if (CarColors.isLight) Brush.linearGradient(listOf(CarColors.Card2, CarColors.Bg), Offset(0f, 0f), Offset(900f, 1400f))
+            else Wallpapers[wall.coerceIn(0, Wallpapers.lastIndex)].second
+        BgStyle.VW -> Brush.radialGradient(listOf(Color(0xFF07152B), Color(0xFF000000)), Offset(640f, 820f), 900f)
+        BgStyle.SPORT -> Brush.linearGradient(listOf(Color(0xFF151515), Color(0xFF070707), Color(0xFF121212)), Offset(0f, 0f), Offset(1280f, 720f))
+        else -> androidx.compose.ui.graphics.SolidColor(CarColors.Bg)
+    }
     val screens: @Composable (Modifier) -> Unit = { mod ->
         Box(mod) {
             val anim by Prefs.animations.collectAsState()
@@ -137,19 +141,51 @@ private fun Shell() {
         }
     }
     Box(Modifier.fillMaxSize().background(bgBrush)) {
-        if (ui2) {
-            // Wygląd 2.0: pasek stanu u góry, ekran na całą szerokość, pasek aplikacji na dole
-            Column(Modifier.fillMaxSize()) {
+        if (th.bg == BgStyle.SPORT) CarbonPattern()
+        if (th.bg == BgStyle.RETRO) RetroBackground()
+        when (th.nav) {
+            NavStyle.BOTTOM -> Column(Modifier.fillMaxSize()) {
+                // Minimal: pasek stanu u góry, ekran na całą szerokość, pasek aplikacji na dole
                 StatusBar()
                 screens(Modifier.weight(1f).fillMaxWidth().padding(start = 20.dp, end = 20.dp, bottom = 12.dp))
                 BottomBar2(screen)
             }
-        } else Row(Modifier.fillMaxSize()) {
-            Dock(screen)
-            Box(Modifier.width(1.dp).fillMaxHeight().background(CarColors.Border))
-            Column(Modifier.weight(1f).fillMaxHeight()) {
+            NavStyle.TOP_TABS -> Column(Modifier.fillMaxSize()) {
+                // VW Nocny: zakładki z napisami jak w radiu RNS
                 StatusBar()
-                screens(Modifier.weight(1f).padding(start = 24.dp, end = 24.dp, bottom = 24.dp))
+                VwTabs(screen)
+                screens(Modifier.weight(1f).fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 16.dp))
+            }
+            NavStyle.RIGHT_RAIL -> Row(Modifier.fillMaxSize()) {
+                // Sport: shift-light u góry, menu po prawej
+                Column(Modifier.weight(1f).fillMaxHeight()) {
+                    ShiftLights(Modifier.fillMaxWidth().height(16.dp))
+                    StatusBar()
+                    screens(Modifier.weight(1f).fillMaxWidth().padding(start = 22.dp, end = 18.dp, bottom = 18.dp))
+                }
+                SportRail(screen)
+            }
+            NavStyle.FLOATING -> Box(Modifier.fillMaxSize()) {
+                // Pełna mapa: ekran główny pod wszystkim, reszta w panelu; menu w pływającej kapsule
+                screens(
+                    if (screen == Screen.HOME) Modifier.fillMaxSize()
+                    else Modifier.fillMaxSize().padding(start = 20.dp, end = 20.dp, top = 54.dp, bottom = 104.dp),
+                )
+                Box(
+                    Modifier.fillMaxWidth().height(70.dp).background(
+                        Brush.verticalGradient(listOf(CarColors.Bg.copy(alpha = 0.85f), Color.Transparent)),
+                    ),
+                )
+                StatusBar()
+                FloatingNav(screen, Modifier.align(Alignment.BottomCenter).padding(bottom = 14.dp))
+            }
+            NavStyle.DOCK -> Row(Modifier.fillMaxSize()) {
+                Dock(screen)
+                Box(Modifier.width(1.dp).fillMaxHeight().background(CarColors.Border))
+                Column(Modifier.weight(1f).fillMaxHeight()) {
+                    StatusBar()
+                    screens(Modifier.weight(1f).padding(start = 24.dp, end = 24.dp, bottom = 24.dp))
+                }
             }
         }
         FullMapOverlay()
