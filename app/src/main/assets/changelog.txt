@@ -2,7 +2,7 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
-## next
+## 1.86 · 2026-11-05
 Nowe motywy systemu
 - VW Nocny: niebieskie podświetlenie i czerwone wskazówki jak w Touranie, zakładki z napisami u góry, ekran główny z prędkościomierzem, obrotomierzem i czerwonym MFA
 - Sport: karbon i żółć, shift-light z obrotów na górze, menu po prawej, wielka prędkość i telemetria w paskach
