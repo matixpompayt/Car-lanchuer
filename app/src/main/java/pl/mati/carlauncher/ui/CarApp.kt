@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -109,34 +110,46 @@ private fun Shell() {
         }
     }
 
-    val bgBrush = if (CarColors.isLight) Brush.linearGradient(listOf(CarColors.Card2, CarColors.Bg), Offset(0f, 0f), Offset(900f, 1400f))
+    val ui2 = CarColors.ui2
+    val bgBrush = if (ui2) androidx.compose.ui.graphics.SolidColor(CarColors.Bg)
+    else if (CarColors.isLight) Brush.linearGradient(listOf(CarColors.Card2, CarColors.Bg), Offset(0f, 0f), Offset(900f, 1400f))
     else Wallpapers[wall.coerceIn(0, Wallpapers.lastIndex)].second
+    val screens: @Composable (Modifier) -> Unit = { mod ->
+        Box(mod) {
+            val anim by Prefs.animations.collectAsState()
+            AnimatedContent(targetState = screen, transitionSpec = { screenTransition(anim) }, label = "screen") { s ->
+                CompositionLocalProvider(LocalStagger provides remember { StaggerCounter() }) {
+                when (s) {
+                    Screen.HOME -> HomeScreen()
+                    Screen.NAV -> NavScreen()
+                    Screen.MUSIC -> MusicScreen()
+                    Screen.PHONE -> PhoneScreen()
+                    Screen.VEHICLE -> VehicleScreen()
+                    Screen.APPS -> AppsScreen()
+                    Screen.SETTINGS -> SettingsScreen()
+                    Screen.TRIPS -> TripsScreen()
+                    Screen.SERVICE -> ServiceScreen()
+                    Screen.WEATHER -> WeatherScreen()
+                    Screen.FUEL -> FuelScreen()
+                }
+                }
+            }
+        }
+    }
     Box(Modifier.fillMaxSize().background(bgBrush)) {
-        Row(Modifier.fillMaxSize()) {
+        if (ui2) {
+            // Wygląd 2.0: pasek stanu u góry, ekran na całą szerokość, pasek aplikacji na dole
+            Column(Modifier.fillMaxSize()) {
+                StatusBar()
+                screens(Modifier.weight(1f).fillMaxWidth().padding(start = 20.dp, end = 20.dp, bottom = 12.dp))
+                BottomBar2(screen)
+            }
+        } else Row(Modifier.fillMaxSize()) {
             Dock(screen)
             Box(Modifier.width(1.dp).fillMaxHeight().background(CarColors.Border))
             Column(Modifier.weight(1f).fillMaxHeight()) {
                 StatusBar()
-                Box(Modifier.weight(1f).padding(start = 24.dp, end = 24.dp, bottom = 24.dp)) {
-                    val anim by Prefs.animations.collectAsState()
-                    AnimatedContent(targetState = screen, transitionSpec = { screenTransition(anim) }, label = "screen") { s ->
-                        CompositionLocalProvider(LocalStagger provides remember { StaggerCounter() }) {
-                        when (s) {
-                            Screen.HOME -> HomeScreen()
-                            Screen.NAV -> NavScreen()
-                            Screen.MUSIC -> MusicScreen()
-                            Screen.PHONE -> PhoneScreen()
-                            Screen.VEHICLE -> VehicleScreen()
-                            Screen.APPS -> AppsScreen()
-                            Screen.SETTINGS -> SettingsScreen()
-                            Screen.TRIPS -> TripsScreen()
-                            Screen.SERVICE -> ServiceScreen()
-                            Screen.WEATHER -> WeatherScreen()
-                            Screen.FUEL -> FuelScreen()
-                        }
-                        }
-                    }
-                }
+                screens(Modifier.weight(1f).padding(start = 24.dp, end = 24.dp, bottom = 24.dp))
             }
         }
         FullMapOverlay()

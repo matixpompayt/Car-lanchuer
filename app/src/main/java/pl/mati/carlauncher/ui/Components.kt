@@ -218,13 +218,14 @@ fun CarCard(
     radius: Dp = 24.dp,
     content: @Composable BoxScope.() -> Unit,
 ) {
-    val shape = RoundedCornerShape(radius)
+    val ui2 = CarColors.ui2
+    val shape = RoundedCornerShape(if (ui2) radius + 6.dp else radius)
     Box(
         modifier
             .stagger()
             .clip(shape)
             .background(color)
-            .border(1.dp, CarColors.Border, shape),
+            .then(if (ui2) Modifier else Modifier.border(1.dp, CarColors.Border, shape)),
         content = content,
     )
 }
@@ -338,7 +339,7 @@ fun PrimaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifi
         modifier
             .pressScale(src)
             .height(64.dp)
-            .clip(RoundedCornerShape(18.dp))
+            .clip(RoundedCornerShape(if (CarColors.ui2) 32.dp else 18.dp))
             .background(if (enabled) accent else accent.copy(alpha = 0.3f))
             .clickable(interactionSource = src, indication = LocalIndication.current, enabled = enabled, onClick = onClick)
             .padding(horizontal = 32.dp),
@@ -357,8 +358,8 @@ fun SecondaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modi
         modifier
             .pressScale(src)
             .height(height)
-            .clip(RoundedCornerShape(18.dp))
-            .background(CarColors.Card)
+            .clip(RoundedCornerShape(if (CarColors.ui2) height / 2 else 18.dp))
+            .background(if (CarColors.ui2) CarColors.Card2 else CarColors.Card)
             .clickable(interactionSource = src, indication = LocalIndication.current, onClick = onClick)
             .padding(horizontal = 28.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -442,7 +443,7 @@ fun SettingRow(
             .pressScale(src, 0.98f)
             .fillMaxWidth()
             .heightIn(min = 72.dp)
-            .clip(RoundedCornerShape(18.dp))
+            .clip(RoundedCornerShape(if (CarColors.ui2) 24.dp else 18.dp))
             .background(CarColors.Card)
             .then(if (onClick != null) Modifier.clickable(interactionSource = src, indication = LocalIndication.current, onClick = onClick) else Modifier)
             .padding(horizontal = 20.dp, vertical = 12.dp),

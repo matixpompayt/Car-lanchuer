@@ -2,6 +2,12 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
+## next
+Wygląd 2.0 dla całego systemu
+- Pasek aplikacji na dole zamiast bocznego: auto z temperaturą, ekran główny, nawigacja, muzyka, telefon, aplikacje, mikrofon i głośność
+- Nowe kolory: czysta czerń w nocy i biel w dzień, karty bez obramowań, okrągłe przyciski
+- Wszystkie ekrany i ustawienia w nowym stylu; włączanie: Ustawienia → Wygląd → Wygląd 2.0
+
 ## 1.82 · 2026-11-05
 Wygląd 2.0 (test)
 - Nowy, minimalistyczny ekran główny: duża prędkość z ograniczeniem i nazwą drogi, dane bez ramek, muzyka na dole, mapa prawie na cały ekran

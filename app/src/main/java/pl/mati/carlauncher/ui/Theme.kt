@@ -90,6 +90,28 @@ object Palettes {
 
     val LIGHT = listOf(PEARL, SAND, MIST)
 
+    /** Wygląd 2.0 – noc: czysta czerń i neutralne szarości, karty bez obramowań. */
+    val DARK2 = Palette(
+        "dark2", "Czerń", false,
+        Color(0xFF000000), Color(0xFF000000), Color(0xFF0B0B0C),
+        Color(0xFF151517), Color(0xFF1C1C1F), Color(0xFF18181B), Color(0xFF232327), Color(0xFF101012),
+        Color(0x00000000), Color(0xFFF5F5F7), Color(0xFFC7C7CC), Color(0xFF8E8E93), Color(0xFF636366),
+        Color(0xFF2C2C30), Color(0xFF3A3A3E), Color(0xE6101012),
+        Color(0xFF30D158), Color(0xFFFF9F0A), Color(0xFFFF453A), Color(0xFF3A1512), Color(0xFF5A1A16),
+        Color(0xFF13293D), Color(0xFF64D2FF),
+    )
+
+    /** Wygląd 2.0 – dzień: jasnoszary i biały, bez obramowań. */
+    val LIGHT2 = Palette(
+        "light2", "Biel", true,
+        Color(0xFFE9E9EC), Color(0xFFDEDEE2), Color(0xFFF7F7F9),
+        Color(0xFFFFFFFF), Color(0xFFF4F4F6), Color(0xFFFAFAFB), Color(0xFFFFFFFF), Color(0xFFE2E2E6),
+        Color(0x00000000), Color(0xFF111114), Color(0xFF3A3A3F), Color(0xFF6E6E73), Color(0xFF8E8E93),
+        Color(0xFFD5D5DA), Color(0xFFC7C7CC), Color(0xEBFFFFFF),
+        Color(0xFF248A3D), Color(0xFFC75F00), Color(0xFFD70015), Color(0xFFF6D5D3), Color(0xFFF2B8B5),
+        Color(0xFFD3E4F2), Color(0xFF0B63A8),
+    )
+
     /** Płynne przejście między zestawami kolorów (t = 0…1). */
     fun lerp(a: Palette, b: Palette, t: Float): Palette {
         fun c(x: Color, y: Color) = androidx.compose.ui.graphics.lerp(x, y, t)
@@ -109,6 +131,8 @@ object Palettes {
 object CarColors {
     /** Aktualny zestaw kolorów (zmiana = przemalowanie całego interfejsu). */
     var palette by mutableStateOf(Palettes.DARK)
+    /** Wygląd 2.0 (test): inny układ (pasek na dole), kształty i kolory. */
+    var ui2 by mutableStateOf(false)
 
     val isLight get() = palette.light
     val Bg get() = palette.bg
@@ -175,7 +199,9 @@ fun CarRoot(content: @Composable () -> Unit) {
     val light by ThemeManager.light.collectAsState()
     val variant by Prefs.lightVariant.collectAsState()
     val anim by Prefs.animations.collectAsState()
-    val target = if (light) Palettes.light(variant) else Palettes.DARK
+    val ui2 by Prefs.ui2.collectAsState()
+    CarColors.ui2 = ui2
+    val target = if (ui2) (if (light) Palettes.LIGHT2 else Palettes.DARK2) else if (light) Palettes.light(variant) else Palettes.DARK
     var first by remember { mutableStateOf(true) }
     // dzień ↔ noc: wszystkie kolory przechodzą płynnie (ok. 1 s), przy starcie od razu właściwy tryb
     LaunchedEffect(target) {

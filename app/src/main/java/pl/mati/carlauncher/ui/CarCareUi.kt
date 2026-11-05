@@ -45,7 +45,7 @@ fun TurboBanner() {
     var last by remember { mutableStateOf<CarCare.Turbo?>(null) }
     var start by remember { mutableIntStateOf(0) }
     t?.let { if (last == null || last!!.done || it.secondsLeft > start) start = maxOf(it.secondsLeft, 1); last = it }
-    Box(Modifier.fillMaxSize().padding(start = 124.dp, end = 24.dp, top = 84.dp), contentAlignment = Alignment.TopCenter) {
+    Box(Modifier.fillMaxSize().padding(start = if (CarColors.ui2) 24.dp else 124.dp, end = 24.dp, top = 84.dp), contentAlignment = Alignment.TopCenter) {
         AnimatedVisibility(t != null, enter = fadeIn() + slideInVertically { -it }, exit = fadeOut() + slideOutVertically { -it }) {
             val s = last ?: return@AnimatedVisibility
             val green = Color(0xFF34C759)

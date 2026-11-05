@@ -223,7 +223,7 @@ private fun LazyListScope.lookPage() {
     item { SectionLabel("Wygląd 2.0 (test)") }
     item {
         val v by Prefs.ui2.collectAsState()
-        SettingRow("Nowy ekran główny", "Minimalistyczny: duża prędkość i dane po lewej, mapa prawie na cały ekran, muzyka na dole. Wyłącz, żeby wrócić do obecnego.", onClick = { Prefs.setUi2(!v) }) { CarSwitch(v) }
+        SettingRow("Wygląd 2.0", "Cały system w nowym stylu: czarne i białe tło bez ramek, pasek aplikacji na dole (auto, aplikacje, mikrofon, głośność), nowy ekran główny z dużą prędkością i mapą. Wyłącz, żeby wrócić do obecnego.", onClick = { Prefs.setUi2(!v) }) { CarSwitch(v) }
     }
     item { SectionLabel("Dzień / noc") }
     item {
