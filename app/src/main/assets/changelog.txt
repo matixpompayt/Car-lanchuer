@@ -2,7 +2,7 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
-## next
+## 1.84 · 2026-11-05
 Motywy systemu
 - Ustawienia → Wygląd → Motyw systemu: Klasyczny (CAR OS 1) albo Minimal (pasek na dole, czerń / biel) – z podglądem
 
