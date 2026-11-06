@@ -2,7 +2,7 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
-## next
+## 1.89 · 2026-11-06
 Dane auta z MainApp (TopWay)
 - CAR OS łączy się z MainApp radia i czyta z CAN: przebieg, paliwo w baku (litry), prędkość, kierunkowskazy, światła awaryjne, bieg wsteczny, światła i hamulec ręczny
 - Przebieg i paliwo przypisują się same (przebieg od razu ustawia licznik serwisowy), prędkość – gdy kilka razy zgodzi się z GPS
