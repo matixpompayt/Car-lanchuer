@@ -2,7 +2,7 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
-## next
+## 1.88 · 2026-11-06
 Muzyka w czasie nawigacji (Pełna mapa)
 - W motywie Pełna mapa dolny pasek z przyjazdem ma też odtwarzacz: okładka, tytuł i przyciski
 
