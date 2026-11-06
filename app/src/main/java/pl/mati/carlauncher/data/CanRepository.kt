@@ -34,6 +34,7 @@ object CanRepository {
         OUTSIDE("Temperatura zewnętrzna", "°C"),
         VOLTAGE("Napięcie", "V"),
         FUEL("Paliwo", "%"),
+        FUEL_L("Paliwo w baku", "l"),
         RANGE("Zasięg", "km"),
         ODO("Przebieg", "km"),
         LOAD("Obciążenie", "%"),
@@ -72,6 +73,7 @@ object CanRepository {
         val fyt: String = "nie sprawdzono",
         val settingsKeys: Int = 0,
         val props: Int = 0,
+        val ts: String = "nie sprawdzono",
     )
 
     val signals = ConcurrentHashMap<String, Signal>()
@@ -94,6 +96,7 @@ object CanRepository {
         load()
         Vehicle.start()
         FytToolkit.start(ctx.applicationContext)
+        TsCarBridge.start(ctx.applicationContext)
         scope.launch { pollLoop() }
     }
 
@@ -311,7 +314,7 @@ object CanRepository {
         sb.append("Urządzenie: ${Build.MANUFACTURER} ${Build.MODEL} | device=${Build.DEVICE} board=${Build.BOARD} hw=${Build.HARDWARE} | Android ${Build.VERSION.RELEASE}\n")
         sb.append("Wersja: ${pl.mati.carlauncher.BuildConfig.VERSION_NAME}\n\n")
         val src = sources.value
-        sb.append("Źródła: komunikaty=${src.actions}, FYT=${src.fyt}, ustawienia=${src.settingsKeys}, właściwości=${src.props}\n")
+        sb.append("Źródła: komunikaty=${src.actions}, FYT=${src.fyt}, TopWay MainApp=${TsCarBridge.status.value}, ustawienia=${src.settingsKeys}, właściwości=${src.props}\n")
         sb.append("Przypisane: ").append(mappings.value.entries.joinToString { "${it.key.label}=${it.value.key} ×${it.value.scale} ${it.value.offset}" }.ifBlank { "brak" }).append("\n\n")
 
         sb.append("== Aplikacje radia / CAN ==\n")

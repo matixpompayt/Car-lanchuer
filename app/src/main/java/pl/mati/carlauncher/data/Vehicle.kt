@@ -38,6 +38,7 @@ object Vehicle {
             fuelPct = i(CanRepository.Field.FUEL),
             rangeKm = i(CanRepository.Field.RANGE),
             odoKm = i(CanRepository.Field.ODO),
+            fuelL = i(CanRepository.Field.FUEL_L),
         )
     }
 }

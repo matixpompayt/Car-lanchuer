@@ -665,6 +665,10 @@ private fun LazyListScope.carPage() {
             onClick = { CanScanner.open.value = true },
         ) { Chevron() }
     }
+    item {
+        val st by pl.mati.carlauncher.data.TsCarBridge.status.collectAsState()
+        SettingRow("Dane z MainApp (TopWay)", "$st – prędkość, przebieg i paliwo przypisują się same; obroty, napięcie i temperatury MainApp nie udostępnia") {}
+    }
     item { SectionLabel("Dane na żywo") }
     item {
         val d by pl.mati.carlauncher.data.Vehicle.data.collectAsState()
@@ -679,6 +683,7 @@ private fun LazyListScope.carPage() {
         ) + listOfNotNull(
             d.outside?.let { "Na zewnątrz" to "$it °C" },
             d.fuelPct?.let { "Paliwo" to "$it %" },
+            d.fuelL?.let { "Paliwo" to "$it l" },
             d.rangeKm?.let { "Zasięg" to "$it km" },
             d.odoKm?.let { "Przebieg" to "$it km" },
         )

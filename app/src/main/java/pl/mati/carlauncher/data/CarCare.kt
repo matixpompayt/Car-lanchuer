@@ -108,14 +108,18 @@ object CarCare {
     private var chargeSamples = ArrayList<Float>()
     private var evaluated = false
     private var lastSeen = 0L
+    private var lastAcc: Boolean? = null
 
     private fun batteryTick() {
         val v = Vehicle.data.value.voltage?.takeIf { it in 6f..17f }
         voltage.value = v
         val now = System.currentTimeMillis()
         if (v == null) return
-        // nowa „sesja” po starcie radia albo po dłuższej przerwie w odczytach
-        if (sessionStart == 0L || now - lastSeen > 10 * 60_000L) {
+        // nowa „sesja” po starcie radia, po włączeniu zapłonu (MainApp) albo po dłuższej przerwie w odczytach
+        val accNow = TsCarBridge.acc.value
+        val accOn = accNow == true && lastAcc == false
+        lastAcc = accNow
+        if (sessionStart == 0L || accOn || now - lastSeen > 10 * 60_000L) {
             sessionStart = now; restSamples.clear(); minBeforeRun = null; runningSince = 0L; chargeSamples.clear(); evaluated = false
         }
         lastSeen = now

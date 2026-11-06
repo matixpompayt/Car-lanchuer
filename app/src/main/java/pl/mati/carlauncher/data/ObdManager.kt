@@ -40,6 +40,7 @@ object ObdManager {
         val fuelPct: Int? = null,
         val rangeKm: Int? = null,
         val odoKm: Int? = null,
+        val fuelL: Int? = null,
     ) {
         /** Doładowanie względne w barach: MAP - ciśnienie atmosferyczne (domyślnie 101 kPa). */
         val boostBar: Float?
