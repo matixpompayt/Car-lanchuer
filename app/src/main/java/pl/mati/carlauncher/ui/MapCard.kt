@@ -16,6 +16,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Pause
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.SkipNext
+import androidx.compose.material.icons.rounded.SkipPrevious
 import androidx.compose.material.icons.rounded.MyLocation
 import androidx.compose.material.icons.rounded.Navigation
 import androidx.compose.material.icons.rounded.Search
@@ -80,6 +84,8 @@ fun formatEta(secondsFromNow: Double): String {
 fun MapCard(
     modifier: Modifier, full: Boolean = false, showSpeed: Boolean = true, radius: androidx.compose.ui.unit.Dp = 24.dp,
     topPad: androidx.compose.ui.unit.Dp = 0.dp, bottomPad: androidx.compose.ui.unit.Dp = 0.dp,
+    /** Odtwarzacz w dolnym pasku w czasie nawigacji (motyw Pełna mapa). */
+    mediaInBar: Boolean = false,
 ) {
     // mapa na pełnym ekranie – tu tylko puste tło (jedna mapa naraz)
     val mapFull by UiState.mapFull.collectAsState()
@@ -194,6 +200,7 @@ fun MapCard(
                             )
                         }
                     }
+                    if (mediaInBar) BarMedia(Modifier.weight(1.5f))
                     if (guide != null) {
                         val voice by Prefs.navVoice.collectAsState()
                         Box(
@@ -213,6 +220,7 @@ fun MapCard(
                 }
                 nav?.extra != null -> {
                     Text(nav?.extra ?: "", fontSize = 20.sp, modifier = Modifier.weight(1f).padding(vertical = 12.dp), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    if (mediaInBar) BarMedia(Modifier.weight(1.5f))
                     Icon(Icons.Rounded.Navigation, "Nawigacja", tint = accent, modifier = Modifier.padding(end = 10.dp).size(28.dp))
                 }
                 else -> {
@@ -222,6 +230,30 @@ fun MapCard(
                 }
             }
         }
+    }
+}
+
+/** Mały odtwarzacz w pasku przyjazdu: okładka, tytuł i przyciski. */
+@Composable
+private fun BarMedia(modifier: Modifier) {
+    val m = rememberNowPlaying()
+    Row(
+        modifier.clip(RoundedCornerShape(14.dp)).background(CarColors.Raised.copy(alpha = 0.6f))
+            .clickable { UiState.go(Screen.MUSIC) }.padding(start = 6.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        AlbumArt(m.art, 44.dp, 10.dp)
+        Column(Modifier.weight(1f)) {
+            Text(m.title ?: "Nic nie gra", fontSize = 17.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(m.artist ?: m.appName ?: "Dotknij, aby wybrać źródło", fontSize = 14.sp, color = CarColors.Muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        RoundIconButton(Icons.Rounded.SkipPrevious, "Poprzedni", 44.dp, { Player.previous(m) })
+        RoundIconButton(
+            if (m.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, if (m.playing) "Pauza" else "Odtwórz", 44.dp,
+            { Player.playPause(m) }, filled = true,
+        )
+        RoundIconButton(Icons.Rounded.SkipNext, "Następny", 44.dp, { Player.next(m) })
     }
 }
 
