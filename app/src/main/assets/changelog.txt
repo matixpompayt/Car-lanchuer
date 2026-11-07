@@ -3,8 +3,11 @@
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
 ## next
-Bez wygładzania prędkości
-- Prędkość znów pokazywana wprost z GPS i z CAN, bez wygładzania
+Pełne dane z CAN z MainApp
+- CAR OS czyta dane auta z usługi CarInfo w MainApp: obroty, napięcie akumulatora, przebieg, zasięg, prędkość z CAN, temperatury, drzwi, światła, pasy, hamulec ręczny
+- Obroty, napięcie, przebieg i zasięg przypisują się same; prędkość z CAN – gdy zgodzi się z GPS
+- Prędkość nie bierze już wartości z asystenta głosowego, który przy braku CAN podawał GPS radia (stąd skoki)
+- Usunięte wygładzanie prędkości
 
 ## 1.90 · 2026-11-07
 Spokojniejsza prędkość
