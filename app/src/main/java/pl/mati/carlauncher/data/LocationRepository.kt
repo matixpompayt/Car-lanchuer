@@ -23,7 +23,6 @@ object LocationRepository : LocationListener {
 
     private var started = false
     private var lastTripPoint: Location? = null
-    private val speedFilter = SpeedFilter()
 
     fun start(context: Context) {
         if (started) return
@@ -47,7 +46,7 @@ object LocationRepository : LocationListener {
     override fun onLocationChanged(l: Location) {
         location.value = l
         if (l.provider != LocationManager.GPS_PROVIDER) return
-        gpsSpeed.value = if (l.hasSpeed()) speedFilter.push(l.speed * 3.6) else { speedFilter.reset(); null }
+        gpsSpeed.value = if (l.hasSpeed()) (l.speed * 3.6f).roundToInt() else null
         if (l.accuracy <= 30f) {
             lastTripPoint?.let { prev ->
                 val dist = prev.distanceTo(l)

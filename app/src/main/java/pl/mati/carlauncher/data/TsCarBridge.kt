@@ -66,7 +66,6 @@ object TsCarBridge {
     private var loop: Job? = null
     private var started = false
     private var speedMatches = 0
-    private val speedFilter = SpeedFilter(alpha = 0.4)
 
     fun start(ctx: Context) {
         if (started) return
@@ -118,12 +117,11 @@ object TsCarBridge {
                 val c = car
                 val f = fn
                 var got = 0
-                // prędkość co 0,5 s (wygładzana), reszta co sekundę
+                // prędkość co 0,5 s, reszta co sekundę
                 if (c != null) callInt(c, D_CAR, C_SPEED)?.let {
                     got++
-                    val sm = speedFilter.push(it.toDouble())
-                    CanRepository.observe(K_SPEED, sm.toString())
-                    checkSpeed(sm)
+                    CanRepository.observe(K_SPEED, it.toString())
+                    checkSpeed(it)
                 }
                 if (c != null && n % 2 == 0) {
                     callInt(c, D_CAR, C_KM)?.let { got++; CanRepository.observe(K_KM, it.toString()); autoMap(CanRepository.Field.ODO, K_KM, it, 1000..3_000_000) }
