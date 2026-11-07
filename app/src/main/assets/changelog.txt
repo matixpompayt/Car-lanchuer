@@ -2,7 +2,7 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
-## next
+## 1.92 · 2026-11-07
 Pełne dane z CAN z MainApp
 - CAR OS czyta dane auta z usługi CarInfo w MainApp: obroty, napięcie akumulatora, przebieg, zasięg, prędkość z CAN, temperatury, drzwi, światła, pasy, hamulec ręczny
 - Obroty, napięcie, przebieg i zasięg przypisują się same; prędkość z CAN – gdy zgodzi się z GPS
