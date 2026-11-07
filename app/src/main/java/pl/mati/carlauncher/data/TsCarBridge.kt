@@ -66,6 +66,7 @@ object TsCarBridge {
     private var loop: Job? = null
     private var started = false
     private var speedMatches = 0
+    private val speedFilter = SpeedFilter(alpha = 0.4)
 
     fun start(ctx: Context) {
         if (started) return
@@ -117,15 +118,21 @@ object TsCarBridge {
                 val c = car
                 val f = fn
                 var got = 0
-                if (c != null) {
-                    callInt(c, D_CAR, C_SPEED)?.let { got++; CanRepository.observe(K_SPEED, it.toString()); checkSpeed(it) }
+                // prędkość co 0,5 s (wygładzana), reszta co sekundę
+                if (c != null) callInt(c, D_CAR, C_SPEED)?.let {
+                    got++
+                    val sm = speedFilter.push(it.toDouble())
+                    CanRepository.observe(K_SPEED, sm.toString())
+                    checkSpeed(sm)
+                }
+                if (c != null && n % 2 == 0) {
                     callInt(c, D_CAR, C_KM)?.let { got++; CanRepository.observe(K_KM, it.toString()); autoMap(CanRepository.Field.ODO, K_KM, it, 1000..3_000_000) }
-                    if (n % 5 == 0) callInt(c, D_CAR, C_OIL)?.let { got++; CanRepository.observe(K_OIL, it.toString()); autoMap(CanRepository.Field.FUEL_L, K_OIL, it, 1..150) }
+                    if (n % 10 == 0) callInt(c, D_CAR, C_OIL)?.let { got++; CanRepository.observe(K_OIL, it.toString()); autoMap(CanRepository.Field.FUEL_L, K_OIL, it, 1..150) }
                     callInt(c, D_CAR, C_LEFT)?.let { CanRepository.observe("ts:car/left", it.toString()) }
                     callInt(c, D_CAR, C_RIGHT)?.let { CanRepository.observe("ts:car/right", it.toString()) }
                     callInt(c, D_CAR, C_EMERGENCY)?.let { CanRepository.observe("ts:car/hazard", it.toString()) }
                 }
-                if (f != null && n % 2 == 0) {
+                if (f != null && n % 4 == 0) {
                     callInt(f, D_FN, F_BACK)?.let { got++; reverse.value = it == 1; CanRepository.observe("ts:fn/reverse", it.toString()) }
                     callInt(f, D_FN, F_ILL)?.let { lights.value = it == 1; CanRepository.observe("ts:fn/lights", it.toString()) }
                     callInt(f, D_FN, F_BRAKES)?.let { handbrake.value = it == 1; CanRepository.observe("ts:fn/handbrake", it.toString()) }
@@ -136,7 +143,7 @@ object TsCarBridge {
                     else -> "połączono, ale MainApp nie odpowiada"
                 }
                 n++
-                delay(1000)
+                delay(500)
             }
         }
     }

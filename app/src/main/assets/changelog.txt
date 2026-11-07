@@ -2,6 +2,11 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
+## next
+Spokojniejsza prędkość
+- Prędkość z GPS i z CAN jest wygładzana: bez skoków i migotania liczby, pojedyncze błędne odczyty (np. nagłe 0) są pomijane
+- Prędkość z MainApp odczytywana dwa razy na sekundę, więc mimo wygładzania reaguje szybko
+
 ## 1.89 · 2026-11-06
 Dane auta z MainApp (TopWay)
 - CAR OS łączy się z MainApp radia i czyta z CAN: przebieg, paliwo w baku (litry), prędkość, kierunkowskazy, światła awaryjne, bieg wsteczny, światła i hamulec ręczny
