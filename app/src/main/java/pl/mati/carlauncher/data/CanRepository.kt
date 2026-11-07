@@ -174,6 +174,16 @@ object CanRepository {
         }
     }
 
+    /** Usuń wartości pól przypisanych do sygnału (np. dane przestały przychodzić – nieaktualne). */
+    fun expire(key: String) {
+        val fields = mappings.value.entries.filter { it.value.key == key }.map { it.key }
+        if (fields.isEmpty()) return
+        val nv = values.value.toMutableMap()
+        if (fields.none { nv.containsKey(it) }) return
+        fields.forEach { nv.remove(it) }
+        values.value = nv
+    }
+
     /** Przebieg z radia → licznik serwisowy (najwyżej raz na minutę, tylko sensowne wartości). */
     private fun odo(km: Double) {
         val now = System.currentTimeMillis()

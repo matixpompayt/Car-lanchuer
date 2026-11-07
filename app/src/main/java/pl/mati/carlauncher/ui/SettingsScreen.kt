@@ -667,7 +667,7 @@ private fun LazyListScope.carPage() {
     }
     item {
         val st by pl.mati.carlauncher.data.TsCarBridge.status.collectAsState()
-        SettingRow("Dane z MainApp (TopWay)", "$st – obroty, napięcie, przebieg, zasięg i prędkość przypisują się same; temperatury (ts:base/out_temp, water_temp) przypisz w skanerze") {}
+        SettingRow("Dane z MainApp (TopWay)", "$st") {}
     }
     item { SectionLabel("Dane na żywo") }
     item {

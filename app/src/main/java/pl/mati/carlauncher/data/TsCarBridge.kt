@@ -84,6 +84,18 @@ object TsCarBridge {
     @Volatile private var car: IBinder? = null
     @Volatile private var fn: IBinder? = null
     @Volatile private var info: IBinder? = null
+
+    /**
+     * Pola, które przejściówka CAN wysyła tylko na zapytanie – w MainApp robi je jedynie ekran
+     * „informacje o aucie”, gdy jest otwarty. Gdy obroty i napięcie przestają się zmieniać,
+     * cała grupa jest nieaktualna i jej nie pokazujemy (zamiast „zamrożonych” liczb).
+     */
+    private val QUERY_GROUP = setOf(3, 4, 11, 12, 13, 15, 67, 68)
+    private var lastRpm = Int.MIN_VALUE
+    private var lastBat = Int.MIN_VALUE
+    private var groupChanged = 0L
+    /** Czy dane z zapytania (obroty, napięcie, temperatura…) są teraz świeże. */
+    val queryFresh = MutableStateFlow(false)
     private var loop: Job? = null
     private var started = false
     private var speedMatches = 0
@@ -143,8 +155,22 @@ object TsCarBridge {
                 // dane z CAN (Can.mCarMsg) co 0,5 s
                 if (i != null) callIntArray(i, D_INFO, I_BASE)?.let { arr ->
                     got++
-                    for ((idx, name) in BASE) if (idx < arr.size) CanRepository.observe("ts:base/$name", arr[idx].toString())
-                    autoBase(arr)
+                    val now = System.currentTimeMillis()
+                    val rpm = arr.getOrNull(3) ?: 0
+                    val bat = arr.getOrNull(15) ?: 0
+                    if (rpm != lastRpm || bat != lastBat) {
+                        if (lastRpm != Int.MIN_VALUE) groupChanged = now
+                        lastRpm = rpm; lastBat = bat
+                    }
+                    val fresh = now - groupChanged < 12_000
+                    queryFresh.value = fresh
+                    for ((idx, name) in BASE) {
+                        if (idx >= arr.size) continue
+                        val key = "ts:base/$name"
+                        if (idx in QUERY_GROUP && !fresh) CanRepository.expire(key)
+                        else CanRepository.observe(key, arr[idx].toString())
+                    }
+                    if (fresh) autoBase(arr) else checkSpeed(arr.getOrNull(2) ?: 0)
                 }
                 if (c != null && n % 2 == 0) {
                     callInt(c, D_CAR, C_LEFT)?.let { CanRepository.observe("ts:car/left", it.toString()) }
@@ -158,7 +184,7 @@ object TsCarBridge {
                 }
                 status.value = when {
                     i == null && c == null && f == null -> "rozłączono"
-                    got > 0 && i != null -> "połączono z MainApp (dane CAN)"
+                    got > 0 && i != null -> "połączono z MainApp (dane CAN" + (if (queryFresh.value) ", obroty i napięcie na żywo)" else "; obroty, napięcie i temperatury tylko przy otwartym ekranie auta w MainApp)")
                     got > 0 -> "połączono z MainApp (bez danych CAN)"
                     else -> "połączono, ale MainApp nie odpowiada"
                 }

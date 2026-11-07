@@ -2,6 +2,12 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
+## next
+Bez „zamrożonych” danych z CAN
+- Obroty, napięcie, zasięg i temperatury z MainApp pokazywane tylko, gdy są aktualne; gdy przestają się zmieniać (ekran auta w MainApp zamknięty), znikają zamiast stać w miejscu
+- Kontrola akumulatora i timer turbo nie biorą już starych wartości
+- Przebieg, światła, hamulec ręczny i wsteczny działają jak dotąd
+
 ## 1.92 · 2026-11-07
 Pełne dane z CAN z MainApp
 - CAR OS czyta dane auta z usługi CarInfo w MainApp: obroty, napięcie akumulatora, przebieg, zasięg, prędkość z CAN, temperatury, drzwi, światła, pasy, hamulec ręczny
