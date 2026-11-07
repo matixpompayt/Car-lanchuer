@@ -2,7 +2,7 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
-## next
+## 1.93 · 2026-11-07
 Bez „zamrożonych” danych z CAN
 - Obroty, napięcie, zasięg i temperatury z MainApp pokazywane tylko, gdy są aktualne; gdy przestają się zmieniać (ekran auta w MainApp zamknięty), znikają zamiast stać w miejscu
 - Kontrola akumulatora i timer turbo nie biorą już starych wartości
