@@ -2,7 +2,7 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
-## next
+## 1.90 · 2026-11-07
 Spokojniejsza prędkość
 - Prędkość z GPS i z CAN jest wygładzana: bez skoków i migotania liczby, pojedyncze błędne odczyty (np. nagłe 0) są pomijane
 - Prędkość z MainApp odczytywana dwa razy na sekundę, więc mimo wygładzania reaguje szybko
