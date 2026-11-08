@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     # strona (docs/) i README nie budują nowej wersji aplikacji
-    paths-ignore: ["docs/**", "**.md"]
+    paths-ignore: ["docs/**", "**.md", "tools/**", ".github/workflows/fuel-prices.yml", ".github/workflows/speed-data.yml", ".gitignore"]
   workflow_dispatch:
 
 permissions:

@@ -145,10 +145,14 @@ def update_max(data):
                     continue
                 try:
                     raw = get(f"https://eli.gov.pl/eli/{eli}/ogl/pol/pdf", 40)
-                except Exception:
+                except Exception as e:
+                    print(f"{eli} eli.gov.pl: {e}")
                     misses += 1
                     continue
                 misses = 0
+                if not raw.startswith(b"%PDF"):
+                    print(f"{eli} eli.gov.pl: to nie PDF ({raw[:60]!r})")
+                    continue
                 text = pdf_to_text(raw)
                 if "maksymalnej ceny paliw" not in text.lower():
                     continue
