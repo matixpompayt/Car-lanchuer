@@ -2,6 +2,12 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
+## next
+Szersze drogi i prawdziwe strzałki na rondach
+- Drogi na mapie wyraźnie szersze (z ciemnym obrysem) – lepiej widać je w czasie jazdy
+- Rondo w nawigacji pokazuje faktyczny zjazd: w lewo, prosto, w prawo albo zawracanie, z numerem zjazdu
+- Strzałka „potem” też pokazuje kierunek zjazdu z ronda
+
 ## 1.93 · 2026-11-07
 Bez „zamrożonych” danych z CAN
 - Obroty, napięcie, zasięg i temperatury z MainApp pokazywane tylko, gdy są aktualne; gdy przestają się zmieniać (ekran auta w MainApp zamknięty), znikają zamiast stać w miejscu

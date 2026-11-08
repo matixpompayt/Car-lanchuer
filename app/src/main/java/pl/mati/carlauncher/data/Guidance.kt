@@ -30,6 +30,8 @@ object Guidance {
         val lat: Double,
         val lon: Double,
         val alongM: Double,
+        /** Rondo: kąt zjazdu względem wjazdu (0 = prosto, +90 = w prawo, -90 = w lewo, 180 = zawracanie). */
+        val angle: Double? = null,
     )
 
     /** Co pokazuje baner. [kind] wybiera strzałkę. */
@@ -42,6 +44,9 @@ object Guidance {
         val exit: Int?,
         val thenKind: String?,
         val arrived: Boolean = false,
+        /** Rondo: kąt zjazdu (do rysowania strzałki). */
+        val angle: Double? = null,
+        val thenAngle: Double? = null,
     )
 
     val state = MutableStateFlow<State?>(null)
@@ -84,6 +89,7 @@ object Guidance {
                     destinations = s.optString("destinations"),
                     lat = lat, lon = lon,
                     alongM = cum[idx],
+                    angle = if (m.optString("type") in setOf("roundabout", "rotary", "roundabout turn")) roundaboutAngle(s, m) else null,
                 )
             }
         }
@@ -91,6 +97,60 @@ object Guidance {
     }
 
     // ---------- teksty po polsku ----------
+
+    /** Kąt kierunku z „modifier” OSRM. */
+    private fun modAngle(mod: String?): Double? = when (mod) {
+        "straight" -> 0.0
+        "slight right" -> 45.0
+        "right" -> 90.0
+        "sharp right" -> 135.0
+        "uturn" -> 180.0
+        "sharp left" -> -135.0
+        "left" -> -90.0
+        "slight left" -> -45.0
+        else -> null
+    }
+
+    /**
+     * Kąt zjazdu z ronda: kierunek drogi wyjazdowej (z „intersections” – n-te skrzyżowanie,
+     * z którego da się zjechać) względem kierunku wjazdu. Gdy się nie da albo wynik przeczy
+     * „modifier” z OSRM – kąt z „modifier”.
+     */
+    private fun roundaboutAngle(step: JSONObject, m: JSONObject): Double {
+        val mod = modAngle(m.optString("modifier").ifBlank { null })
+        val before = m.optDouble("bearing_before", Double.NaN)
+        val ex = m.optInt("exit", 0)
+        var rel: Double? = null
+        val ints = step.optJSONArray("intersections")
+        if (ints != null && ex >= 1 && !before.isNaN()) {
+            var count = 0
+            for (k in 1 until ints.length()) {
+                val it = ints.getJSONObject(k)
+                val entry = it.optJSONArray("entry") ?: continue
+                var outs = 0
+                for (e in 0 until entry.length()) if (entry.optBoolean(e)) outs++
+                if (outs < 2) continue
+                count++
+                if (count == ex) {
+                    val b = it.optJSONArray("bearings")
+                    val o = it.optInt("out", -1)
+                    if (b != null && o in 0 until b.length()) {
+                        var d = b.getDouble(o) - before
+                        while (d > 180) d -= 360
+                        while (d <= -180) d += 360
+                        rel = d
+                    }
+                    break
+                }
+            }
+        }
+        if (rel != null && mod != null) {
+            var diff = kotlin.math.abs(rel - mod) % 360.0
+            if (diff > 180) diff = 360 - diff
+            if (diff > 70) rel = mod
+        }
+        return rel ?: mod ?: 0.0
+    }
 
     private fun dirPl(mod: String?): String = when (mod) {
         "left" -> "w lewo"
@@ -235,7 +295,7 @@ object Guidance {
         val s = steps[shown]
         val dist = (s.alongM - along).coerceAtLeast(0.0)
         val next = steps.getOrNull(shown + 1)?.takeIf { !silent(it) && it.alongM - s.alongM < 150 }
-        state.value = State(shown, kind(s), action(s), street(s), dist, s.exit, next?.let { kind(it) })
+        state.value = State(shown, kind(s), action(s), street(s), dist, s.exit, next?.let { kind(it) }, angle = s.angle, thenAngle = next?.angle)
 
         // głos
         val v = if (loc.hasSpeed()) loc.speed.toDouble().coerceAtLeast(8.0) else 13.0

@@ -86,6 +86,8 @@ object CarMapStyle {
                             else -> p.lRoad
                         }
                         layer.setProperties(PropertyFactory.lineColor(Color.parseColor(c)))
+                        // szersze drogi – lepiej widać w aucie
+                        if (layer.sourceLayer == "transportation") roadWidth(id)?.let { layer.setProperties(PropertyFactory.lineWidth(it)) }
                     }
                     is SymbolLayer -> {
                         if (id.startsWith("caros-")) continue
@@ -105,6 +107,30 @@ object CarMapStyle {
             }
         }
         swapBuildings(style, light)
+    }
+
+    /**
+     * Szerokości dróg (dp wg zoomu) – ok. 1,6–2× szersze niż w stylu OpenFreeMap.
+     * Obrys („casing”) szerszy o ~3 dp, żeby droga miała wyraźną krawędź.
+     */
+    private fun roadWidth(id: String): org.maplibre.android.style.expressions.Expression? {
+        if (has(id, "path", "footway", "cycle", "track", "pedestrian", "steps", "rail", "transit", "aeroway", "runway", "taxiway", "ferry", "pier", "bridleway")) return null
+        val stops: List<Pair<Float, Float>> = when {
+            has(id, "motorway", "trunk") -> listOf(5f to 1f, 8f to 2.2f, 10f to 3.5f, 13f to 7f, 15f to 13f, 17f to 26f, 19f to 60f)
+            has(id, "primary") -> listOf(7f to 1f, 10f to 2.8f, 13f to 6f, 15f to 11f, 17f to 22f, 19f to 52f)
+            has(id, "secondary", "tertiary") -> listOf(8f to 0.8f, 11f to 2.2f, 13f to 4.8f, 15f to 9f, 17f to 18f, 19f to 44f)
+            has(id, "service", "track") -> listOf(13f to 0.8f, 15f to 3f, 17f to 7f, 19f to 18f)
+            else -> listOf(11f to 0.8f, 13f to 2.4f, 15f to 6f, 17f to 13f, 19f to 32f)
+        }
+        val casing = has(id, "casing")
+        val st = stops.map { (z, w) ->
+            org.maplibre.android.style.expressions.Expression.stop(z, if (casing) w + (if (z >= 13f) 3f else 1f) else w)
+        }.toTypedArray()
+        return org.maplibre.android.style.expressions.Expression.interpolate(
+            org.maplibre.android.style.expressions.Expression.exponential(1.35f),
+            org.maplibre.android.style.expressions.Expression.zoom(),
+            *st,
+        )
     }
 
     private fun buildingsId(light: Boolean) = BUILDINGS_3D + if (light) "-l" else "-d"
