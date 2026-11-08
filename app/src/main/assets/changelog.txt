@@ -2,7 +2,7 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
-## next
+## 1.98 · 2026-11-08
 Ceny paliw i większy pasek w „Pełnej mapie”
 - Nowy ekran „Ceny paliw” (Aplikacje): maksymalne ceny ON, Pb95 i Pb98 z obwieszczeń Ministra Energii oraz średnia cena LPG
 - Zmiana względem poprzedniego obwieszczenia, ceny na jutro, gdy tylko się pojawią, i wykres historii (2 tygodnie, 30 dni, 3 miesiące) – dotknij wykresu, by zobaczyć ceny z danego dnia
