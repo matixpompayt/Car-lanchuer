@@ -1,0 +1,43 @@
+name: Ceny paliw
+
+# Pobiera maksymalne ceny paliw (obwieszczenia Ministra Energii) i średnią cenę LPG,
+# zapisuje do docs/fuel.json – stąd czytają je CAR OS i CAR OS Connect.
+on:
+  schedule:
+    - cron: "11,41 6-19 * * 1-5"
+    - cron: "23 8,16 * * 0,6"
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ["tools/fuelprices/**", ".github/workflows/fuel-prices.yml"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: fuel-prices
+  cancel-in-progress: false
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Narzędzia
+        run: sudo apt-get install -y -qq poppler-utils >/dev/null
+      - name: Pobierz ceny
+        run: python3 tools/fuelprices/fetch.py docs/fuel.json
+      - name: Zapisz zmiany
+        run: |
+          if git diff --quiet -- docs/fuel.json && git ls-files --error-unmatch docs/fuel.json >/dev/null 2>&1; then
+            echo "Bez zmian"; exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/fuel.json
+          git commit -m "Ceny paliw: aktualizacja"
+          for i in 1 2 3; do
+            git pull --rebase -q && git push -q && exit 0
+            sleep 5
+          done
+          exit 1
