@@ -384,6 +384,7 @@ val TILE_DEFS = listOf(
     "outside" to "Temperatura zewnętrzna (CAN)",
     "battery" to "Akumulator",
     "shift" to "Najbliższa zmiana",
+    "price" to "Cena paliwa (max)",
 )
 
 @Composable
@@ -586,6 +587,17 @@ internal fun TileContent(k: String, m: Modifier, size: androidx.compose.ui.unit.
             val odo by ServiceRepository.odometerKm.collectAsState()
             val svcItems by ServiceRepository.items.collectAsState()
             ServiceTile(m, size, odo, svcItems)
+        }
+        "price" -> {
+            val snap by pl.mati.carlauncher.data.FuelPrices.data.collectAsState()
+            val fav by pl.mati.carlauncher.data.FuelPrices.fav.collectAsState()
+            val p = snap?.today?.get(fav)
+            val ch = snap?.change?.get(fav)
+            SmallTile(
+                fav.short + when { ch == null || kotlin.math.abs(ch) < 0.005 -> ""; ch > 0 -> " ▲"; else -> " ▼" },
+                p?.let { String.format(PL, "%.2f", it) } ?: "--", "zł", m, size,
+                labelColor = when { ch == null || kotlin.math.abs(ch) < 0.005 -> CarColors.Muted; ch > 0 -> CarColors.Red; else -> CarColors.Green },
+            ) { UiState.go(Screen.PRICES) }
         }
         "fuel" -> {
             val fs by pl.mati.carlauncher.data.FuelRepository.stats.collectAsState()

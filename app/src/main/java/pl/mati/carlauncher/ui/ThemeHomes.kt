@@ -291,10 +291,10 @@ fun HomeFullMap() {
     val keysStr by Prefs.homeTiles.collectAsState()
     val keys = androidx.compose.runtime.remember(keysStr) { homeKeys() }
     Box(Modifier.fillMaxSize()) {
-        MapCard(Modifier.fillMaxSize(), topPad = 46.dp, bottomPad = 92.dp, mediaInBar = true)
+        MapCard(Modifier.fillMaxSize(), topPad = 46.dp, bottomPad = 116.dp, mediaInBar = true)
         if (guide == null && gnav == null) FloatingMedia(Modifier.align(Alignment.TopCenter).padding(top = 54.dp))
         CompositionLocalProvider(LocalMinimalTiles provides true) {
-            Column(Modifier.align(Alignment.BottomStart).padding(start = 16.dp, bottom = 188.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(Modifier.align(Alignment.BottomStart).padding(start = 16.dp, bottom = 212.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 // bez kafla prędkości – prędkość i ograniczenie są już na mapie (lewy górny róg)
                 keys.filter { it != "speed" }.take(4).forEach { k ->
                     Box(Modifier.width(184.dp).clip(RoundedCornerShape(20.dp)).background(CarColors.Overlay).padding(horizontal = 6.dp, vertical = 2.dp)) {

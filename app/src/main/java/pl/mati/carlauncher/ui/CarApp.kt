@@ -106,7 +106,7 @@ private fun Shell() {
         when {
             cc -> UiState.controlCenter.value = false
             screen == Screen.SETTINGS && settingsPage == "update" -> UiState.settingsPage.value = "sys"
-            screen == Screen.SETTINGS || screen == Screen.TRIPS || screen == Screen.SERVICE || screen == Screen.WEATHER || screen == Screen.FUEL -> UiState.go(Screen.APPS)
+            screen == Screen.SETTINGS || screen == Screen.TRIPS || screen == Screen.SERVICE || screen == Screen.WEATHER || screen == Screen.FUEL || screen == Screen.PRICES -> UiState.go(Screen.APPS)
             else -> UiState.go(Screen.HOME)
         }
     }
@@ -135,6 +135,7 @@ private fun Shell() {
                     Screen.TRIPS -> TripsScreen()
                     Screen.SERVICE -> ServiceScreen()
                     Screen.WEATHER -> WeatherScreen()
+                    Screen.PRICES -> FuelPricesScreen()
                     Screen.FUEL -> FuelScreen()
                 }
                 }
@@ -170,7 +171,7 @@ private fun Shell() {
                 // Pełna mapa: ekran główny pod wszystkim, reszta w panelu; menu w pływającej kapsule
                 screens(
                     if (screen == Screen.HOME) Modifier.fillMaxSize()
-                    else Modifier.fillMaxSize().padding(start = 20.dp, end = 20.dp, top = 54.dp, bottom = 104.dp),
+                    else Modifier.fillMaxSize().padding(start = 20.dp, end = 20.dp, top = 54.dp, bottom = 128.dp),
                 )
                 Box(
                     Modifier.fillMaxWidth().height(70.dp).background(
@@ -224,7 +225,7 @@ private fun Dock(current: Screen) {
             val voice by pl.mati.carlauncher.data.VoiceCommands.state.collectAsState()
             val startVoice = rememberVoiceStarter()
             DockButton(Icons.Rounded.Mic, "Komenda głosowa", voice.phase == pl.mati.carlauncher.data.VoiceCommands.Phase.LISTENING) { startVoice() }
-            DockButton(Icons.Rounded.Apps, "Aplikacje", current in setOf(Screen.APPS, Screen.SETTINGS, Screen.TRIPS, Screen.SERVICE, Screen.WEATHER, Screen.FUEL)) {
+            DockButton(Icons.Rounded.Apps, "Aplikacje", current in setOf(Screen.APPS, Screen.SETTINGS, Screen.TRIPS, Screen.SERVICE, Screen.WEATHER, Screen.FUEL, Screen.PRICES)) {
                 UiState.go(Screen.APPS)
             }
         }

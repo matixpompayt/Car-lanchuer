@@ -73,7 +73,7 @@ fun BottomBar2(current: Screen) {
             BarButton(Icons.Rounded.Navigation, "Nawigacja", current == Screen.NAV) { UiState.go(Screen.NAV) }
             BarButton(Icons.Rounded.MusicNote, "Muzyka", current == Screen.MUSIC) { UiState.go(Screen.MUSIC) }
             BarButton(Icons.Rounded.Phone, "Telefon", current == Screen.PHONE) { UiState.go(Screen.PHONE) }
-            BarButton(Icons.Rounded.Apps, "Aplikacje", current in setOf(Screen.APPS, Screen.SETTINGS, Screen.TRIPS, Screen.SERVICE, Screen.WEATHER, Screen.FUEL)) { UiState.go(Screen.APPS) }
+            BarButton(Icons.Rounded.Apps, "Aplikacje", current in setOf(Screen.APPS, Screen.SETTINGS, Screen.TRIPS, Screen.SERVICE, Screen.WEATHER, Screen.FUEL, Screen.PRICES)) { UiState.go(Screen.APPS) }
         }
         // mikrofon i głośność
         Row(Modifier.width(230.dp), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {

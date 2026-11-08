@@ -56,7 +56,7 @@ import pl.mati.carlauncher.data.VoiceCommands
 /** Wspólna lista ekranów do menu motywów. */
 private data class NavItem(val icon: ImageVector, val label: String, val short: String, val screen: Screen)
 
-private val APPS_GROUP = setOf(Screen.APPS, Screen.SETTINGS, Screen.TRIPS, Screen.SERVICE, Screen.WEATHER, Screen.FUEL)
+private val APPS_GROUP = setOf(Screen.APPS, Screen.SETTINGS, Screen.TRIPS, Screen.SERVICE, Screen.WEATHER, Screen.FUEL, Screen.PRICES)
 
 private val NAV_ITEMS = listOf(
     NavItem(Icons.Rounded.GridView, "Ekran główny", "START", Screen.HOME),
@@ -192,25 +192,25 @@ fun FloatingNav(current: Screen, modifier: Modifier) {
     val voice by VoiceCommands.state.collectAsState()
     val startVoice = rememberVoiceStarter()
     Row(
-        modifier.height(76.dp).clip(RoundedCornerShape(38.dp)).background(CarColors.Overlay)
-            .border(1.dp, CarColors.Text.copy(alpha = 0.08f), RoundedCornerShape(38.dp)).padding(horizontal = 12.dp),
-        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp),
+        modifier.height(100.dp).clip(RoundedCornerShape(50.dp)).background(CarColors.Overlay)
+            .border(1.dp, CarColors.Text.copy(alpha = 0.08f), RoundedCornerShape(50.dp)).padding(horizontal = 14.dp),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         NAV_ITEMS.forEach { it ->
             val on = it.active(current)
             Box(
-                Modifier.size(58.dp).clip(CircleShape).background(if (on) accent else Color.Transparent)
+                Modifier.size(80.dp).clip(CircleShape).background(if (on) accent else Color.Transparent)
                     .clickable(onClickLabel = it.label) { UiState.go(it.screen) },
                 contentAlignment = Alignment.Center,
-            ) { Icon(it.icon, it.label, tint = if (on) CarColors.Bg else CarColors.Text, modifier = Modifier.size(30.dp)) }
+            ) { Icon(it.icon, it.label, tint = if (on) CarColors.Bg else CarColors.Text, modifier = Modifier.size(42.dp)) }
         }
-        Box(Modifier.width(1.dp).height(34.dp).background(CarColors.Text.copy(alpha = 0.15f)))
+        Box(Modifier.width(1.dp).height(46.dp).background(CarColors.Text.copy(alpha = 0.15f)))
         val listening = voice.phase == VoiceCommands.Phase.LISTENING
         Box(
-            Modifier.size(58.dp).clip(CircleShape).background(if (listening) accent else Color.Transparent)
+            Modifier.size(80.dp).clip(CircleShape).background(if (listening) accent else Color.Transparent)
                 .clickable(onClickLabel = "Komenda głosowa") { startVoice() },
             contentAlignment = Alignment.Center,
-        ) { Icon(Icons.Rounded.Mic, "Komenda głosowa", tint = if (listening) CarColors.Bg else CarColors.Text, modifier = Modifier.size(30.dp)) }
+        ) { Icon(Icons.Rounded.Mic, "Komenda głosowa", tint = if (listening) CarColors.Bg else CarColors.Text, modifier = Modifier.size(42.dp)) }
     }
 }
 

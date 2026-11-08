@@ -2,6 +2,14 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
+## next
+Ceny paliw i większy pasek w „Pełnej mapie”
+- Nowy ekran „Ceny paliw” (Aplikacje): maksymalne ceny ON, Pb95 i Pb98 z obwieszczeń Ministra Energii oraz średnia cena LPG
+- Zmiana względem poprzedniego obwieszczenia, ceny na jutro, gdy tylko się pojawią, i wykres historii (2 tygodnie, 30 dni, 3 miesiące) – dotknij wykresu, by zobaczyć ceny z danego dnia
+- Gwiazdka wybiera ulubione paliwo; nowy kafel „Cena paliwa” na ekranie głównym pokazuje je ze strzałką w górę lub w dół
+- Komenda głosowa: „cena paliwa”, „cena benzyny”, „cena LPG”
+- Pływający pasek w motywie „Pełna mapa” jest większy – przyciski łatwiej trafić w czasie jazdy
+
 ## 1.94 · 2026-11-08
 Szersze drogi i prawdziwe strzałki na rondach
 - Drogi na mapie wyraźnie szersze (z ciemnym obrysem) – lepiej widać je w czasie jazdy

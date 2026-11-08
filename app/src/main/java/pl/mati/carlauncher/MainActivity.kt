@@ -89,6 +89,7 @@ class MainActivity : ComponentActivity() {
         pl.mati.carlauncher.data.ConnectRepository.init()
         pl.mati.carlauncher.data.ParkingRepository.start()
         pl.mati.carlauncher.data.PlacesRepository.load()
+        pl.mati.carlauncher.data.FuelPrices.start(this)
         ContextCompat.registerReceiver(
             this, AutostartManager.screenReceiver,
             IntentFilter().apply {

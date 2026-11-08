@@ -70,7 +70,7 @@ data class SysTheme(
 ) {
     val insetStart: Dp get() = if (nav == NavStyle.DOCK) 124.dp else 24.dp
     val insetEnd: Dp get() = if (nav == NavStyle.RIGHT_RAIL) 124.dp else 24.dp
-    val insetBottom: Dp get() = if (nav == NavStyle.BOTTOM || nav == NavStyle.FLOATING) 110.dp else 28.dp
+    val insetBottom: Dp get() = when (nav) { NavStyle.FLOATING -> 134.dp; NavStyle.BOTTOM -> 110.dp; else -> 28.dp }
     val insetTop: Dp get() = when (nav) { NavStyle.TOP_TABS -> 58.dp; NavStyle.RIGHT_RAIL -> 16.dp; else -> 0.dp }
     fun radius(r: Dp): Dp = (r + corner).coerceAtLeast(3.dp)
 }

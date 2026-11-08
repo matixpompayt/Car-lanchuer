@@ -187,6 +187,23 @@ object VoiceCommands {
             return finish(if (ok) Phase.DONE else Phase.ERROR, text, if (ok) "Zapisałem miejsce parkowania" else "Brak pozycji GPS", speak = ok)
         }
 
+        if (has("ceny paliw", "cena paliw", "ceny paliwa", "cena ropy", "cena diesla", "ile kosztuje paliwo", "ile kosztuje ropa", "cena benzyny", "ceny benzyny", "cena gazu", "cena lpg")) {
+            UiState.go(Screen.PRICES)
+            val snap = FuelPrices.data.value
+            val f = when {
+                has("benzyn", "95") -> FuelPrices.Fuel.PB95
+                has("98") -> FuelPrices.Fuel.PB98
+                has("gaz", "lpg") -> FuelPrices.Fuel.LPG
+                has("rop", "diesl", "napedow") -> FuelPrices.Fuel.ON
+                else -> FuelPrices.fav.value
+            }
+            val p = snap?.today?.get(f)
+            val name = if (f == FuelPrices.Fuel.LPG) "Gaz LPG" else f.label
+            val reply = if (p == null) "Ceny paliw" else "$name: dziś maksymalnie ${String.format(java.util.Locale("pl", "PL"), "%.2f", p)} zł za litr" +
+                (snap?.tomorrow?.get(f)?.let { t -> ", jutro ${String.format(java.util.Locale("pl", "PL"), "%.2f", t)}" } ?: "")
+            return finish(Phase.DONE, text, if (f == FuelPrices.Fuel.LPG && p != null) reply.replace("maksymalnie", "średnio") else reply, speak = p != null)
+        }
+
         // ekrany
         val screen = when {
             has("pogod") -> Screen.WEATHER to "Pogoda"
