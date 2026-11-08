@@ -77,18 +77,31 @@ def parse_prices(text):
             i += 1
     if len(pairs) < 3:
         return None
+    # tabela: 95, 98, olej napędowy; 98 zawsze droższa od 95 (gdyby PDF zamienił wiersze)
     pb95, pb98, on = pairs[0], pairs[1], pairs[2]
-    # sprawdź kolejność po słowach kluczowych (gdyby tabela była inna)
-    low = text.lower()
-    p95, p98, pon = low.find(" 95"), low.find(" 98"), low.find("napędow")
-    if p95 >= 0 and p98 >= 0 and pon >= 0 and not (p95 < p98 < pon):
-        order = sorted([(p95, "pb95"), (p98, "pb98"), (pon, "on")])
-        vals = dict(zip([k for _, k in order], pairs[:3]))
-        pb95, pb98, on = vals["pb95"], vals["pb98"], vals["on"]
+    if pb95 > pb98:
+        pb95, pb98 = pb98, pb95
     return {"pb95": pb95, "pb98": pb98, "on": on}
 
 
+def pos_of(eli):
+    try:
+        return int(eli.rsplit("/", 1)[1])
+    except Exception:
+        return 0
+
+
+def act_info(year, pos):
+    try:
+        return json.loads(get(f"{API}/acts/MP/{year}/{pos}", 20))
+    except Exception:
+        return None
+
+
 def update_max(data):
+    if data.get("v") != 2:
+        data["history"] = []  # nowy format / poprawiony parser – przelicz wszystko
+    data["v"] = 2
     hist = {h["eli"]: h for h in data.get("history", []) if "eli" in h}
     today = dt.date.today()
     found = 0
@@ -98,6 +111,22 @@ def update_max(data):
         except Exception as e:
             print(f"API Sejmu {year}: {e}")
             continue
+        # wyszukiwarka API bywa opóźniona – sprawdź też kolejne numery pozycji po ostatnim znalezionym
+        if year == today.year:
+            last = max([pos_of(it.get("ELI") or "") for it in acts] + [0])
+            misses = 0
+            pos = last + 1
+            while last and misses < 12 and pos < last + 60:
+                info = act_info(year, pos)
+                if info is None:
+                    misses += 1
+                else:
+                    misses = 0
+                    t = (info.get("title") or "").lower()
+                    if "maksymaln" in t and "paliw" in t:
+                        acts.append(info)
+                        print(f"Znalezione poza wyszukiwarką: MP/{year}/{pos}")
+                pos += 1
         for it in acts:
             eli = it.get("ELI") or f"MP/{year}/{it.get('pos')}"
             prom = it.get("promulgation") or it.get("announcementDate")
@@ -122,7 +151,7 @@ def update_max(data):
             print(f"{eli} ({d}): Pb95 {p['pb95']} Pb98 {p['pb98']} ON {p['on']}")
     # jedna pozycja na dzień obowiązywania (późniejsze obwieszczenie wygrywa)
     by_from = {}
-    for h in sorted(hist.values(), key=lambda x: (x["from"], x["eli"])):
+    for h in sorted(hist.values(), key=lambda x: (x["from"], pos_of(x["eli"]))):
         by_from[h["from"]] = h
     cutoff = (today - dt.timedelta(days=KEEP_DAYS)).isoformat()
     data["history"] = [h for h in sorted(by_from.values(), key=lambda x: x["from"]) if h["from"] >= cutoff]
