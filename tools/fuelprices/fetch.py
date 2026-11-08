@@ -52,6 +52,27 @@ def search_acts(year):
     return out
 
 
+MONTHS = {"stycznia": 1, "lutego": 2, "marca": 3, "kwietnia": 4, "maja": 5, "czerwca": 6, "lipca": 7,
+          "sierpnia": 8, "września": 9, "października": 10, "listopada": 11, "grudnia": 12}
+
+
+def text_date(text):
+    m = re.search(r"Warszawa,\s+dnia\s+(\d{1,2})\s+(\w+)\s+(\d{4})", text)
+    if not m or m.group(2) not in MONTHS:
+        return None
+    return dt.date(int(m.group(3)), MONTHS[m.group(2)], int(m.group(1)))
+
+
+def pdf_to_text(raw):
+    with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as f:
+        f.write(raw)
+        path = f.name
+    try:
+        return subprocess.run(["pdftotext", "-layout", path, "-"], capture_output=True, text=True, timeout=60).stdout
+    finally:
+        os.unlink(path)
+
+
 def pdf_text(eli):
     raw = get(f"{API}/acts/{eli}/text.pdf")
     with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as f:
@@ -111,22 +132,34 @@ def update_max(data):
         except Exception as e:
             print(f"API Sejmu {year}: {e}")
             continue
-        # wyszukiwarka API bywa opóźniona – sprawdź też kolejne numery pozycji po ostatnim znalezionym
+        # API Sejmu dostaje nowe akty z opóźnieniem – najnowsze pozycje Monitora Polskiego
+        # czytamy wprost z eli.gov.pl (RCL publikuje od razu)
         if year == today.year:
-            last = max([pos_of(it.get("ELI") or "") for it in acts] + [0])
+            last = max([pos_of(it.get("ELI") or "") for it in acts] + [pos_of(e) for e in hist if e.startswith(f"MP/{year}/")] + [0])
             misses = 0
             pos = last + 1
-            while last and misses < 12 and pos < last + 60:
-                info = act_info(year, pos)
-                if info is None:
-                    misses += 1
-                else:
-                    misses = 0
-                    t = (info.get("title") or "").lower()
-                    if "maksymaln" in t and "paliw" in t:
-                        acts.append(info)
-                        print(f"Znalezione poza wyszukiwarką: MP/{year}/{pos}")
+            while last and misses < 8 and pos < last + 80:
+                eli = f"MP/{year}/{pos}"
                 pos += 1
+                if eli in hist:
+                    continue
+                try:
+                    raw = get(f"https://eli.gov.pl/eli/{eli}/ogl/pol/pdf", 40)
+                except Exception:
+                    misses += 1
+                    continue
+                misses = 0
+                text = pdf_to_text(raw)
+                if "maksymalnej ceny paliw" not in text.lower():
+                    continue
+                d = text_date(text)
+                p = parse_prices(text)
+                if not d or not p:
+                    print(f"{eli} (eli.gov.pl): nie odczytałem daty/cen")
+                    continue
+                p.update({"eli": eli, "published": d.isoformat(), "from": (d + dt.timedelta(days=1)).isoformat()})
+                hist[eli] = p
+                print(f"{eli} ({d}, eli.gov.pl): Pb95 {p['pb95']} Pb98 {p['pb98']} ON {p['on']}")
         for it in acts:
             eli = it.get("ELI") or f"MP/{year}/{it.get('pos')}"
             prom = it.get("promulgation") or it.get("announcementDate")
