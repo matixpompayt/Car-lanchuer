@@ -235,7 +235,7 @@ def update_gov(hist):
         published = dt.date(int(md.group(3)), int(md.group(2)), int(md.group(1))) if md else dt.date.today()
         # dzień obowiązywania z adresu: „…paliw-na-7-8-i-9-listopada-2026…” → 7 listopada
         frm = None
-        ms = re.search(r"-na-(\d{1,2})(?:-(?:i-)?\d{1,2})*-(" + "|".join(MONTHS) + r")(?:-(\d{4}))?", slug)
+        ms = re.search(r"(?:-na-|-obowiazujaca-(?:w-dniach-|od-)?|-od-)(\d{1,2})(?:-(?:i-)?\d{1,2})*-(" + "|".join(MONTHS) + r")(?:-(\d{4}))?", slug)
         if ms:
             y = int(ms.group(3)) if ms.group(3) else published.year
             try:
