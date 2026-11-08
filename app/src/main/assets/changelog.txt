@@ -2,7 +2,7 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
-## next
+## 1.94 · 2026-11-08
 Szersze drogi i prawdziwe strzałki na rondach
 - Drogi na mapie wyraźnie szersze (z ciemnym obrysem) – lepiej widać je w czasie jazdy
 - Rondo w nawigacji pokazuje faktyczny zjazd: w lewo, prosto, w prawo albo zawracanie, z numerem zjazdu
