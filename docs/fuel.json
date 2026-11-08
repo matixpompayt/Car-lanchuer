@@ -121,16 +121,16 @@
    "from": "2026-10-08"
   },
   {
-   "pb95": 7.77,
-   "pb98": 6.9,
+   "pb95": 6.9,
+   "pb98": 7.77,
    "on": 7.82,
    "eli": "MP/2026/983",
    "published": "2026-10-08",
    "from": "2026-10-09"
   },
   {
-   "pb95": 7.85,
-   "pb98": 6.97,
+   "pb95": 6.97,
+   "pb98": 7.85,
    "on": 8.06,
    "eli": "MP/2026/985",
    "published": "2026-10-09",
@@ -289,5 +289,6 @@
   }
  ],
  "source": "Ceny maksymalne: obwieszczenia Ministra Energii (Monitor Polski). LPG: średnia detaliczna z serwisów cenowych.",
- "updated": "2026-11-08T18:10:35+00:00"
+ "updated": "2026-11-08T18:12:27+00:00",
+ "v": 2
 }
