@@ -188,6 +188,7 @@ def update_max(data):
             p.update({"eli": eli, "published": d.isoformat(), "from": (d + dt.timedelta(days=1)).isoformat()})
             hist[eli] = p
             print(f"{eli} ({d}): Pb95 {p['pb95']} Pb98 {p['pb98']} ON {p['on']}")
+    update_gov(hist)
     # jedna pozycja na dzień obowiązywania (późniejsze obwieszczenie wygrywa)
     by_from = {}
     for h in sorted(hist.values(), key=lambda x: (x["from"], pos_of(x["eli"]))):
@@ -195,6 +196,56 @@ def update_max(data):
     cutoff = (today - dt.timedelta(days=KEEP_DAYS)).isoformat()
     data["history"] = [h for h in sorted(by_from.values(), key=lambda x: x["from"]) if h["from"] >= cutoff]
     print(f"Obwieszczeń w oknie: {found}, w historii: {len(data['history'])}")
+
+
+GOV_NEWS = "https://www.gov.pl/web/energia/wiadomosci"
+
+
+def update_gov(hist):
+    """Komunikaty ME na gov.pl – pojawiają się przed Monitorem Polskim (ceny na jutro / weekend)."""
+    try:
+        html = get(GOV_NEWS, 40).decode("utf-8", "ignore")
+    except Exception as e:
+        print(f"gov.pl: {e}")
+        return
+    slugs = []
+    for m in re.finditer(r'href="(/web/energia/[^"#?]+)"', html):
+        slug = m.group(1).rsplit("/", 1)[1]
+        if "maksymaln" in slug and "paliw" in slug and slug not in slugs:
+            slugs.append(slug)
+    print(f"gov.pl: komunikatów o cenach na liście: {len(slugs)}")
+    for slug in slugs[:6]:
+        key = "gov:" + slug
+        if key in hist:
+            continue
+        try:
+            page = get("https://www.gov.pl/web/energia/" + slug, 40).decode("utf-8", "ignore")
+        except Exception as e:
+            print(f"gov.pl {slug}: {e}")
+            continue
+        text = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", page)).replace("&nbsp;", " ")
+        def price(pat):
+            m = re.search(pat + r"\s*[–—-]\s*(\d)[,.](\d{2})\s*zł", text, re.I)
+            return float(m.group(1) + "." + m.group(2)) if m else None
+        p95, p98, pon = price(r"benzyna\s*95"), price(r"benzyna\s*98"), price(r"olej\s+napędowy")
+        if not (p95 and p98 and pon):
+            print(f"gov.pl {slug}: brak cen")
+            continue
+        md = re.search(r"(\d{2})\.(\d{2})\.(\d{4})", text)
+        published = dt.date(int(md.group(3)), int(md.group(2)), int(md.group(1))) if md else dt.date.today()
+        # dzień obowiązywania z adresu: „…paliw-na-7-8-i-9-listopada-2026…” → 7 listopada
+        frm = None
+        ms = re.search(r"-na-(\d{1,2})(?:-(?:i-)?\d{1,2})*-(" + "|".join(MONTHS) + r")(?:-(\d{4}))?", slug)
+        if ms:
+            y = int(ms.group(3)) if ms.group(3) else published.year
+            try:
+                frm = dt.date(y, MONTHS[ms.group(2)], int(ms.group(1)))
+            except ValueError:
+                frm = None
+        if frm is None or abs((frm - published).days) > 7:
+            frm = published + dt.timedelta(days=1)
+        hist[key] = {"pb95": p95, "pb98": p98, "on": pon, "eli": key, "published": published.isoformat(), "from": frm.isoformat()}
+        print(f"gov.pl {slug}: od {frm} Pb95 {p95} Pb98 {p98} ON {pon}")
 
 
 LPG_SOURCES = [
