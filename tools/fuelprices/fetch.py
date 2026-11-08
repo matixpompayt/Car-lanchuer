@@ -154,7 +154,9 @@ def update_max(data):
                     print(f"{eli} eli.gov.pl: to nie PDF ({raw[:60]!r})")
                     continue
                 text = pdf_to_text(raw)
-                if "maksymalnej ceny paliw" not in text.lower():
+                norm = re.sub(r"\s+", " ", text.lower())
+                if "maksymaln" not in norm or "paliw" not in norm:
+                    print(f"{eli} eli.gov.pl: inny akt")
                     continue
                 d = text_date(text)
                 p = parse_prices(text)
