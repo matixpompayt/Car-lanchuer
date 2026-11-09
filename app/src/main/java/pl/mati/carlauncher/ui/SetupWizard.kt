@@ -258,7 +258,7 @@ private fun WelcomeStep() {
 @Composable
 private fun Feature(icon: ImageVector, title: String, text: String, modifier: Modifier) {
     Column(
-        modifier.clip(RoundedCornerShape(20.dp)).background(CarColors.Card).padding(20.dp),
+        modifier.clip(RoundedCornerShape(20.dp)).carSurface(RoundedCornerShape(20.dp), CarColors.Card).padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         IconBadge(icon)
@@ -273,7 +273,7 @@ private fun NameStep(p: Profile, onChange: (Profile) -> Unit) {
     Lead("Tak będziemy się do Ciebie zwracać przy uruchomieniu.")
     CarTextField(p.name, { onChange(p.copy(name = it.take(20))) }, "Twoje imię", Modifier.widthIn(max = 560.dp).fillMaxWidth(), imeAction = ImeAction.Done)
     Row(
-        Modifier.widthIn(max = 560.dp).fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(CarColors.Card).padding(horizontal = 26.dp, vertical = 22.dp),
+        Modifier.widthIn(max = 560.dp).fillMaxWidth().clip(RoundedCornerShape(20.dp)).carSurface(RoundedCornerShape(20.dp), CarColors.Card).padding(horizontal = 26.dp, vertical = 22.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
@@ -424,7 +424,7 @@ private fun DoneStep(p: Profile) {
 private fun SummaryRow(icon: ImageVector, label: String, value: String) {
     val accent = LocalAccent.current
     Row(
-        Modifier.fillMaxWidth().height(64.dp).clip(RoundedCornerShape(18.dp)).background(CarColors.Card).padding(horizontal = 20.dp),
+        Modifier.fillMaxWidth().height(64.dp).clip(RoundedCornerShape(18.dp)).carSurface(RoundedCornerShape(18.dp), CarColors.Card).padding(horizontal = 20.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {

@@ -156,7 +156,7 @@ private fun ScannerContent() {
                         items(list, key = { it.key }) { s ->
                             val assignedTo = maps.entries.firstOrNull { it.value.key == s.key }?.key
                             Row(
-                                Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(CarColors.Card)
+                                Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).carSurface(RoundedCornerShape(14.dp), CarColors.Card)
                                     .then(if (assignedTo != null) Modifier.border(1.5.dp, LocalAccent.current, RoundedCornerShape(14.dp)) else Modifier)
                                     .clickable { assign = s }
                                     .padding(horizontal = 16.dp, vertical = 10.dp),
@@ -183,7 +183,7 @@ private fun ScannerContent() {
 
                 // przypisane
                 Column(
-                    Modifier.width(380.dp).fillMaxHeight().clip(RoundedCornerShape(20.dp)).background(CarColors.Card).padding(18.dp),
+                    Modifier.width(380.dp).fillMaxHeight().clip(RoundedCornerShape(20.dp)).carSurface(RoundedCornerShape(20.dp), CarColors.Card).padding(18.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Text("Przypisane", fontSize = 21.sp, fontWeight = FontWeight.SemiBold, color = CarColors.Text)
@@ -230,7 +230,7 @@ private fun AssignDialog(s: Snap, maps: Map<Field, Mapping>, onNote: (String) ->
         contentAlignment = Alignment.Center,
     ) {
         Column(
-            Modifier.width(820.dp).clip(RoundedCornerShape(26.dp)).background(CarColors.Panel)
+            Modifier.width(820.dp).clip(RoundedCornerShape(26.dp)).carSurface(RoundedCornerShape(26.dp), CarColors.Panel, heavy = true)
                 .border(1.dp, CarColors.Border, RoundedCornerShape(26.dp))
                 .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {}
                 .padding(26.dp),

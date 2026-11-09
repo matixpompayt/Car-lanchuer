@@ -206,7 +206,7 @@ private fun ColumnScope.PlannerPanel(p: RouteRepository.Plan, onAddStop: () -> U
     Column(Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         // przebieg: start → przystanki → cel
         Column(
-            Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(CarColors.Card).padding(horizontal = 16.dp, vertical = 10.dp),
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).carSurface(RoundedCornerShape(18.dp), CarColors.Card).padding(horizontal = 16.dp, vertical = 10.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Waypoint(Icons.Rounded.MyLocation, "Twoja pozycja", null)
@@ -313,7 +313,7 @@ private fun Dest(icon: ImageVector, title: String, sub: String, trailing: (@Comp
         Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(18.dp))
-            .background(CarColors.Card)
+            .carSurface(RoundedCornerShape(18.dp), CarColors.Card)
             .border(1.dp, CarColors.Border, RoundedCornerShape(18.dp))
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 12.dp),
@@ -381,7 +381,7 @@ private fun ColumnScope.ParkingPanel(onClose: () -> Unit) {
             )
         } else {
             Column(
-                Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(CarColors.Card).padding(horizontal = 18.dp, vertical = 14.dp),
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).carSurface(RoundedCornerShape(18.dp), CarColors.Card).padding(horizontal = 18.dp, vertical = 14.dp),
             ) {
                 Text(s.address ?: String.format(java.util.Locale.US, "%.5f, %.5f", s.lat, s.lon), fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
                 Text("od ${formatTime(s.time)} · ${agoText(s.time)}", fontSize = 15.sp, color = CarColors.Muted)

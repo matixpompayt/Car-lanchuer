@@ -52,8 +52,19 @@ fun BottomBar2(current: Screen) {
     val vol by SystemControls.volume.collectAsState()
     val voice by pl.mati.carlauncher.data.VoiceCommands.state.collectAsState()
     val startVoice = rememberVoiceStarter()
+    val glass = GlassUi.on
+    val nav = rememberLiquidNav(vertical = false)
+    val appsGroup = setOf(Screen.APPS, Screen.SETTINGS, Screen.TRIPS, Screen.SERVICE, Screen.WEATHER, Screen.FUEL, Screen.PRICES)
+    val sel = when (current) { Screen.HOME -> 0; Screen.NAV -> 1; Screen.MUSIC -> 2; Screen.PHONE -> 3; in appsGroup -> 4; else -> -1 }
+    val bar = RoundedCornerShape(34.dp)
     Row(
-        Modifier.fillMaxWidth().height(84.dp).background(CarColors.Dock).padding(horizontal = 18.dp),
+        Modifier.fillMaxWidth().height(84.dp)
+            .then(
+                // Glass: pływająca szklana kapsuła z kroplą
+                if (glass) Modifier.padding(start = 12.dp, end = 12.dp, bottom = 8.dp).clip(bar).carSurface(bar, CarColors.Dock).liquidNavHost(nav, sel, inset = 4.dp)
+                else Modifier.background(CarColors.Dock),
+            )
+            .padding(horizontal = 18.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         // auto + temperatura na zewnątrz
@@ -69,11 +80,11 @@ fun BottomBar2(current: Screen) {
         }
         // aplikacje
         Row(Modifier.weight(1f), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-            BarButton(Icons.Rounded.GridView, "Ekran główny", current == Screen.HOME) { UiState.go(Screen.HOME) }
-            BarButton(Icons.Rounded.Navigation, "Nawigacja", current == Screen.NAV) { UiState.go(Screen.NAV) }
-            BarButton(Icons.Rounded.MusicNote, "Muzyka", current == Screen.MUSIC) { UiState.go(Screen.MUSIC) }
-            BarButton(Icons.Rounded.Phone, "Telefon", current == Screen.PHONE) { UiState.go(Screen.PHONE) }
-            BarButton(Icons.Rounded.Apps, "Aplikacje", current in setOf(Screen.APPS, Screen.SETTINGS, Screen.TRIPS, Screen.SERVICE, Screen.WEATHER, Screen.FUEL, Screen.PRICES)) { UiState.go(Screen.APPS) }
+            Box(Modifier.liquidNavItem(nav, 0)) { BarButton(Icons.Rounded.GridView, "Ekran główny", current == Screen.HOME) { UiState.go(Screen.HOME) } }
+            Box(Modifier.liquidNavItem(nav, 1)) { BarButton(Icons.Rounded.Navigation, "Nawigacja", current == Screen.NAV) { UiState.go(Screen.NAV) } }
+            Box(Modifier.liquidNavItem(nav, 2)) { BarButton(Icons.Rounded.MusicNote, "Muzyka", current == Screen.MUSIC) { UiState.go(Screen.MUSIC) } }
+            Box(Modifier.liquidNavItem(nav, 3)) { BarButton(Icons.Rounded.Phone, "Telefon", current == Screen.PHONE) { UiState.go(Screen.PHONE) } }
+            Box(Modifier.liquidNavItem(nav, 4)) { BarButton(Icons.Rounded.Apps, "Aplikacje", current in appsGroup) { UiState.go(Screen.APPS) } }
         }
         // mikrofon i głośność
         Row(Modifier.width(230.dp), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
@@ -94,6 +105,6 @@ private fun BarButton(icon: ImageVector, label: String, active: Boolean, onClick
         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
     ) {
         Icon(icon, label, tint = tint, modifier = Modifier.size(32.dp))
-        Box(Modifier.padding(top = 6.dp).size(width = 18.dp, height = 3.dp).clip(CircleShape).background(if (active) accent else Color.Transparent))
+        Box(Modifier.padding(top = 6.dp).size(width = 18.dp, height = 3.dp).clip(CircleShape).background(if (active && !GlassUi.on) accent else Color.Transparent))
     }
 }

@@ -31,6 +31,7 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Bluetooth
 import androidx.compose.material.icons.rounded.PhoneAndroid
 import androidx.compose.ui.graphics.asImageBitmap
@@ -196,7 +197,7 @@ private fun AppPickerOverlay() {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(apps, key = { it.pkg + "/" + it.activity }) { a ->
                     Row(
-                        Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(CarColors.Card)
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).carSurface(RoundedCornerShape(16.dp), CarColors.Card)
                             .clickable {
                                 val comp = a.pkg + "/" + a.activity
                                 if (k == SourceApps.Kind.RADIO) Prefs.setRadioApp(comp) else Prefs.setBtApp(comp)
@@ -231,6 +232,15 @@ private fun LazyListScope.lookPage() {
                 }
             }
         }
+    }
+    item {
+        val g by Prefs.glassUi.collectAsState()
+        SettingRow(
+            "Interfejs Glass iOS 26 (wczesny dostęp)",
+            "Szklane karty z rozmytym tłem, kropla w menu i przełączniki jak w iPhonie – działa z każdym motywem",
+            leading = Icons.Rounded.AutoAwesome,
+            onClick = { Prefs.setGlassUi(!g) },
+        ) { CarSwitch(g) }
     }
     item { SectionLabel("Dzień / noc") }
     item {
@@ -535,7 +545,7 @@ private fun LazyListScope.soundPage() {
         val probeScan by pl.mati.carlauncher.data.BroadcastProbe.scanning.collectAsState()
         LaunchedEffect(Unit) { MediaRepository.refresh(); pl.mati.carlauncher.data.NotificationRepository.rescan(ctx) }
         Column(
-            Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(CarColors.Card).padding(horizontal = 20.dp, vertical = 14.dp),
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).carSurface(RoundedCornerShape(18.dp), CarColors.Card).padding(horizontal = 20.dp, vertical = 14.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Text("Włącz radio albo muzykę BT, wróć tutaj i zrób zdjęcie tej listy.", fontSize = 15.sp, color = CarColors.Muted)
@@ -691,7 +701,7 @@ private fun LazyListScope.carPage() {
             cells.chunked(3).forEach { row ->
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     row.forEach { (k, v) ->
-                        Column(Modifier.weight(1f).clip(RoundedCornerShape(16.dp)).background(CarColors.Card).padding(horizontal = 16.dp, vertical = 12.dp)) {
+                        Column(Modifier.weight(1f).clip(RoundedCornerShape(16.dp)).carSurface(RoundedCornerShape(16.dp), CarColors.Card).padding(horizontal = 16.dp, vertical = 12.dp)) {
                             Caption(k)
                             Text(v, fontFamily = Condensed, fontSize = 30.sp)
                         }
@@ -808,7 +818,7 @@ private fun LazyListScope.alertsSection() {
     item {
         val raw by AlertRepository.raw.collectAsState()
         Column(
-            Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(CarColors.Card).padding(horizontal = 20.dp, vertical = 14.dp),
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).carSurface(RoundedCornerShape(18.dp), CarColors.Card).padding(horizontal = 20.dp, vertical = 14.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text("Co ostatnio przyszło z CamSam", fontSize = 19.sp, fontWeight = FontWeight.SemiBold)
@@ -936,7 +946,7 @@ fun HeadlightCalibrationOverlay() {
         contentAlignment = Alignment.Center,
     ) {
         Column(
-            Modifier.width(640.dp).clip(RoundedCornerShape(28.dp)).background(CarColors.Panel)
+            Modifier.width(640.dp).clip(RoundedCornerShape(28.dp)).carSurface(RoundedCornerShape(28.dp), CarColors.Panel, heavy = true)
                 .border(1.dp, CarColors.Border, RoundedCornerShape(28.dp)).padding(32.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
@@ -973,7 +983,7 @@ private fun CarIconPicker() {
     val paint by Prefs.carPaint.collectAsState()
     val preview = remember(body, paint) { Model3D.carIcon(body, paint, 35.0, 32.0, 360).asImageBitmap() }
     Row(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(CarColors.Card).padding(18.dp),
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).carSurface(RoundedCornerShape(18.dp), CarColors.Card).padding(18.dp),
         horizontalArrangement = Arrangement.spacedBy(22.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -1002,7 +1012,7 @@ private fun CarIconPicker() {
 
 @Composable
 private fun WeekCard(label: String, monday: java.time.LocalDate, s: WorkSchedule.Shift?, modifier: Modifier) {
-    Column(modifier.clip(RoundedCornerShape(16.dp)).background(CarColors.Card).padding(horizontal = 16.dp, vertical = 12.dp)) {
+    Column(modifier.clip(RoundedCornerShape(16.dp)).carSurface(RoundedCornerShape(16.dp), CarColors.Card).padding(horizontal = 16.dp, vertical = 12.dp)) {
         Caption("$label · ${WorkSchedule.startDays(monday, s)}")
         Text(s?.name ?: "—", fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
         Text(s?.hours ?: "", fontSize = 16.sp, color = CarColors.Muted)
@@ -1015,7 +1025,7 @@ private fun WeekPicker(label: String, monday: java.time.LocalDate) {
     val cur = custom[monday.toEpochDay()]
     val shown = cur ?: WorkSchedule.shiftFor(monday)
     Column(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(CarColors.Card).padding(horizontal = 18.dp, vertical = 14.dp),
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).carSurface(RoundedCornerShape(18.dp), CarColors.Card).padding(horizontal = 18.dp, vertical = 14.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1201,7 +1211,7 @@ private fun LazyListScope.connectPage() {
 @Composable
 private fun ConnectStep(n: Int, text: String) {
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Top) {
-        Box(Modifier.size(30.dp).clip(CircleShape).background(CarColors.Raised), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(30.dp).clip(CircleShape).carSurface(CircleShape, CarColors.Raised), contentAlignment = Alignment.Center) {
             Text("$n", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = LocalAccent.current)
         }
         Text(text, fontSize = 17.sp, color = CarColors.Text2, modifier = Modifier.weight(1f).padding(top = 3.dp))
@@ -1321,7 +1331,7 @@ private fun OfflineMapsCard() {
     val busy by pl.mati.carlauncher.data.OfflineMaps.busy.collectAsState()
     val accent = LocalAccent.current
     Column(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(CarColors.Card).padding(horizontal = 20.dp, vertical = 16.dp),
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).carSurface(RoundedCornerShape(18.dp), CarColors.Card).padding(horizontal = 20.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text("Mapy offline", fontSize = 20.sp, fontWeight = FontWeight.SemiBold)

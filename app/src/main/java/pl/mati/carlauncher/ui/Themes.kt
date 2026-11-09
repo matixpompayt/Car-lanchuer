@@ -72,7 +72,7 @@ data class SysTheme(
     val insetEnd: Dp get() = if (nav == NavStyle.RIGHT_RAIL) 124.dp else 24.dp
     val insetBottom: Dp get() = when (nav) { NavStyle.FLOATING -> 134.dp; NavStyle.BOTTOM -> 110.dp; else -> 28.dp }
     val insetTop: Dp get() = when (nav) { NavStyle.TOP_TABS -> 58.dp; NavStyle.RIGHT_RAIL -> 16.dp; else -> 0.dp }
-    fun radius(r: Dp): Dp = (r + corner).coerceAtLeast(3.dp)
+    fun radius(r: Dp): Dp = (r + corner + if (GlassUi.on) 6.dp else 0.dp).coerceAtLeast(3.dp)
 }
 
 object SysThemes {
@@ -114,7 +114,7 @@ object SysThemes {
 fun ThemeCard(t: SysTheme, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
     val accent = LocalAccent.current
     Column(
-        modifier.clip(RoundedCornerShape(22.dp)).background(CarColors.Card)
+        modifier.clip(RoundedCornerShape(22.dp)).carSurface(RoundedCornerShape(22.dp), CarColors.Card)
             .border(2.dp, if (selected) accent else Color.Transparent, RoundedCornerShape(22.dp))
             .clickable(onClick = onClick).padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),

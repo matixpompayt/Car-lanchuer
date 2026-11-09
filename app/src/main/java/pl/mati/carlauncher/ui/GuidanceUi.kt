@@ -140,7 +140,7 @@ fun GuidanceBanner(g: Guidance.State, modifier: Modifier) {
         g.thenKind?.let { k ->
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("potem", fontSize = 14.sp, color = CarColors.Muted)
-                Box(Modifier.size(48.dp).clip(RoundedCornerShape(12.dp)).background(CarColors.Raised), contentAlignment = Alignment.Center) {
+                Box(Modifier.size(48.dp).clip(RoundedCornerShape(12.dp)).carSurface(RoundedCornerShape(12.dp), CarColors.Raised), contentAlignment = Alignment.Center) {
                     ManeuverGlyph(k, g.thenAngle, CarColors.Text, Modifier.size(34.dp))
                 }
             }

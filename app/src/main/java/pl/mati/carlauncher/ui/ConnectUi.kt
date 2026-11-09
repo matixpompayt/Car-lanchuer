@@ -53,7 +53,7 @@ fun ConnectRestoreOverlay() {
         contentAlignment = Alignment.Center,
     ) {
         Column(
-            Modifier.width(620.dp).clip(RoundedCornerShape(28.dp)).background(CarColors.Panel)
+            Modifier.width(620.dp).clip(RoundedCornerShape(28.dp)).carSurface(RoundedCornerShape(28.dp), CarColors.Panel, heavy = true)
                 .border(1.dp, CarColors.Border, RoundedCornerShape(28.dp)).padding(32.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
@@ -98,7 +98,7 @@ fun ConnectRestoreCard() {
     var open by remember { mutableStateOf(false) }
     val accent = LocalAccent.current
     Column(
-        Modifier.widthIn(max = 860.dp).fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(CarColors.Card)
+        Modifier.widthIn(max = 860.dp).fillMaxWidth().clip(RoundedCornerShape(20.dp)).carSurface(RoundedCornerShape(20.dp), CarColors.Card)
             .border(1.dp, CarColors.Border, RoundedCornerShape(20.dp)).clickable { open = !open }.padding(horizontal = 22.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {

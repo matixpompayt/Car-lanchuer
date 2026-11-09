@@ -105,7 +105,7 @@ private fun ServiceRow(d: ServiceRepository.Due, open: Boolean, odoSet: Boolean,
         else -> Icons.Rounded.CheckCircle
     }
     Column(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(CarColors.Card).clickable(onClick = onToggle).padding(horizontal = 20.dp, vertical = 14.dp),
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).carSurface(RoundedCornerShape(18.dp), CarColors.Card).clickable(onClick = onToggle).padding(horizontal = 20.dp, vertical = 14.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {

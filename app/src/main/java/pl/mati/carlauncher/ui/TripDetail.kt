@@ -76,7 +76,7 @@ fun TripDetailDialog(t: TripRepository.Trip, onDismiss: () -> Unit) {
         contentAlignment = Alignment.Center,
     ) {
         Row(
-            Modifier.fillMaxWidth().fillMaxHeight(0.92f).clip(RoundedCornerShape(26.dp)).background(CarColors.Panel)
+            Modifier.fillMaxWidth().fillMaxHeight(0.92f).clip(RoundedCornerShape(26.dp)).carSurface(RoundedCornerShape(26.dp), CarColors.Panel, heavy = true)
                 .border(1.dp, CarColors.Border, RoundedCornerShape(26.dp))
                 .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {},
         ) {

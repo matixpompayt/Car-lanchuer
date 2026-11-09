@@ -52,7 +52,7 @@ fun TurboBanner() {
             Row(
                 Modifier
                     .clip(RoundedCornerShape(24.dp))
-                    .background(CarColors.Panel)
+                    .carSurface(RoundedCornerShape(24.dp), CarColors.Panel, heavy = true)
                     .border(1.dp, (if (s.done) green else accent).copy(alpha = 0.55f), RoundedCornerShape(24.dp))
                     .padding(horizontal = 22.dp, vertical = 14.dp),
                 verticalAlignment = Alignment.CenterVertically,

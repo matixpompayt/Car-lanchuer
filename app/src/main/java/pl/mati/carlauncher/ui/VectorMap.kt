@@ -707,7 +707,7 @@ fun VectorMap(modifier: Modifier, full: Boolean = false) {
         ) {
             // pełny ekran
             Box(
-                Modifier.size(52.dp).clip(CircleShape).background(CarColors.Overlay).clickable {
+                Modifier.size(52.dp).clip(CircleShape).carSurface(CircleShape, CarColors.Overlay, heavy = true).clickable {
                     UiState.mapFull.value = !full
                     if (full) UiState.clusterTest.value = false
                 },
@@ -720,12 +720,12 @@ fun VectorMap(modifier: Modifier, full: Boolean = false) {
             }
             // 2D / 3D
             Box(
-                Modifier.size(52.dp).clip(CircleShape).background(CarColors.Overlay).clickable { Prefs.setMap3d(!is3d) },
+                Modifier.size(52.dp).clip(CircleShape).carSurface(CircleShape, CarColors.Overlay, heavy = true).clickable { Prefs.setMap3d(!is3d) },
                 contentAlignment = Alignment.Center,
             ) { Text(if (is3d) "3D" else "2D", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = if (is3d) accent else CarColors.Text) }
             // obrót z kierunkiem jazdy / północ u góry
             Box(
-                Modifier.size(52.dp).clip(CircleShape).background(CarColors.Overlay).clickable { Prefs.setMapHeadingUp(!headingUp) },
+                Modifier.size(52.dp).clip(CircleShape).carSurface(CircleShape, CarColors.Overlay, heavy = true).clickable { Prefs.setMapHeadingUp(!headingUp) },
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
@@ -736,7 +736,7 @@ fun VectorMap(modifier: Modifier, full: Boolean = false) {
             }
             // wróć do auta
             Box(
-                Modifier.size(52.dp).clip(CircleShape).background(CarColors.Overlay).clickable { h.follow() },
+                Modifier.size(52.dp).clip(CircleShape).carSurface(CircleShape, CarColors.Overlay, heavy = true).clickable { h.follow() },
                 contentAlignment = Alignment.Center,
             ) { Icon(Icons.Rounded.MyLocation, "Moja pozycja", tint = CarColors.Text, modifier = Modifier.size(26.dp)) }
         }

@@ -222,7 +222,7 @@ private fun TomorrowLine(s: FuelPrices.Snapshot) {
         )
     }
     Row(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(CarColors.theme.radius(18.dp))).background(CarColors.Card)
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(CarColors.theme.radius(18.dp))).carSurface(RoundedCornerShape(CarColors.theme.radius(18.dp)), CarColors.Card)
             .padding(horizontal = 18.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),

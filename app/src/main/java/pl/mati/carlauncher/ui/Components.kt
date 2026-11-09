@@ -58,6 +58,7 @@ import androidx.compose.material.icons.rounded.SkipPrevious
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
@@ -220,14 +221,19 @@ fun CarCard(
 ) {
     val th = CarColors.theme
     val shape = RoundedCornerShape(th.radius(radius))
+    val glass = GlassUi.on
+    // w Glass ramki zostają tylko tam, gdzie są znakiem motywu (VW – niebieskie linie, Retro – neon)
+    val border = th.borders && (!glass || th.bg == BgStyle.VW || th.bg == BgStyle.RETRO)
+    val depth = LocalGlassDepth.current
     Box(
         modifier
             .stagger()
             .clip(shape)
-            .background(color)
-            .then(if (!th.borders) Modifier else Modifier.border(th.borderWidth, CarColors.Border, shape)),
-        content = content,
-    )
+            .carSurface(shape, color)
+            .then(if (!border) Modifier else Modifier.border(th.borderWidth, CarColors.Border, shape)),
+    ) {
+        CompositionLocalProvider(LocalGlassDepth provides depth + 1) { content() }
+    }
 }
 
 @Composable
@@ -339,8 +345,12 @@ fun PrimaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifi
         modifier
             .pressScale(src)
             .height(64.dp)
-            .clip(RoundedCornerShape(if (CarColors.theme.pill) 32.dp else CarColors.theme.radius(18.dp)))
-            .background(if (enabled) accent else accent.copy(alpha = 0.3f))
+            .clip(RoundedCornerShape(if (CarColors.theme.pill || GlassUi.on) 32.dp else CarColors.theme.radius(18.dp)))
+            .then(
+                // Glass: „szkło w kolorze akcentu” (glass prominent)
+                if (GlassUi.on) Modifier.carSurface(RoundedCornerShape(32.dp), CarColors.Raised).background(if (enabled) accent.copy(alpha = 0.82f) else accent.copy(alpha = 0.3f))
+                else Modifier.background(if (enabled) accent else accent.copy(alpha = 0.3f)),
+            )
             .clickable(interactionSource = src, indication = LocalIndication.current, enabled = enabled, onClick = onClick)
             .padding(horizontal = 32.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -358,8 +368,8 @@ fun SecondaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modi
         modifier
             .pressScale(src)
             .height(height)
-            .clip(RoundedCornerShape(if (CarColors.theme.pill) height / 2 else CarColors.theme.radius(18.dp)))
-            .background(if (CarColors.theme.pill) CarColors.Card2 else CarColors.Card)
+            .clip(RoundedCornerShape(if (CarColors.theme.pill || GlassUi.on) height / 2 else CarColors.theme.radius(18.dp)))
+            .carSurface(RoundedCornerShape(if (CarColors.theme.pill || GlassUi.on) height / 2 else CarColors.theme.radius(18.dp)), if (CarColors.theme.pill) CarColors.Card2 else CarColors.Card)
             .clickable(interactionSource = src, indication = LocalIndication.current, onClick = onClick)
             .padding(horizontal = 28.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -376,13 +386,17 @@ fun CarChip(text: String, selected: Boolean, onClick: () -> Unit, icon: ImageVec
     val shape = RoundedCornerShape(24.dp)
     val src = remember { MutableInteractionSource() }
     val bg by animateColorAsState(if (selected) accent.copy(alpha = 0.14f) else CarColors.Card, tween(220), label = "chip")
+    val glass = GlassUi.on
     Row(
         Modifier
             .pressScale(src)
             .height(48.dp)
             .clip(shape)
-            .background(bg)
-            .border(1.dp, if (selected) accent.copy(alpha = 0.4f) else CarColors.Border, shape)
+            .then(
+                if (glass) Modifier.carSurface(shape, CarColors.Card).background(if (selected) accent.copy(alpha = 0.22f) else Color.Transparent)
+                else Modifier.background(bg),
+            )
+            .then(if (glass && !selected) Modifier else Modifier.border(1.dp, if (selected) accent.copy(alpha = 0.4f) else CarColors.Border, shape))
             .clickable(interactionSource = src, indication = LocalIndication.current, onClick = onClick)
             .padding(horizontal = 18.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -395,6 +409,7 @@ fun CarChip(text: String, selected: Boolean, onClick: () -> Unit, icon: ImageVec
 
 @Composable
 fun CarSwitch(on: Boolean) {
+    if (GlassUi.on) { GlassSwitch(on); return }
     val accent = LocalAccent.current
     val x by animateFloatAsState(if (on) 1f else 0f, tween(180), label = "sw")
     Box(
@@ -444,7 +459,7 @@ fun SettingRow(
             .fillMaxWidth()
             .heightIn(min = 72.dp)
             .clip(RoundedCornerShape(CarColors.theme.radius(18.dp)))
-            .background(CarColors.Card)
+            .carSurface(RoundedCornerShape(CarColors.theme.radius(18.dp)), CarColors.Card)
             .then(if (onClick != null) Modifier.clickable(interactionSource = src, indication = LocalIndication.current, onClick = onClick) else Modifier)
             .padding(horizontal = 20.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -475,8 +490,8 @@ fun FillSlider(
     Box(
         modifier
             .height(76.dp)
-            .clip(RoundedCornerShape(22.dp))
-            .background(CarColors.Raised)
+            .clip(RoundedCornerShape(if (GlassUi.on) 38.dp else 22.dp))
+            .carSurface(RoundedCornerShape(if (GlassUi.on) 38.dp else 22.dp), CarColors.Raised)
             .onSizeChanged { width = it.width.coerceAtLeast(1) }
             .pointerInput(Unit) { detectTapGestures { cb((it.x / width).coerceIn(0f, 1f)) } }
             .pointerInput(Unit) {

@@ -76,7 +76,7 @@ fun VoiceOverlay() {
             val s = last
             val level by animateFloatAsState(s.level, tween(120), label = "lvl")
             Row(
-                Modifier.widthIn(min = 520.dp, max = 900.dp).clip(RoundedCornerShape(28.dp)).background(CarColors.Panel)
+                Modifier.widthIn(min = 520.dp, max = 900.dp).clip(RoundedCornerShape(28.dp)).carSurface(RoundedCornerShape(28.dp), CarColors.Panel, heavy = true)
                     .border(1.5.dp, accent.copy(alpha = 0.6f), RoundedCornerShape(28.dp))
                     .padding(horizontal = 20.dp, vertical = 14.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -116,7 +116,7 @@ fun VoiceOverlay() {
                     }
                     if (sub.isNotBlank()) Text(sub, fontSize = 16.sp, color = CarColors.Muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
-                Box(Modifier.size(48.dp).clip(CircleShape).background(CarColors.Raised).clickable { VoiceCommands.close() }, contentAlignment = Alignment.Center) {
+                Box(Modifier.size(48.dp).clip(CircleShape).carSurface(CircleShape, CarColors.Raised).clickable { VoiceCommands.close() }, contentAlignment = Alignment.Center) {
                     Icon(Icons.Rounded.Close, "Zamknij", tint = CarColors.Text, modifier = Modifier.size(26.dp))
                 }
             }

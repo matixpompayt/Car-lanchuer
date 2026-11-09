@@ -22,6 +22,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -233,6 +234,8 @@ fun CarRoot(content: @Composable () -> Unit) {
     val variant by Prefs.lightVariant.collectAsState()
     val anim by Prefs.animations.collectAsState()
     val themeId by Prefs.uiTheme.collectAsState()
+    val glass by Prefs.glassUi.collectAsState()
+    GlassUi.on = glass
     val th = SysThemes.byId(themeId)
     CarColors.theme = th
     val target = when {
@@ -265,7 +268,7 @@ fun CarRoot(content: @Composable () -> Unit) {
                 val scale = constraints.maxWidth / DESIGN_WIDTH
                 val designHeight = constraints.maxHeight / scale
                 CompositionLocalProvider(LocalDensity provides Density(scale, 1f)) {
-                    Box(Modifier.size(DESIGN_WIDTH.dp, designHeight.dp)) {
+                    Box(Modifier.size(DESIGN_WIDTH.dp, designHeight.dp).onSizeChanged { GlassUi.rootSize = it }) {
                         content()
                     }
                 }

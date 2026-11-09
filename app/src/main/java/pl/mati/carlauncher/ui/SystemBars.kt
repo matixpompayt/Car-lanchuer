@@ -176,7 +176,7 @@ fun ControlCenter() {
                 Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp))
-                    .background(CarColors.Panel)
+                    .carSurface(RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp), CarColors.Panel, heavy = true)
                     .border(1.dp, CarColors.Border, RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp))
                     .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {}
                     .pointerInput(Unit) {
@@ -310,7 +310,7 @@ private fun NotificationsColumn(modifier: Modifier) {
                 Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(18.dp))
-                    .background(CarColors.Raised)
+                    .carSurface(RoundedCornerShape(18.dp), CarColors.Raised)
                     .clickable {
                         UiState.controlCenter.value = false
                         when (n.action) {
@@ -435,7 +435,7 @@ fun HomeSuggestionBanner() {
             Row(
                 Modifier
                     .clip(RoundedCornerShape(24.dp))
-                    .background(CarColors.Panel)
+                    .carSurface(RoundedCornerShape(24.dp), CarColors.Panel, heavy = true)
                     .border(1.dp, accent.copy(alpha = 0.5f), RoundedCornerShape(24.dp))
                     .padding(horizontal = 22.dp, vertical = 14.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -531,7 +531,7 @@ fun ServiceAlertOverlay() {
                         Text("Zaplanuj wizytę w warsztacie albo zaktualizuj dane w Serwisie.", fontSize = 20.sp, color = CarColors.Text2)
                     }
                     Box(
-                        Modifier.size(72.dp).clip(CircleShape).background(CarColors.Raised).clickable { AutostartManager.serviceAlert.value = false },
+                        Modifier.size(72.dp).clip(CircleShape).carSurface(CircleShape, CarColors.Raised).clickable { AutostartManager.serviceAlert.value = false },
                         contentAlignment = Alignment.Center,
                     ) { Icon(Icons.Rounded.Close, "Zamknij alert", tint = CarColors.Text, modifier = Modifier.size(40.dp)) }
                 }

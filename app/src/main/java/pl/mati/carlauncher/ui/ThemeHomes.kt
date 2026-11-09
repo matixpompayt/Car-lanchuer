@@ -193,7 +193,7 @@ private fun VwMediaStrip(modifier: Modifier) {
     val m = rememberNowPlaying()
     val accent = LocalAccent.current
     Row(
-        modifier.clip(RoundedCornerShape(6.dp)).background(CarColors.Card).border(1.dp, CarColors.Border, RoundedCornerShape(6.dp))
+        modifier.clip(RoundedCornerShape(6.dp)).carSurface(RoundedCornerShape(6.dp), CarColors.Card).border(1.dp, CarColors.Border, RoundedCornerShape(6.dp))
             .clickable { UiState.go(Screen.MUSIC) }.padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
@@ -297,7 +297,7 @@ fun HomeFullMap() {
             Column(Modifier.align(Alignment.BottomStart).padding(start = 16.dp, bottom = 212.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 // bez kafla prędkości – prędkość i ograniczenie są już na mapie (lewy górny róg)
                 keys.filter { it != "speed" }.take(4).forEach { k ->
-                    Box(Modifier.width(184.dp).clip(RoundedCornerShape(20.dp)).background(CarColors.Overlay).padding(horizontal = 6.dp, vertical = 2.dp)) {
+                    Box(Modifier.width(184.dp).clip(RoundedCornerShape(20.dp)).carSurface(RoundedCornerShape(20.dp), CarColors.Overlay, heavy = true).padding(horizontal = 6.dp, vertical = 2.dp)) {
                         TileContent(k, Modifier.fillMaxWidth(), 26.sp)
                     }
                 }
@@ -310,7 +310,7 @@ fun HomeFullMap() {
 private fun FloatingMedia(modifier: Modifier) {
     val m = rememberNowPlaying()
     Row(
-        modifier.width(520.dp).clip(RoundedCornerShape(30.dp)).background(CarColors.Overlay)
+        modifier.width(520.dp).clip(RoundedCornerShape(30.dp)).carSurface(RoundedCornerShape(30.dp), CarColors.Overlay, heavy = true)
             .clickable { UiState.go(Screen.MUSIC) }.padding(start = 8.dp, end = 10.dp, top = 6.dp, bottom = 6.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
@@ -348,7 +348,7 @@ fun HomeRetro() {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 keys.take(4).forEach { k ->
                     Box(
-                        Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).background(CarColors.Card)
+                        Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).carSurface(RoundedCornerShape(12.dp), CarColors.Card)
                             .border(1.5.dp, NEON_PINK, RoundedCornerShape(12.dp)).padding(horizontal = 6.dp),
                     ) { TileContent(k, Modifier.fillMaxWidth(), 30.sp) }
                 }
@@ -367,7 +367,7 @@ private fun RetroSpeed(modifier: Modifier) {
     val now by rememberNow()
     val speed = d.speed ?: gps
     Row(
-        modifier.clip(RoundedCornerShape(12.dp)).background(CarColors.Card).border(1.5.dp, NEON_PINK, RoundedCornerShape(12.dp))
+        modifier.clip(RoundedCornerShape(12.dp)).carSurface(RoundedCornerShape(12.dp), CarColors.Card).border(1.5.dp, NEON_PINK, RoundedCornerShape(12.dp))
             .padding(horizontal = 18.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -395,7 +395,7 @@ private fun CassettePlayer(modifier: Modifier) {
     val rot = t.animateFloat(0f, 360f, infiniteRepeatable(tween(2600, easing = LinearEasing)), label = "rot")
     val playing = m.playing && anim
     Column(
-        modifier.clip(RoundedCornerShape(12.dp)).background(CarColors.Card).border(1.5.dp, NEON_PINK, RoundedCornerShape(12.dp))
+        modifier.clip(RoundedCornerShape(12.dp)).carSurface(RoundedCornerShape(12.dp), CarColors.Card).border(1.5.dp, NEON_PINK, RoundedCornerShape(12.dp))
             .clickable { UiState.go(Screen.MUSIC) }.padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {

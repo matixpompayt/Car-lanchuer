@@ -115,7 +115,7 @@ fun MapCard(
                     .padding(start = 16.dp, end = 16.dp, top = 16.dp + topPad, bottom = 16.dp)
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(18.dp))
-                    .background(CarColors.Overlay)
+                    .carSurface(RoundedCornerShape(18.dp), CarColors.Overlay, heavy = true)
                     .clickable { Launch.navigation(ctx) }
                     .padding(horizontal = 18.dp, vertical = 14.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -174,7 +174,7 @@ fun MapCard(
                 .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 16.dp + bottomPad)
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(18.dp))
-                .background(CarColors.Overlay)
+                .carSurface(RoundedCornerShape(18.dp), CarColors.Overlay, heavy = true)
                 .clickable { if (route == null || guide != null) UiState.go(Screen.NAV) else Launch.navigation(ctx) }
                 .padding(start = 18.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -204,7 +204,7 @@ fun MapCard(
                     if (guide != null) {
                         val voice by Prefs.navVoice.collectAsState()
                         Box(
-                            Modifier.size(48.dp).clip(CircleShape).background(CarColors.Raised).clickable { Prefs.setNavVoice(!voice) },
+                            Modifier.size(48.dp).clip(CircleShape).carSurface(CircleShape, CarColors.Raised).clickable { Prefs.setNavVoice(!voice) },
                             contentAlignment = Alignment.Center,
                         ) {
                             Icon(
@@ -214,7 +214,7 @@ fun MapCard(
                         }
                     }
                     Box(
-                        Modifier.size(48.dp).clip(CircleShape).background(CarColors.Raised).clickable { RouteRepository.cancel(ctx) },
+                        Modifier.size(48.dp).clip(CircleShape).carSurface(CircleShape, CarColors.Raised).clickable { RouteRepository.cancel(ctx) },
                         contentAlignment = Alignment.Center,
                     ) { Icon(Icons.Rounded.Close, "Zakończ trasę", tint = CarColors.Text, modifier = Modifier.size(26.dp)) }
                 }
@@ -283,7 +283,7 @@ fun SpeedLimitBadge(modifier: Modifier) {
             Text(lim.toString(), color = Color(0xFF111111), fontWeight = FontWeight.Bold, fontSize = if (lim!! >= 100) 26.sp else 30.sp)
         }
         val est by SpeedLimitRepository.estimated.collectAsState()
-        if (est) Text("wg przepisów", fontSize = 12.sp, color = CarColors.Text2, modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(CarColors.Overlay).padding(horizontal = 6.dp, vertical = 2.dp))
+        if (est) Text("wg przepisów", fontSize = 12.sp, color = CarColors.Text2, modifier = Modifier.clip(RoundedCornerShape(8.dp)).carSurface(RoundedCornerShape(8.dp), CarColors.Overlay, heavy = true).padding(horizontal = 6.dp, vertical = 2.dp))
         gps?.let { v ->
             Box(
                 Modifier.clip(RoundedCornerShape(12.dp)).background(if (over) Color(0xFFE0262B) else CarColors.Overlay).padding(horizontal = 10.dp, vertical = 4.dp),
@@ -457,7 +457,7 @@ private fun OsmMap(modifier: Modifier) {
                 .padding(end = 16.dp)
                 .size(52.dp)
                 .clip(CircleShape)
-                .background(CarColors.Overlay)
+                .carSurface(CircleShape, CarColors.Overlay, heavy = true)
                 .clickable {
                     holder.me.enableFollowLocation()
                     holder.map.controller.setZoom(16.5)

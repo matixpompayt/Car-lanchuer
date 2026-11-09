@@ -96,7 +96,7 @@ fun PhoneScreen() {
                             Modifier
                                 .size(96.dp, 72.dp)
                                 .clip(RoundedCornerShape(20.dp))
-                                .background(CarColors.Card)
+                                .carSurface(RoundedCornerShape(20.dp), CarColors.Card)
                                 .clickable { if (number.length < 16) number += k },
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Center,

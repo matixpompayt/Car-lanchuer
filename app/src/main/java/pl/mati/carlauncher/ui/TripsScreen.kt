@@ -195,7 +195,7 @@ private fun SummaryCard(label: String, s: TripRepository.Summary, modifier: Modi
 private fun TripRow(t: TripRepository.Trip, live: Boolean, onClick: (() -> Unit)? = null) {
     val accent = LocalAccent.current
     Row(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(CarColors.Card)
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).carSurface(RoundedCornerShape(18.dp), CarColors.Card)
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier).padding(horizontal = 18.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(18.dp),

@@ -66,6 +66,8 @@ object Prefs {
     val radioApp = MutableStateFlow("")
     val btApp = MutableStateFlow("")
     val animations = MutableStateFlow(true)
+    /** Interfejs Glass w stylu iOS 26 (wczesny dostęp) – nakładka na każdy motyw. */
+    val glassUi = MutableStateFlow(false)
     /** Nie pozwalaj wysuwać systemowego paska / zasłony powiadomień nad CAR OS. */
     val blockStatusBar = MutableStateFlow(true)
     /** Tryb dzień/noc: "lights" (światła auta), "sun", "light", "dark". */
@@ -133,6 +135,7 @@ object Prefs {
         radioApp.value = p.getString("radio_app", "") ?: ""
         btApp.value = p.getString("bt_app", "") ?: ""
         animations.value = p.getBoolean("animations", true)
+        glassUi.value = p.getBoolean("glass_ui", false)
         blockStatusBar.value = p.getBoolean("block_status_bar", true)
         themeMode.value = p.getString("theme_mode", "lights") ?: "lights"
         lightVariant.value = p.getString("light_variant", "perla") ?: "perla"
@@ -228,6 +231,7 @@ object Prefs {
     fun setLightVariant(v: String) { lightVariant.value = v; edit { putString("light_variant", v) } }
     fun setBlockStatusBar(v: Boolean) { blockStatusBar.value = v; edit { putBoolean("block_status_bar", v) } }
     fun setAnimations(v: Boolean) { animations.value = v; edit { putBoolean("animations", v) } }
+    fun setGlassUi(v: Boolean) { glassUi.value = v; edit { putBoolean("glass_ui", v) } }
     fun setSpeedLimits(v: Boolean) { speedLimits.value = v; edit { putBoolean("speed_limits", v) } }
     fun setSpeedTolerance(v: Int) { speedTolerance.value = v.coerceIn(0, 20); edit { putInt("speed_tol", speedTolerance.value) } }
     fun setSpeedBeep(v: Boolean) { speedBeep.value = v; edit { putBoolean("speed_beep", v) } }

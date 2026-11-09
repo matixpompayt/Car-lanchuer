@@ -261,7 +261,7 @@ private fun LayoutEditorBar() {
     val it = ClusterLayout.get(sel)
     Box(Modifier.fillMaxSize().padding(top = 18.dp), contentAlignment = Alignment.TopCenter) {
         Row(
-            Modifier.clip(RoundedCornerShape(24.dp)).background(CarColors.Panel).padding(horizontal = 18.dp, vertical = 10.dp),
+            Modifier.clip(RoundedCornerShape(24.dp)).carSurface(RoundedCornerShape(24.dp), CarColors.Panel, heavy = true).padding(horizontal = 18.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
@@ -304,7 +304,7 @@ private fun ClusterPattern() {
 private fun ClusterControls(f: Float) {
     Box(Modifier.fillMaxSize().padding(bottom = 26.dp), contentAlignment = Alignment.BottomCenter) {
         Column(
-            Modifier.clip(RoundedCornerShape(26.dp)).background(CarColors.Panel).padding(horizontal = 24.dp, vertical = 16.dp),
+            Modifier.clip(RoundedCornerShape(26.dp)).carSurface(RoundedCornerShape(26.dp), CarColors.Panel, heavy = true).padding(horizontal = 24.dp, vertical = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {

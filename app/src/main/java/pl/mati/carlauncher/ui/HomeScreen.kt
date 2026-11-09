@@ -149,7 +149,7 @@ fun HomeScreen() {
 @Composable
 private fun HomeEditBar(showMap: Boolean, showMedia: Boolean) {
     Row(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(CarColors.Panel).padding(horizontal = 16.dp, vertical = 8.dp),
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).carSurface(RoundedCornerShape(18.dp), CarColors.Panel, heavy = true).padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Text("Edycja ekranu: przeciągnij uchwyt albo − / +, ✕ ukrywa, ⇄ zamienia strony", fontSize = 14.sp, color = CarColors.Muted, modifier = Modifier.weight(1f))
@@ -486,11 +486,11 @@ private fun TileEditOverlay(canLeft: Boolean, canRight: Boolean, onTap: () -> Un
         ) { Icon(Icons.Rounded.Close, "Usuń kafel", tint = Color.White, modifier = Modifier.size(20.dp)) }
         Row(Modifier.align(Alignment.BottomCenter).padding(bottom = 6.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             if (canLeft) Box(
-                Modifier.size(34.dp).clip(CircleShape).background(CarColors.Panel).clickable(onClick = onLeft),
+                Modifier.size(34.dp).clip(CircleShape).carSurface(CircleShape, CarColors.Panel, heavy = true).clickable(onClick = onLeft),
                 contentAlignment = Alignment.Center,
             ) { Icon(Icons.Rounded.ChevronLeft, "W lewo", tint = CarColors.Text, modifier = Modifier.size(24.dp)) }
             if (canRight) Box(
-                Modifier.size(34.dp).clip(CircleShape).background(CarColors.Panel).clickable(onClick = onRight),
+                Modifier.size(34.dp).clip(CircleShape).carSurface(CircleShape, CarColors.Panel, heavy = true).clickable(onClick = onRight),
                 contentAlignment = Alignment.Center,
             ) { Icon(Icons.Rounded.ChevronRight, "W prawo", tint = CarColors.Text, modifier = Modifier.size(24.dp)) }
         }
@@ -517,7 +517,7 @@ private fun TilePicker(current: String?, used: List<String>, onPick: (String) ->
     val accent = LocalAccent.current
     androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
         Column(
-            Modifier.width(760.dp).clip(RoundedCornerShape(26.dp)).background(CarColors.Panel)
+            Modifier.width(760.dp).clip(RoundedCornerShape(26.dp)).carSurface(RoundedCornerShape(26.dp), CarColors.Panel, heavy = true)
                 .border(1.dp, CarColors.Border, RoundedCornerShape(26.dp)).padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {

@@ -2,6 +2,16 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
+## next
+Interfejs Glass iOS 26 (wczesny dostęp)
+- Nowa opcja w Ustawienia → Wygląd: „Interfejs Glass iOS 26 (wczesny dostęp)” – działa z każdym motywem (Klasyczny, Minimal, VW Nocny, Sport, Pełna mapa, Retro 80s)
+- Karty, wiersze ustawień, okna i przyciski z mrożonego szkła: rozmyte i nasycone tło motywu pod spodem, połysk u góry, jasna krawędź, większe zaokrąglenia
+- Menu każdego motywu (boczny dok, dolny pasek, zakładki VW, pasek Sport, kapsuła Pełnej mapy) staje się pływającym szklanym panelem, a zaznaczenie to kropla wody, która przepływa do nowej ikony i powiększa ją jak soczewka
+- Przełączniki jak w iPhonie: gałka-pastylka zamienia się przy zmianie w szklaną kroplę i sprężyście przeskakuje
+- Przyciski w kształcie kapsuły, główny przycisk to szkło w kolorze akcentu
+- Nakładki na mapie dalej są dobrze czytelne (mocniejsze szkło, bez tapety pod spodem)
+- To wczesna wersja – jeśli coś wygląda źle, wyłącz opcję tym samym przełącznikiem
+
 ## 1.98 · 2026-11-08
 Ceny paliw i większy pasek w „Pełnej mapie”
 - Nowy ekran „Ceny paliw” (Aplikacje): maksymalne ceny ON, Pb95 i Pb98 z obwieszczeń Ministra Energii oraz średnia cena LPG

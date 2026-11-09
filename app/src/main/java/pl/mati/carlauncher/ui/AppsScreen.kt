@@ -66,7 +66,7 @@ fun AppsScreen() {
             Row(
                 Modifier
                     .clip(RoundedCornerShape(16.dp))
-                    .background(CarColors.Card)
+                    .carSurface(RoundedCornerShape(16.dp), CarColors.Card)
                     .clickable { if (!Launch.start(ctx, Intent(android.provider.Settings.ACTION_SETTINGS))) Toaster.show("Nie można otworzyć ustawień Androida") }
                     .padding(horizontal = 18.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -153,7 +153,7 @@ private fun SysTile(icon: ImageVector, label: String, modifier: Modifier, onClic
         modifier
             .height(88.dp)
             .clip(RoundedCornerShape(20.dp))
-            .background(CarColors.Card)
+            .carSurface(RoundedCornerShape(20.dp), CarColors.Card)
             .clickable(onClick = onClick)
             .padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically,

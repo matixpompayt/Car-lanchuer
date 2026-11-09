@@ -76,16 +76,23 @@ fun VwTabs(current: Screen) {
     val accent = LocalAccent.current
     val voice by VoiceCommands.state.collectAsState()
     val startVoice = rememberVoiceStarter()
+    val glass = GlassUi.on
+    val nav = rememberLiquidNav(vertical = false)
+    val sel = NAV_ITEMS.indexOfFirst { it.active(current) }
     Column(Modifier.fillMaxWidth()) {
-        Row(Modifier.fillMaxWidth().height(56.dp).background(CarColors.Dock), verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            Modifier.fillMaxWidth().height(56.dp)
+                .then(if (glass) Modifier.carSurface(androidx.compose.ui.graphics.RectangleShape, CarColors.Dock).liquidNavHost(nav, sel, inset = 7.dp) else Modifier.background(CarColors.Dock)),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             NAV_ITEMS.forEachIndexed { i, it ->
                 val on = it.active(current)
-                Box(Modifier.weight(1f).fillMaxHeight().clickable(onClickLabel = it.label) { UiState.go(it.screen) }, contentAlignment = Alignment.Center) {
+                Box(Modifier.weight(1f).fillMaxHeight().liquidNavItem(nav, i).clickable(onClickLabel = it.label) { UiState.go(it.screen) }, contentAlignment = Alignment.Center) {
                     Text(
                         it.short, fontSize = 17.sp, letterSpacing = 2.sp, fontWeight = if (on) FontWeight.Bold else FontWeight.Medium,
                         color = if (on) accent else CarColors.Text2,
                     )
-                    if (on) Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth(0.62f).height(3.dp).background(accent))
+                    if (on && !glass) Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth(0.62f).height(3.dp).background(accent))
                 }
                 if (i < NAV_ITEMS.lastIndex) Box(Modifier.width(1.dp).height(26.dp).background(CarColors.Border))
             }
@@ -145,19 +152,28 @@ fun SportRail(current: Screen) {
     val accent = LocalAccent.current
     val voice by VoiceCommands.state.collectAsState()
     val startVoice = rememberVoiceStarter()
+    val glass = GlassUi.on
+    val nav = rememberLiquidNav(vertical = true)
+    val sel = NAV_ITEMS.indexOfFirst { it.active(current) }
+    val panel = RoundedCornerShape(30.dp)
     Row(Modifier.fillMaxHeight()) {
-        Box(Modifier.width(3.dp).fillMaxHeight().background(accent))
+        if (!glass) Box(Modifier.width(3.dp).fillMaxHeight().background(accent))
         Column(
-            Modifier.width(97.dp).fillMaxHeight().background(CarColors.Dock).padding(vertical = 18.dp),
+            Modifier.width(if (glass) 100.dp else 97.dp).fillMaxHeight()
+                .then(
+                    if (glass) Modifier.padding(end = 10.dp, top = 10.dp, bottom = 10.dp).clip(panel).carSurface(panel, CarColors.Dock).liquidNavHost(nav, sel)
+                    else Modifier.background(CarColors.Dock),
+                )
+                .padding(vertical = 18.dp),
             horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            NAV_ITEMS.forEach { it ->
+            NAV_ITEMS.forEachIndexed { i, it ->
                 val on = it.active(current)
                 Box(
-                    Modifier.size(width = 80.dp, height = 62.dp).clip(Slant).background(if (on) accent else Color.Transparent)
+                    Modifier.size(width = 80.dp, height = 62.dp).liquidNavItem(nav, i).clip(Slant).background(if (on && !glass) accent else Color.Transparent)
                         .clickable(onClickLabel = it.label) { UiState.go(it.screen) },
                     contentAlignment = Alignment.Center,
-                ) { Icon(it.icon, it.label, tint = if (on) Color.Black else CarColors.Text, modifier = Modifier.size(32.dp)) }
+                ) { Icon(it.icon, it.label, tint = if (on) (if (glass) accent else Color.Black) else CarColors.Text, modifier = Modifier.size(32.dp)) }
             }
             Spacer(Modifier.weight(1f))
             val listening = voice.phase == VoiceCommands.Phase.LISTENING
@@ -173,14 +189,16 @@ fun SportRail(current: Screen) {
 /** Delikatny wzór karbonu na tle. */
 @Composable
 fun CarbonPattern() {
-    Canvas(Modifier.fillMaxSize()) {
-        val step = 7.dp.toPx()
-        val c1 = Color.White.copy(alpha = 0.025f)
-        var x = -size.height
-        while (x < size.width) {
-            drawLine(c1, Offset(x, size.height), Offset(x + size.height, 0f), strokeWidth = 2.dp.toPx())
-            x += step
-        }
+    Canvas(Modifier.fillMaxSize()) { drawCarbon(size.width, size.height) }
+}
+
+fun androidx.compose.ui.graphics.drawscope.DrawScope.drawCarbon(w: Float, h: Float) {
+    val step = 7.dp.toPx()
+    val c1 = Color.White.copy(alpha = 0.025f)
+    var x = -h
+    while (x < w) {
+        drawLine(c1, Offset(x, h), Offset(x + h, 0f), strokeWidth = 2.dp.toPx())
+        x += step
     }
 }
 
@@ -191,18 +209,25 @@ fun FloatingNav(current: Screen, modifier: Modifier) {
     val accent = LocalAccent.current
     val voice by VoiceCommands.state.collectAsState()
     val startVoice = rememberVoiceStarter()
+    val glass = GlassUi.on
+    val nav = rememberLiquidNav(vertical = false)
+    val sel = NAV_ITEMS.indexOfFirst { it.active(current) }
     Row(
-        modifier.height(100.dp).clip(RoundedCornerShape(50.dp)).background(CarColors.Overlay)
-            .border(1.dp, CarColors.Text.copy(alpha = 0.08f), RoundedCornerShape(50.dp)).padding(horizontal = 14.dp),
+        modifier.height(100.dp).clip(RoundedCornerShape(50.dp))
+            .then(
+                if (glass) Modifier.carSurface(RoundedCornerShape(50.dp), CarColors.Overlay, heavy = true).liquidNavHost(nav, sel)
+                else Modifier.background(CarColors.Overlay).border(1.dp, CarColors.Text.copy(alpha = 0.08f), RoundedCornerShape(50.dp)),
+            )
+            .padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        NAV_ITEMS.forEach { it ->
+        NAV_ITEMS.forEachIndexed { i, it ->
             val on = it.active(current)
             Box(
-                Modifier.size(80.dp).clip(CircleShape).background(if (on) accent else Color.Transparent)
+                Modifier.size(80.dp).liquidNavItem(nav, i).clip(CircleShape).background(if (on && !glass) accent else Color.Transparent)
                     .clickable(onClickLabel = it.label) { UiState.go(it.screen) },
                 contentAlignment = Alignment.Center,
-            ) { Icon(it.icon, it.label, tint = if (on) CarColors.Bg else CarColors.Text, modifier = Modifier.size(42.dp)) }
+            ) { Icon(it.icon, it.label, tint = if (on) (if (glass) accent else CarColors.Bg) else CarColors.Text, modifier = Modifier.size(42.dp)) }
         }
         Box(Modifier.width(1.dp).height(46.dp).background(CarColors.Text.copy(alpha = 0.15f)))
         val listening = voice.phase == VoiceCommands.Phase.LISTENING
@@ -218,9 +243,11 @@ fun FloatingNav(current: Screen, modifier: Modifier) {
 
 @Composable
 fun RetroBackground() {
-    Canvas(Modifier.fillMaxSize()) {
-        val w = size.width
-        val h = size.height
+    Canvas(Modifier.fillMaxSize()) { drawRetro(size.width, size.height) }
+}
+
+fun androidx.compose.ui.graphics.drawscope.DrawScope.drawRetro(w: Float, h: Float) {
+    run {
         val horizon = h * 0.6f
         // niebo
         drawRect(Brush.verticalGradient(listOf(Color(0xFF0A0218), Color(0xFF2A0846), Color(0xFF5A0F5C)), 0f, horizon), size = Size(w, horizon))

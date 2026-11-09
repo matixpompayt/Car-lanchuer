@@ -57,7 +57,7 @@ fun ChangelogCard(e: Changelog.Entry, badge: String? = null) {
     val accent = LocalAccent.current
     val current = e.version == BuildConfig.VERSION_NAME
     Column(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(CarColors.Card)
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).carSurface(RoundedCornerShape(20.dp), CarColors.Card)
             .then(if (current) Modifier.border(1.5.dp, accent.copy(alpha = 0.6f), RoundedCornerShape(20.dp)) else Modifier)
             .padding(horizontal = 22.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -90,7 +90,7 @@ fun WhatsNewOverlay() {
             contentAlignment = Alignment.Center,
         ) {
             Column(
-                Modifier.width(760.dp).clip(RoundedCornerShape(30.dp)).background(CarColors.Panel)
+                Modifier.width(760.dp).clip(RoundedCornerShape(30.dp)).carSurface(RoundedCornerShape(30.dp), CarColors.Panel, heavy = true)
                     .border(1.dp, CarColors.Border, RoundedCornerShape(30.dp))
                     .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {}
                     .padding(32.dp),

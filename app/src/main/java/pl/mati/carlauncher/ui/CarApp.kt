@@ -94,6 +94,15 @@ private fun NightDim() {
     if (night && !CarColors.isLight) Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.28f)))
 }
 
+/** Tło motywu (to samo rysuje Shell i liczy rozmycie pod szkłem). */
+fun themeBackground(th: SysTheme, wall: Int): Brush = when (th.bg) {
+    BgStyle.WALLPAPER -> if (CarColors.isLight) Brush.linearGradient(listOf(CarColors.Card2, CarColors.Bg), Offset(0f, 0f), Offset(900f, 1400f))
+        else Wallpapers[wall.coerceIn(0, Wallpapers.lastIndex)].second
+    BgStyle.VW -> Brush.radialGradient(listOf(Color(0xFF07152B), Color(0xFF000000)), Offset(640f, 820f), 900f)
+    BgStyle.SPORT -> Brush.linearGradient(listOf(Color(0xFF151515), Color(0xFF070707), Color(0xFF121212)), Offset(0f, 0f), Offset(1280f, 720f))
+    else -> androidx.compose.ui.graphics.SolidColor(CarColors.Bg)
+}
+
 @Composable
 private fun Shell() {
     val screen by UiState.screen.collectAsState()
@@ -112,13 +121,9 @@ private fun Shell() {
     }
 
     val th = CarColors.theme
-    val bgBrush: Brush = when (th.bg) {
-        BgStyle.WALLPAPER -> if (CarColors.isLight) Brush.linearGradient(listOf(CarColors.Card2, CarColors.Bg), Offset(0f, 0f), Offset(900f, 1400f))
-            else Wallpapers[wall.coerceIn(0, Wallpapers.lastIndex)].second
-        BgStyle.VW -> Brush.radialGradient(listOf(Color(0xFF07152B), Color(0xFF000000)), Offset(640f, 820f), 900f)
-        BgStyle.SPORT -> Brush.linearGradient(listOf(Color(0xFF151515), Color(0xFF070707), Color(0xFF121212)), Offset(0f, 0f), Offset(1280f, 720f))
-        else -> androidx.compose.ui.graphics.SolidColor(CarColors.Bg)
-    }
+    val bgBrush: Brush = themeBackground(th, wall)
+    val glass by Prefs.glassUi.collectAsState()
+    GlassBackdropSync()
     val screens: @Composable (Modifier) -> Unit = { mod ->
         Box(mod) {
             val anim by Prefs.animations.collectAsState()
@@ -183,7 +188,7 @@ private fun Shell() {
             }
             NavStyle.DOCK -> Row(Modifier.fillMaxSize()) {
                 Dock(screen)
-                Box(Modifier.width(1.dp).fillMaxHeight().background(CarColors.Border))
+                if (!glass) Box(Modifier.width(1.dp).fillMaxHeight().background(CarColors.Border))
                 Column(Modifier.weight(1f).fillMaxHeight()) {
                     StatusBar()
                     screens(Modifier.weight(1f).padding(start = 24.dp, end = 24.dp, bottom = 24.dp))
@@ -205,28 +210,41 @@ private fun Shell() {
 
 @Composable
 private fun Dock(current: Screen) {
+    val glass = GlassUi.on
+    val nav = rememberLiquidNav(vertical = true)
+    val appsGroup = setOf(Screen.APPS, Screen.SETTINGS, Screen.TRIPS, Screen.SERVICE, Screen.WEATHER, Screen.FUEL, Screen.PRICES)
+    val sel = when (current) {
+        Screen.HOME -> 0; Screen.NAV -> 1; Screen.MUSIC -> 2; Screen.PHONE -> 3; Screen.VEHICLE -> 4
+        in appsGroup -> 6
+        else -> -1
+    }
+    val panel = RoundedCornerShape(34.dp)
     Column(
         Modifier
             .width(99.dp)
             .fillMaxHeight()
-            .background(CarColors.Dock)
-            .padding(vertical = 20.dp),
+            .then(
+                // Glass: dok to pływający szklany panel, a zaznaczenie – kropla
+                if (glass) Modifier.padding(start = 10.dp, top = 10.dp, bottom = 10.dp).clip(panel).carSurface(panel, CarColors.Dock).liquidNavHost(nav, sel)
+                else Modifier.background(CarColors.Dock),
+            )
+            .padding(vertical = if (glass) 12.dp else 20.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.SpaceBetween,
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            DockButton(Icons.Rounded.GridView, "Ekran główny", current == Screen.HOME) { UiState.go(Screen.HOME) }
-            DockButton(Icons.Rounded.Navigation, "Nawigacja", current == Screen.NAV) { UiState.go(Screen.NAV) }
-            DockButton(Icons.Rounded.MusicNote, "Muzyka", current == Screen.MUSIC) { UiState.go(Screen.MUSIC) }
-            DockButton(Icons.Rounded.Phone, "Telefon", current == Screen.PHONE) { UiState.go(Screen.PHONE) }
-            DockButton(Icons.Rounded.Speed, "Pojazd", current == Screen.VEHICLE) { UiState.go(Screen.VEHICLE) }
+            Box(Modifier.liquidNavItem(nav, 0)) { DockButton(Icons.Rounded.GridView, "Ekran główny", current == Screen.HOME) { UiState.go(Screen.HOME) } }
+            Box(Modifier.liquidNavItem(nav, 1)) { DockButton(Icons.Rounded.Navigation, "Nawigacja", current == Screen.NAV) { UiState.go(Screen.NAV) } }
+            Box(Modifier.liquidNavItem(nav, 2)) { DockButton(Icons.Rounded.MusicNote, "Muzyka", current == Screen.MUSIC) { UiState.go(Screen.MUSIC) } }
+            Box(Modifier.liquidNavItem(nav, 3)) { DockButton(Icons.Rounded.Phone, "Telefon", current == Screen.PHONE) { UiState.go(Screen.PHONE) } }
+            Box(Modifier.liquidNavItem(nav, 4)) { DockButton(Icons.Rounded.Speed, "Pojazd", current == Screen.VEHICLE) { UiState.go(Screen.VEHICLE) } }
         }
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             val voice by pl.mati.carlauncher.data.VoiceCommands.state.collectAsState()
             val startVoice = rememberVoiceStarter()
-            DockButton(Icons.Rounded.Mic, "Komenda głosowa", voice.phase == pl.mati.carlauncher.data.VoiceCommands.Phase.LISTENING) { startVoice() }
-            DockButton(Icons.Rounded.Apps, "Aplikacje", current in setOf(Screen.APPS, Screen.SETTINGS, Screen.TRIPS, Screen.SERVICE, Screen.WEATHER, Screen.FUEL, Screen.PRICES)) {
-                UiState.go(Screen.APPS)
+            Box(Modifier.liquidNavItem(nav, 5)) { DockButton(Icons.Rounded.Mic, "Komenda głosowa", voice.phase == pl.mati.carlauncher.data.VoiceCommands.Phase.LISTENING) { startVoice() } }
+            Box(Modifier.liquidNavItem(nav, 6)) {
+                DockButton(Icons.Rounded.Apps, "Aplikacje", current in appsGroup) { UiState.go(Screen.APPS) }
             }
         }
     }
@@ -238,10 +256,11 @@ private fun DockButton(icon: ImageVector, label: String, active: Boolean, onClic
     val anim by Prefs.animations.collectAsState()
     val src = remember { MutableInteractionSource() }
     val spec: androidx.compose.animation.core.AnimationSpec<Color> = if (anim) tween(260) else snap()
-    val bg by animateColorAsState(if (active) accent.copy(alpha = 0.14f) else Color.Transparent, spec, label = "dockBg")
+    val glass = GlassUi.on
+    val bg by animateColorAsState(if (active && !glass) accent.copy(alpha = 0.14f) else Color.Transparent, spec, label = "dockBg")
     val tint by animateColorAsState(if (active) accent else CarColors.Muted, spec, label = "dockTint")
     val scale by animateFloatAsState(if (active && anim) 1.12f else 1f, spring(dampingRatio = 0.45f, stiffness = 400f), label = "dockScale")
-    val bar by animateFloatAsState(if (active) 1f else 0f, if (anim) spring(dampingRatio = 0.6f, stiffness = 500f) else snap(), label = "dockBar")
+    val bar by animateFloatAsState(if (active && !glass) 1f else 0f, if (anim) spring(dampingRatio = 0.6f, stiffness = 500f) else snap(), label = "dockBar")
     Box(contentAlignment = Alignment.CenterStart) {
         Box(
             Modifier

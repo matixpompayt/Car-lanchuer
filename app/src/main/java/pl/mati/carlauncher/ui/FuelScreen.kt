@@ -95,7 +95,7 @@ fun FuelScreen() {
             LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 items(fills, key = { it.id }) { f ->
                     Row(
-                        Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(CarColors.Card).padding(horizontal = 18.dp, vertical = 12.dp),
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).carSurface(RoundedCornerShape(18.dp), CarColors.Card).padding(horizontal = 18.dp, vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
@@ -152,7 +152,7 @@ private fun FuelAddDialog(onDismiss: () -> Unit) {
         contentAlignment = Alignment.Center,
     ) {
         Column(
-            Modifier.width(720.dp).clip(RoundedCornerShape(26.dp)).background(CarColors.Panel)
+            Modifier.width(720.dp).clip(RoundedCornerShape(26.dp)).carSurface(RoundedCornerShape(26.dp), CarColors.Panel, heavy = true)
                 .border(1.dp, CarColors.Border, RoundedCornerShape(26.dp))
                 .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {}
                 .padding(26.dp),
