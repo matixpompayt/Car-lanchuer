@@ -2,7 +2,7 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
-## next
+## 1.103 · 2026-11-09
 Dziennik tras – zapis za każdym razem
 - Po uśpieniu radia (wyłączony zapłon) poprzednia jazda jest teraz zawsze kończona i zapisywana, zanim zacznie się nowa – wcześniej kolejne wyjazdy mogły „doklejać się” do starej, niekończącej się jazdy
 - Rejestrator nie może się już zatrzymać przez błąd – każdy krok jest zabezpieczony, a w razie problemu sam się wznawia
