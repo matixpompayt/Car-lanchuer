@@ -2,6 +2,16 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
+## next
+Dziennik tras – zapis za każdym razem
+- Po uśpieniu radia (wyłączony zapłon) poprzednia jazda jest teraz zawsze kończona i zapisywana, zanim zacznie się nowa – wcześniej kolejne wyjazdy mogły „doklejać się” do starej, niekończącej się jazdy
+- Rejestrator nie może się już zatrzymać przez błąd – każdy krok jest zabezpieczony, a w razie problemu sam się wznawia
+- Prędkość do wykrywania jazdy: aktualny GPS razem z licznikiem auta – zamrożony odczyt z CAN albo stara prędkość z GPS nie blokują startu ani końca jazdy
+- Gdy GPS przestaje odpowiadać po uśpieniu, nasłuch uruchamia się od nowa
+- Jazdy zapisują się od razu na dysk w dwóch miejscach; przy starcie odczytywane są oba (nic nie zginie przy zaniku prądu)
+- Przy wyłączeniu zapłonu bieżąca jazda jest natychmiast zapisywana
+- W Dzienniku tras widać, co robi rejestrator, a po dotknięciu – dziennik zdarzeń; przy bieżącej jeździe jest przycisk „Zakończ jazdę”
+
 ## 1.102 · 2026-11-09
 Telefon: kontakty prosto z MainUI radia
 - Kontakty w zakładce Telefon są teraz brane z książki, którą MainUI (aplikacja telefonu radia TopWay) pobiera z połączonego telefonu – te same co w oryginalnej aplikacji, z ulubionymi

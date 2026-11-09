@@ -51,13 +51,23 @@ fun formatDurationLong(s: Long): String {
 fun TripsScreen() {
     val trips by TripRepository.trips.collectAsState()
     val current by TripRepository.current.collectAsState()
+    val recStatus by TripRepository.status.collectAsState()
+    val events by TripRepository.events.collectAsState()
+    var showLog by remember { mutableStateOf(false) }
     var confirmClear by remember { mutableStateOf(false) }
     var open by remember { mutableStateOf<TripRepository.Trip?>(null) }
 
     Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Dziennik tras", fontSize = 30.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+            Column(Modifier.weight(1f)) {
+                Text("Dziennik tras", fontSize = 30.sp, fontWeight = FontWeight.SemiBold)
+                // co robi rejestrator – widać od razu, czy jazda się nagrywa
+                Text(
+                    "Rejestrowanie: $recStatus", fontSize = 15.sp, color = CarColors.Muted,
+                    modifier = Modifier.clickable { showLog = !showLog },
+                )
+            }
             if (trips.isNotEmpty()) {
                 if (confirmClear) {
                     SecondaryButton("Na pewno usunąć?", { TripRepository.clearAll(); confirmClear = false }, height = 52.dp)
@@ -79,8 +89,26 @@ fun TripsScreen() {
 
         LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             if (trips.isNotEmpty() || current != null) item { StatsCard(key) }
+            if (showLog) item {
+                CarCard(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("Dziennik zapisu (dotknij „Rejestrowanie”, by ukryć)", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                        if (events.isEmpty()) Text("Brak zdarzeń", fontSize = 14.sp, color = CarColors.Muted)
+                        events.take(15).forEach { Text(it, fontSize = 14.sp, color = CarColors.Text2) }
+                    }
+                }
+            }
             current?.let { c ->
                 item { TripRow(c, live = true) }
+                item {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text(
+                            "Jazda zakończy się sama po 3 min postoju albo po wyłączeniu radia.",
+                            fontSize = 15.sp, color = CarColors.Muted, modifier = Modifier.weight(1f),
+                        )
+                        SecondaryButton("Zakończ jazdę", { TripRepository.finishNow() }, height = 48.dp)
+                    }
+                }
             }
             if (trips.isEmpty() && current == null) {
                 item {
@@ -205,7 +233,8 @@ private fun TripRow(t: TripRepository.Trip, live: Boolean, onClick: (() -> Unit)
         }
         Column(Modifier.weight(1f)) {
             Text(
-                (if (live) "Teraz · " else "") + "${formatTime(t.start)} – ${if (live) "…" else formatTime(t.end)}",
+                (if (live) "Teraz · " + (if (t.start < TripRepository.startOfDay()) DAY_FMT.format(Date(t.start)) + " " else "") else "") +
+                    "${formatTime(t.start)} – ${if (live) "…" else formatTime(t.end)}",
                 fontSize = 19.sp, fontWeight = FontWeight.SemiBold,
             )
             Text(

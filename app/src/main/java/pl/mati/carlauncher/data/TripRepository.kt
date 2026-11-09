@@ -15,6 +15,14 @@ import kotlin.math.max
 /**
  * Dziennik tras: jazda zaczyna się sama po ruszeniu, kończy po 3 min postoju.
  * Bieżąca jazda zapisywana co 30 s – radio może zgasnąć bez ostrzeżenia przy wyłączeniu zapłonu.
+ *
+ * Zabezpieczenia (żeby zapisywało się za każdym razem):
+ * – pętla nie może „umrzeć” od błędu: każdy krok w try/catch, a cała pętla jest wznawiana,
+ * – po uśpieniu radia (zapłon wył.) albo przerwie > 5 min stara jazda jest kończona, zanim zacznie się nowa
+ *   (wcześniej mogła „doklejać” kolejne dni do jednej niekończącej się jazdy),
+ * – prędkość: świeży GPS i licznik auta sprawdzane razem (zamrożony odczyt CAN nie blokuje startu ani końca),
+ * – zapis od razu na dysk (commit) w dwóch miejscach: ustawienia + plik trips/trips.json; przy odczycie bierzemy pełniejszy,
+ * – ręczne „Zakończ jazdę” i krótki dziennik zdarzeń w ekranie Dziennik tras.
  */
 object TripRepository {
 
@@ -62,10 +70,36 @@ object TripRepository {
 
     val trips = MutableStateFlow<List<Trip>>(emptyList())
     val current = MutableStateFlow<Trip?>(null)
+    /** Co robi rejestrator (do ekranu Dziennik tras). */
+    val status = MutableStateFlow("uruchamiam…")
+    /** Ostatnie zdarzenia (start, koniec, błędy) – najnowsze na górze. */
+    val events = MutableStateFlow<List<String>>(emptyList())
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var started = false
-    private const val MAX_TRIPS = 300
+    private const val MAX_TRIPS = 500
+    /** Przerwa w działaniu pętli (uśpienie radia), po której bieżąca jazda jest kończona. */
+    private const val GAP_MS = 60_000L
+    /** Jazda bez aktualizacji dłużej niż to – też kończona. */
+    private const val STALE_MS = 5 * 60_000L
+    @Volatile private var finishRequested = false
+
+    private fun log(msg: String) {
+        val t = java.text.SimpleDateFormat("dd.MM HH:mm:ss", java.util.Locale.US).format(java.util.Date())
+        events.value = (listOf("$t  $msg") + events.value).take(40)
+        try {
+            dir?.let { d ->
+                d.mkdirs()
+                val f = java.io.File(d, "log.txt")
+                val old = if (f.exists()) f.readLines().take(200) else emptyList()
+                f.writeText((listOf("$t  $msg") + old).joinToString("\n"))
+            }
+        } catch (_: Exception) {
+        }
+    }
+
+    /** Ręczne zakończenie bieżącej jazdy (przycisk w Dzienniku tras). */
+    fun finishNow() { finishRequested = true }
 
     /** Folder na ślady GPS tras (ustawiany w MainActivity). */
     var dir: java.io.File? = null
@@ -98,9 +132,55 @@ object TripRepository {
     fun start() {
         if (started) return
         started = true
-        load()
-        scope.launch { loop() }
-        scope.launch { harshLoop() }
+        try { load() } catch (e: Exception) { log("Błąd odczytu: ${e.javaClass.simpleName}") }
+        // pętla jest wznawiana, gdyby cokolwiek ją przerwało
+        scope.launch {
+            while (true) {
+                try {
+                    loop()
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    throw e
+                } catch (e: Throwable) {
+                    log("Pętla przerwana (${e.javaClass.simpleName}: ${e.message?.take(80)}) – wznawiam")
+                }
+                delay(3000)
+            }
+        }
+        scope.launch {
+            while (true) {
+                try { harshLoop() } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (_: Throwable) {}
+                delay(3000)
+            }
+        }
+        // zapłon wyłączony: od razu zapisz bieżącą jazdę na dysk (radio może zaraz zgasnąć)
+        scope.launch {
+            var offAt = 0L
+            TsCarBridge.acc.collect { on ->
+                try {
+                    if (on == false) {
+                        offAt = System.currentTimeMillis()
+                        saveCurrent()
+                        if (current.value != null) log("Zapłon wyłączony – jazda zapisana")
+                    } else if (on == true && offAt > 0 && System.currentTimeMillis() - offAt > 180_000 && current.value != null) {
+                        log("Zapłon włączony po przerwie – kończę poprzednią jazdę")
+                        finishRequested = true
+                    }
+                } catch (_: Throwable) {
+                }
+            }
+        }
+    }
+
+    /** Prędkość do wykrywania jazdy: świeży GPS + licznik auta (rozbieżny odczyt CAN = pewnie zamrożony). */
+    private fun speedNow(): Int {
+        val g = LocationRepository.freshGpsSpeed()
+        val v = Vehicle.data.value.speed
+        return when {
+            g == null -> v ?: 0
+            v == null -> g
+            kotlin.math.abs(v - g) <= 25 -> max(v, g)
+            else -> g
+        }
     }
 
     /**
@@ -137,85 +217,122 @@ object TripRepository {
         var stillSince = 0L
         var movingCount = 0
         var lastSave = 0L
+        var lastTick = android.os.SystemClock.elapsedRealtime()
+        var lastKickCheck = 0L
         while (true) {
             delay(2000)
-            val now = System.currentTimeMillis()
-            val obd = Vehicle.data.value
-            val spd = obd.speed ?: LocationRepository.gpsSpeed.value ?: 0
-            val meters = LocationRepository.tripMeters.value
-            val gpsDelta = (meters - lastMeters).coerceAtLeast(0f)
-            lastMeters = meters
-            // bez GPS liczymy z prędkości z OBD
-            val delta = if (gpsDelta > 0f) gpsDelta.toDouble() else spd / 3.6 * 2.0
+            try {
+                val now = System.currentTimeMillis()
+                val tick = android.os.SystemClock.elapsedRealtime()
+                val gap = tick - lastTick
+                lastTick = tick
+                val obd = Vehicle.data.value
+                val spd = speedNow()
+                val meters = LocationRepository.tripMeters.value
+                val gpsDelta = (meters - lastMeters).coerceAtLeast(0f)
+                lastMeters = meters
+                // bez GPS liczymy z prędkości (licznik auta / OBD)
+                val delta = if (gpsDelta > 0f) gpsDelta.toDouble() else spd / 3.6 * 2.0
+                if (tick - lastKickCheck > 30_000) { lastKickCheck = tick; LocationRepository.kickIfStale() }
 
-            val cur = current.value
-            if (cur == null) {
-                movingCount = if (spd >= 8) movingCount + 1 else 0
-                if (movingCount >= 2) {
-                    current.value = Trip(now, now, 0.0, 0, spd, obd.coolant)
-                    stillSince = 0L
-                    recordPoint(reset = true)
-                }
-                continue
-            }
-            val moving = spd >= 3
-            current.update { c ->
-                c?.copy(
-                    end = now,
-                    distanceM = c.distanceM + if (moving || gpsDelta > 5f) delta else 0.0,
-                    movingS = c.movingS + if (moving) 2 else 0,
-                    maxSpeed = max(c.maxSpeed, spd),
-                    maxCoolant = listOfNotNull(c.maxCoolant, obd.coolant).maxOrNull(),
-                )
-            }
-            if (moving) ServiceRepository.addMeters(delta)
-            recordPoint(reset = false)
-            if (!moving) {
-                if (stillSince == 0L) stillSince = now
-                if (now - stillSince > 180_000) {
-                    finish()
+                var cur = current.value
+                // radio spało / pętla stała albo ręczne zakończenie → zamknij starą jazdę, zanim policzymy nową
+                if (cur != null && (finishRequested || gap > GAP_MS || now - cur.end > STALE_MS)) {
+                    val why = when {
+                        finishRequested -> "ręcznie"
+                        gap > GAP_MS -> "po uśpieniu radia (${gap / 1000} s)"
+                        else -> "brak aktualizacji ${(now - cur.end) / 60_000} min"
+                    }
+                    finishRequested = false
+                    finish("koniec $why")
                     stillSince = 0L
                     movingCount = 0
+                    cur = null
                 }
-            } else {
-                stillSince = 0L
-            }
-            if (now - lastSave > 30_000) {
-                saveCurrent()
-                ServiceRepository.save()
-                lastSave = now
+                finishRequested = false
+
+                if (cur == null) {
+                    movingCount = if (spd >= 8) movingCount + 1 else 0
+                    status.value = if (spd > 0) "czekam na ruszenie (${spd} km/h)" else "czekam na ruszenie"
+                    if (movingCount >= 2) {
+                        current.value = Trip(now, now, 0.0, 0, spd, obd.coolant)
+                        stillSince = 0L
+                        recordPoint(reset = true)
+                        log("Start jazdy (${spd} km/h)")
+                        saveCurrent()
+                        lastSave = now
+                    }
+                    continue
+                }
+                val moving = spd >= 3
+                current.update { c ->
+                    c?.copy(
+                        end = now,
+                        distanceM = c.distanceM + if (moving || gpsDelta > 5f) delta else 0.0,
+                        movingS = c.movingS + if (moving) 2 else 0,
+                        maxSpeed = max(c.maxSpeed, spd),
+                        maxCoolant = listOfNotNull(c.maxCoolant, obd.coolant).maxOrNull(),
+                    )
+                }
+                if (moving) try { ServiceRepository.addMeters(delta) } catch (_: Exception) {}
+                recordPoint(reset = false)
+                if (!moving) {
+                    if (stillSince == 0L) stillSince = now
+                    status.value = "postój ${(now - stillSince) / 1000} s (koniec po 180 s)"
+                    if (now - stillSince > 180_000) {
+                        finish("koniec po 3 min postoju")
+                        stillSince = 0L
+                        movingCount = 0
+                    }
+                } else {
+                    stillSince = 0L
+                    status.value = "jazda trwa (${spd} km/h)"
+                }
+                if (now - lastSave > 30_000) {
+                    saveCurrent()
+                    try { ServiceRepository.save() } catch (_: Exception) {}
+                    lastSave = now
+                }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Throwable) {
+                log("Błąd w kroku: ${e.javaClass.simpleName}: ${e.message?.take(80)}")
             }
         }
     }
 
-    private fun finish() {
+    private fun finish(why: String = "koniec") {
         val cur = current.value ?: return
         current.value = null
+        val pts = synchronized(path) { ArrayList(path) }
+        synchronized(path) { path.clear() }
         if (cur.distanceM >= 300) {
-            trips.value = (listOf(cur) + trips.value).take(MAX_TRIPS)
+            // najważniejsze: zapis jazdy (od razu na dysk)
+            trips.value = (listOf(cur) + trips.value.filter { it.start != cur.start }).take(MAX_TRIPS)
             saveTrips()
-            val pts = synchronized(path) { ArrayList(path) }
-            val enc = if (pts.size >= 2) Polyline.compact(pts) else null
+            log("Zapisano jazdę ${"%.1f".format(cur.distanceM / 1000)} km ($why)")
+            val enc = try { if (pts.size >= 2) Polyline.compact(pts) else null } catch (_: Exception) { null }
             if (enc != null) {
                 try {
                     dir?.let { d ->
                         d.mkdirs()
                         java.io.File(d, "${cur.start}.pl").writeText(enc)
                         // stare ślady (poza listą tras) – usuń
-                        val keep = trips.value.map { "${it.start}.pl" }.toSet()
+                        val keep = trips.value.map { "${it.start}.pl" }.toSet() + setOf("trips.json", "trips.json.tmp", "log.txt")
                         d.listFiles()?.forEach { f -> if (f.name !in keep) f.delete() }
                     }
                 } catch (_: Exception) {
                 }
             }
-            ConnectRepository.publishTrip(cur, enc)
-            ConnectRepository.publishStatusSoon()
+            try { ConnectRepository.publishTrip(cur, enc) } catch (_: Exception) {}
+            try { ConnectRepository.publishStatusSoon() } catch (_: Exception) {}
+        } else {
+            log("Pominięto krótką jazdę ${cur.distanceM.toInt()} m ($why)")
         }
-        synchronized(path) { path.clear() }
         try { FuelRepository.recompute() } catch (_: Exception) {}
         try { ConnectRepository.publishLiveStop() } catch (_: Exception) {}
-        Prefs.store?.edit()?.remove("trip_current")?.remove("trip_current_path")?.apply()
-        ServiceRepository.save()
+        try { Prefs.store?.edit()?.remove("trip_current")?.remove("trip_current_path")?.commit() } catch (_: Exception) {}
+        try { ServiceRepository.save() } catch (_: Exception) {}
     }
 
     fun clearAll() {
@@ -259,13 +376,24 @@ object TripRepository {
 
     // ---------- zapis ----------
 
+    private fun parse(text: String?): List<Trip> = try {
+        val arr = JSONArray(text ?: "[]")
+        (0 until arr.length()).mapNotNull { i -> try { Trip.from(arr.getJSONObject(i)) } catch (_: Exception) { null } }
+    } catch (_: Exception) {
+        emptyList()
+    }
+
+    private fun backupFile() = dir?.let { java.io.File(it, "trips.json") }
+
     private fun load() {
         val sp = Prefs.store ?: return
-        try {
-            val arr = JSONArray(sp.getString("trips", "[]"))
-            trips.value = (0 until arr.length()).map { Trip.from(arr.getJSONObject(it)) }
-        } catch (_: Exception) {
-        }
+        // dwa zapisy – bierzemy sumę (gdyby któryś się uszkodził albo nie zdążył zapisać)
+        val a = parse(sp.getString("trips", "[]"))
+        val b = try { backupFile()?.takeIf { it.exists() }?.readText()?.let { parse(it) }.orEmpty() } catch (_: Exception) { emptyList() }
+        val merged = (a + b).distinctBy { it.start }.sortedByDescending { it.start }.take(MAX_TRIPS)
+        trips.value = merged
+        if (b.size > a.size || a.size > b.size) saveTrips()
+        log("Wczytano ${merged.size} jazd")
         // jazda przerwana zgaszeniem radia
         val curStr = sp.getString("trip_current", null) ?: return
         try {
@@ -273,29 +401,44 @@ object TripRepository {
                 synchronized(path) { path.clear(); path.addAll(Polyline.decode(p)) }
             }
             val t = Trip.from(JSONObject(curStr))
+            current.value = t
             if (System.currentTimeMillis() - t.end < 10 * 60_000) {
-                current.value = t // krótki postój (np. stacja) – kontynuujemy tę samą jazdę
+                log("Kontynuuję jazdę po krótkiej przerwie")
             } else {
-                current.value = t
-                finish()
+                finish("koniec po wyłączeniu radia")
             }
         } catch (_: Exception) {
-            sp.edit().remove("trip_current").apply()
+            sp.edit().remove("trip_current").commit()
         }
     }
 
     private fun saveTrips() {
         val arr = JSONArray()
         trips.value.forEach { arr.put(it.toJson()) }
-        Prefs.store?.edit()?.putString("trips", arr.toString())?.apply()
+        val text = arr.toString()
+        try { Prefs.store?.edit()?.putString("trips", text)?.commit() } catch (_: Exception) {}
+        // kopia w pliku – zapis przez plik tymczasowy, żeby nie zostawić połowy przy zaniku prądu
+        try {
+            dir?.let { d ->
+                d.mkdirs()
+                val tmp = java.io.File(d, "trips.json.tmp")
+                tmp.writeText(text)
+                val f = java.io.File(d, "trips.json")
+                if (!tmp.renameTo(f)) { f.writeText(text); tmp.delete() }
+            }
+        } catch (_: Exception) {
+        }
     }
 
     private fun saveCurrent() {
         val c = current.value ?: return
         val pts = synchronized(path) { ArrayList(path) }
-        Prefs.store?.edit()
-            ?.putString("trip_current", c.toJson().toString())
-            ?.putString("trip_current_path", Polyline.encode(pts))
-            ?.apply()
+        try {
+            Prefs.store?.edit()
+                ?.putString("trip_current", c.toJson().toString())
+                ?.putString("trip_current_path", Polyline.encode(pts))
+                ?.commit()
+        } catch (_: Exception) {
+        }
     }
 }
