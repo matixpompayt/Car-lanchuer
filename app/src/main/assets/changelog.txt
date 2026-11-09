@@ -2,6 +2,15 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
+## next
+Telefon: kontakty i ostatnie połączenia z Bluetooth
+- Zakładka Telefon pokazuje ostatnie połączenia (odebrane, wykonane, nieodebrane na czerwono, z godziną i liczbą powtórzeń) i kontakty z telefonu połączonego po Bluetooth
+- Kontakty: wyszukiwarka, szybkie przewijanie po literach, zdjęcia albo kolorowe inicjały, zakładka Ulubione (gwiazdka z telefonu)
+- Dotknięcie wiersza od razu dzwoni; przy kilku numerach pojawia się wybór (komórka, dom, praca…)
+- Klawiatura podpowiada kontakty pasujące do wpisywanych cyfr i pokazuje, czyj to numer
+- Lista odświeża się sama, gdy radio pobierze książkę z telefonu po połączeniu; u góry operator i zasięg telefonu
+- Gdy lista jest pusta – podpowiedź, co włączyć w telefonie (udostępnianie kontaktów i historii przez Bluetooth)
+
 ## 1.99 · 2026-11-09
 Interfejs Glass iOS 26 (wczesny dostęp)
 - Nowa opcja w Ustawienia → Wygląd: „Interfejs Glass iOS 26 (wczesny dostęp)” – działa z każdym motywem (Klasyczny, Minimal, VW Nocny, Sport, Pełna mapa, Retro 80s)
