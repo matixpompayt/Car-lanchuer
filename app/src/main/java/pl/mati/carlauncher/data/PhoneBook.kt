@@ -8,6 +8,8 @@ import android.os.Handler
 import android.os.Looper
 import android.provider.CallLog
 import android.provider.ContactsContract
+import android.provider.ContactsContract.CommonDataKinds.Phone
+import android.provider.CallLog.Calls
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -133,24 +135,23 @@ object PhoneBook {
     }
 
     private fun readContacts(ctx: Context, accounts: HashMap<String, Int>): List<Contact> {
-        val P = ContactsContract.CommonDataKinds.Phone
-        val base = arrayOf(P.CONTACT_ID, P.DISPLAY_NAME_PRIMARY, P.NUMBER, P.TYPE, P.LABEL, P.STARRED, P.PHOTO_THUMBNAIL_URI)
+        val base = arrayOf(Phone.CONTACT_ID, Phone.DISPLAY_NAME_PRIMARY, Phone.NUMBER, Phone.TYPE, Phone.LABEL, Phone.STARRED, Phone.PHOTO_THUMBNAIL_URI)
         val withAccount = base + ContactsContract.RawContacts.ACCOUNT_TYPE
         val cur = try {
-            ctx.contentResolver.query(P.CONTENT_URI, withAccount, null, null, null)
+            ctx.contentResolver.query(Phone.CONTENT_URI, withAccount, null, null, null)
         } catch (_: Exception) {
-            ctx.contentResolver.query(P.CONTENT_URI, base, null, null, null)
+            ctx.contentResolver.query(Phone.CONTENT_URI, base, null, null, null)
         } ?: return emptyList()
         data class Acc(var name: String, val nums: LinkedHashMap<String, Number>, var starred: Boolean, var photo: String?, var phone: Boolean)
         val byId = LinkedHashMap<Long, Acc>()
         cur.use { c ->
-            val iId = c.getColumnIndex(P.CONTACT_ID)
-            val iName = c.getColumnIndex(P.DISPLAY_NAME_PRIMARY)
-            val iNum = c.getColumnIndex(P.NUMBER)
-            val iType = c.getColumnIndex(P.TYPE)
-            val iLabel = c.getColumnIndex(P.LABEL)
-            val iStar = c.getColumnIndex(P.STARRED)
-            val iPhoto = c.getColumnIndex(P.PHOTO_THUMBNAIL_URI)
+            val iId = c.getColumnIndex(Phone.CONTACT_ID)
+            val iName = c.getColumnIndex(Phone.DISPLAY_NAME_PRIMARY)
+            val iNum = c.getColumnIndex(Phone.NUMBER)
+            val iType = c.getColumnIndex(Phone.TYPE)
+            val iLabel = c.getColumnIndex(Phone.LABEL)
+            val iStar = c.getColumnIndex(Phone.STARRED)
+            val iPhoto = c.getColumnIndex(Phone.PHOTO_THUMBNAIL_URI)
             val iAcc = c.getColumnIndex(ContactsContract.RawContacts.ACCOUNT_TYPE)
             while (c.moveToNext()) {
                 val id = c.getLong(iId)
@@ -160,7 +161,7 @@ object PhoneBook {
                 val acc = if (iAcc >= 0) c.getString(iAcc).orEmpty() else ""
                 accounts[acc.ifEmpty { "lokalne" }] = (accounts[acc.ifEmpty { "lokalne" }] ?: 0) + 1
                 val label = try {
-                    P.getTypeLabel(ctx.resources, c.getInt(iType), c.getString(iLabel)).toString()
+                    Phone.getTypeLabel(ctx.resources, c.getInt(iType), c.getString(iLabel)).toString()
                 } catch (_: Exception) { "" }
                 val a = byId.getOrPut(id) { Acc(name, LinkedHashMap(), false, null, false) }
                 val k = key(num).ifEmpty { num }
@@ -176,18 +177,17 @@ object PhoneBook {
     }
 
     private fun readCalls(ctx: Context): List<Call> {
-        val C = CallLog.Calls
         val cur = ctx.contentResolver.query(
-            C.CONTENT_URI, arrayOf(C.NUMBER, C.CACHED_NAME, C.TYPE, C.DATE, C.DURATION),
-            null, null, "${C.DATE} DESC",
+            Calls.CONTENT_URI, arrayOf(Calls.NUMBER, Calls.CACHED_NAME, Calls.TYPE, Calls.DATE, Calls.DURATION),
+            null, null, "${Calls.DATE} DESC",
         ) ?: return emptyList()
         val out = ArrayList<Call>()
         cur.use { c ->
-            val iNum = c.getColumnIndex(C.NUMBER)
-            val iName = c.getColumnIndex(C.CACHED_NAME)
-            val iType = c.getColumnIndex(C.TYPE)
-            val iDate = c.getColumnIndex(C.DATE)
-            val iDur = c.getColumnIndex(C.DURATION)
+            val iNum = c.getColumnIndex(Calls.NUMBER)
+            val iName = c.getColumnIndex(Calls.CACHED_NAME)
+            val iType = c.getColumnIndex(Calls.TYPE)
+            val iDate = c.getColumnIndex(Calls.DATE)
+            val iDur = c.getColumnIndex(Calls.DURATION)
             var n = 0
             while (c.moveToNext() && n < 400) {
                 n++
