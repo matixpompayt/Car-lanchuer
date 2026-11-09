@@ -2,7 +2,7 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
-## next
+## 1.99 · 2026-11-09
 Interfejs Glass iOS 26 (wczesny dostęp)
 - Nowa opcja w Ustawienia → Wygląd: „Interfejs Glass iOS 26 (wczesny dostęp)” – działa z każdym motywem (Klasyczny, Minimal, VW Nocny, Sport, Pełna mapa, Retro 80s)
 - Karty, wiersze ustawień, okna i przyciski z mrożonego szkła: rozmyte i nasycone tło motywu pod spodem, połysk u góry, jasna krawędź, większe zaokrąglenia
