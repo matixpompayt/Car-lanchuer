@@ -263,7 +263,7 @@ object VoiceCommands {
             finish(Phase.ERROR, heard, "Nie znalazłem kontaktu: $who")
             return
         }
-        val ok = try {
+        val ok = PhoneBook.dialViaRadio(number) || try {
             ctx.startActivity(Intent(Intent.ACTION_CALL, Uri.parse("tel:" + Uri.encode(number))).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             true
         } catch (_: Exception) {
@@ -273,8 +273,24 @@ object VoiceCommands {
     }
 
     private fun findContact(ctx: Context, who: String): String? {
-        if (ContextCompat.checkSelfPermission(ctx, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) return null
         val want = plain(who)
+        // książka telefonu z MainUI / Androida (ta sama co w zakładce Telefon)
+        PhoneBook.contacts.value.takeIf { it.isNotEmpty() }?.let { list ->
+            var best: String? = null
+            var bestScore = 0
+            for (c in list) {
+                val name = plain(c.name)
+                val score = when {
+                    name == want -> 3
+                    name.startsWith(want) || want.startsWith(name) -> 2
+                    name.split(" ").any { it.isNotBlank() && (want.contains(it) || it.startsWith(want.take(4))) } -> 1
+                    else -> 0
+                }
+                if (score > bestScore) { bestScore = score; best = c.numbers.firstOrNull()?.number }
+            }
+            if (best != null) return best
+        }
+        if (ContextCompat.checkSelfPermission(ctx, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) return null
         return try {
             ctx.contentResolver.query(
                 ContactsContract.CommonDataKinds.Phone.CONTENT_URI,

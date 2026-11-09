@@ -78,6 +78,8 @@ private val AVATAR_COLORS = listOf(
 )
 
 private fun callNow(ctx: Context, n: String) {
+    // najpierw przez MainUI radia (od razu przez Bluetooth), inaczej systemowe wybieranie
+    if (PhoneBook.dialViaRadio(n)) return
     val ok = Launch.start(ctx, Intent(Intent.ACTION_CALL, Uri.parse("tel:" + Uri.encode(n))))
     if (!ok) Launch.dialer(ctx, n)
 }
@@ -93,6 +95,7 @@ private fun rememberCaller(): (String) -> Unit {
     }
     return { n ->
         if (n.isBlank()) Toaster.show("Wpisz numer")
+        else if (PhoneBook.dialViaRadio(n)) Unit
         else if (PhoneBook.granted(ctx, Manifest.permission.CALL_PHONE)) callNow(ctx, n)
         else { pending = n; perm.launch(Manifest.permission.CALL_PHONE) }
     }
@@ -152,13 +155,16 @@ fun PhoneScreen() {
     }
 }
 
-/** Operator i zasięg telefonu połączonego z radiem. */
+/** Nazwa telefonu, operator i zasięg telefonu połączonego z radiem. */
 @Composable
 private fun PhoneLine() {
     val st by PhoneStatusRepository.status.collectAsState()
-    val op = st.operator ?: return
+    val info by PhoneBook.info.collectAsState()
+    val dev = info.device
+    val op = st.operator
+    if (dev == null && op == null) return
     Text(
-        op + (st.signal?.let { " · " + "▂▄▆█".take((it.coerceIn(0, 5) * 4 + 4) / 5).ifEmpty { "–" } } ?: "") + (st.battery?.let { " · 🔋${it * 20}%" } ?: ""),
+        listOfNotNull(dev, op).joinToString(" · ") + (st.signal?.let { " · " + "▂▄▆█".take((it.coerceIn(0, 5) * 4 + 4) / 5).ifEmpty { "–" } } ?: "") + (st.battery?.let { " · 🔋${it * 20}%" } ?: ""),
         fontSize = 15.sp, color = CarColors.Muted, maxLines = 1,
     )
 }
@@ -190,6 +196,8 @@ private fun EmptyHelp(what: String, info: PhoneBook.Info) {
             if (more) {
                 Text(
                     buildString {
+                        append("Źródło kontaktów: ${info.source.ifEmpty { "brak" }} · MainUI: ${if (info.mainUi) "połączone" else "brak"}, wpisów ${info.mainUiEntries}\n")
+                        append("Telefon: ${info.device ?: "?"} (${info.addr ?: "adres nieznany"})\n")
                         append("Kontakty w radiu: ${info.contacts}, historia: ${info.calls}\n")
                         append("Konta: ").append(info.accounts.entries.joinToString { "${it.key} (${it.value})" }.ifEmpty { "brak" }).append('\n')
                         append("Zgody: kontakty ${if (info.canContacts) "tak" else "nie"}, historia ${if (info.canCalls) "tak" else "nie"}\n")

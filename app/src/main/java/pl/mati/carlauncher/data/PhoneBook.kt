@@ -53,6 +53,12 @@ object PhoneBook {
         val providers: List<String> = emptyList(),
         val error: String? = null,
         val loadedAt: Long = 0,
+        /** Źródło kontaktów: "MainUI" (książka radia TopWay) albo "Android". */
+        val source: String = "",
+        val mainUi: Boolean = false,
+        val mainUiEntries: Int = -1,
+        val device: String? = null,
+        val addr: String? = null,
     )
 
     val contacts = MutableStateFlow<List<Contact>>(emptyList())
@@ -73,9 +79,15 @@ object PhoneBook {
     /** Wywołuj przy wejściu na ekran Telefon i po nadaniu uprawnień. */
     fun start(ctx: Context) {
         appCtx = ctx.applicationContext
+        TsBtBridge.start(ctx)
+        TsBtBridge.refreshConnectedAddr(ctx)
         observe()
         reload()
     }
+
+    /** Dzwoni: najpierw przez MainUI (od razu przez Bluetooth), inaczej false – wtedy zwykłe ACTION_CALL. */
+    fun dialViaRadio(number: String): Boolean =
+        TsBtBridge.bound.value && TsBtBridge.connected() != false && TsBtBridge.dial(number)
 
     fun reload(delayMs: Long = 0) {
         val ctx = appCtx ?: return
@@ -114,10 +126,41 @@ object PhoneBook {
         val canL = granted(ctx, Manifest.permission.READ_CALL_LOG)
         var err: String? = null
         val accounts = HashMap<String, Int>()
-        val list = ArrayList<Contact>()
+        val system = ArrayList<Contact>()
         if (canC) try {
-            list += readContacts(ctx, accounts)
+            system += readContacts(ctx, accounts)
         } catch (e: Exception) { err = "Kontakty: ${e.javaClass.simpleName}" }
+        val addr = TsBtBridge.currentAddr()
+        // książka z MainUI (tak jak w aplikacji telefonu radia) – tylko dla połączonego telefonu, jeśli da się go rozpoznać
+        val pb = TsBtBridge.phonebook()
+        val mine = pb?.let { all -> if (addr != null && all.any { it.addr.equals(addr, true) }) all.filter { it.addr.equals(addr, true) } else all }.orEmpty()
+        val list = ArrayList<Contact>()
+        val source: String
+        if (mine.isNotEmpty()) {
+            source = "MainUI"
+            val sysByKey = HashMap<String, Contact>()
+            system.forEach { c -> c.numbers.forEach { n -> sysByKey.putIfAbsent(key(n.number), c) } }
+            val grouped = LinkedHashMap<String, MutableList<TsBtBridge.Entry>>()
+            mine.forEach { e -> grouped.getOrPut(e.name.lowercase(Locale("pl"))) { ArrayList() } += e }
+            var id = 1L
+            grouped.values.forEach { es ->
+                val nums = LinkedHashMap<String, Number>()
+                var photo: String? = null
+                es.forEach { e ->
+                    val k = key(e.num).ifEmpty { e.num }
+                    val sys = sysByKey[key(e.num)]
+                    if (photo == null) photo = sys?.photo
+                    val label = sys?.numbers?.firstOrNull { key(it.number) == key(e.num) }?.label.orEmpty()
+                    if (!nums.containsKey(k)) nums[k] = Number(e.num, label)
+                }
+                list += Contact(-(id++), es.first().name, nums.values.toList(), es.any { it.collect == 1 }, photo, true)
+            }
+            val col = Collator.getInstance(Locale("pl", "PL")).apply { strength = Collator.PRIMARY }
+            list.sortWith { x, y -> col.compare(x.name, y.name) }
+        } else {
+            source = if (system.isNotEmpty()) "Android" else ""
+            list += system
+        }
         val map = HashMap<String, Contact>()
         list.forEach { c -> c.numbers.forEach { n -> val k = key(n.number); if (k.length >= 6) map.putIfAbsent(k, c) } }
         byNumber = map
@@ -125,11 +168,14 @@ object PhoneBook {
 
         val callList = ArrayList<Call>()
         if (canL) try {
-            callList += readCalls(ctx)
+            callList += readCalls(ctx, addr)
         } catch (e: Exception) { err = (err?.let { "$it; " } ?: "") + "Historia: ${e.javaClass.simpleName}" }
         calls.value = callList
 
-        info.value = Info(list.size, callList.sumOf { it.count }, accounts, canC, canL, btProviders(ctx), err, System.currentTimeMillis())
+        info.value = Info(
+            list.size, callList.sumOf { it.count }, accounts, canC, canL, btProviders(ctx), err, System.currentTimeMillis(),
+            source, TsBtBridge.bound.value, pb?.size ?: -1, TsBtBridge.deviceName(), addr,
+        )
         loading.value = false
         if (!observing) observe()
     }
@@ -176,11 +222,18 @@ object PhoneBook {
             .sortedWith { x, y -> col.compare(x.name, y.name) }
     }
 
-    private fun readCalls(ctx: Context): List<Call> {
+    /** Historia z systemowego rejestru – radio zapisuje ją z adresem telefonu w subscription_id (tak czyta ją MainUI). */
+    private fun readCalls(ctx: Context, addr: String?): List<Call> {
         val cur = ctx.contentResolver.query(
-            Calls.CONTENT_URI, arrayOf(Calls.NUMBER, Calls.CACHED_NAME, Calls.TYPE, Calls.DATE, Calls.DURATION),
+            Calls.CONTENT_URI, arrayOf(Calls.NUMBER, Calls.CACHED_NAME, Calls.TYPE, Calls.DATE, Calls.DURATION, Calls.PHONE_ACCOUNT_ID),
             null, null, "${Calls.DATE} DESC",
         ) ?: return emptyList()
+        // tylko połączony telefon (jeśli w rejestrze są wpisy z jego adresem)
+        val onlyAddr = addr?.takeIf { a ->
+            try {
+                ctx.contentResolver.query(Calls.CONTENT_URI, arrayOf(Calls.DATE), "${Calls.PHONE_ACCOUNT_ID}=?", arrayOf(a), null)?.use { it.count > 0 } == true
+            } catch (_: Exception) { false }
+        }
         val out = ArrayList<Call>()
         cur.use { c ->
             val iNum = c.getColumnIndex(Calls.NUMBER)
@@ -188,9 +241,11 @@ object PhoneBook {
             val iType = c.getColumnIndex(Calls.TYPE)
             val iDate = c.getColumnIndex(Calls.DATE)
             val iDur = c.getColumnIndex(Calls.DURATION)
+            val iAcc = c.getColumnIndex(Calls.PHONE_ACCOUNT_ID)
             var n = 0
-            while (c.moveToNext() && n < 400) {
+            while (c.moveToNext() && n < 600) {
                 n++
+                if (onlyAddr != null && iAcc >= 0 && !onlyAddr.equals(c.getString(iAcc), true)) continue
                 val num = c.getString(iNum)?.trim().orEmpty()
                 val type = c.getInt(iType)
                 val date = c.getLong(iDate)
