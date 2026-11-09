@@ -2,7 +2,7 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
-## next
+## 1.101 · 2026-11-09
 Telefon: kontakty i ostatnie połączenia z Bluetooth
 - Zakładka Telefon pokazuje ostatnie połączenia (odebrane, wykonane, nieodebrane na czerwono, z godziną i liczbą powtórzeń) i kontakty z telefonu połączonego po Bluetooth
 - Kontakty: wyszukiwarka, szybkie przewijanie po literach, zdjęcia albo kolorowe inicjały, zakładka Ulubione (gwiazdka z telefonu)
