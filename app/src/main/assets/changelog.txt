@@ -2,7 +2,7 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
-## next
+## 1.102 · 2026-11-09
 Telefon: kontakty prosto z MainUI radia
 - Kontakty w zakładce Telefon są teraz brane z książki, którą MainUI (aplikacja telefonu radia TopWay) pobiera z połączonego telefonu – te same co w oryginalnej aplikacji, z ulubionymi
 - Historia połączeń tylko z aktualnie połączonego telefonu (radio zapisuje ją z adresem telefonu)
