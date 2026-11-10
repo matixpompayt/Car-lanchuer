@@ -2,6 +2,18 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
+## next
+Ekran rozmowy, fotoradary, podpowiedzi celu i opony
+- Własny ekran rozmowy: przy połączeniu imię i zdjęcie z kontaktów, pulsujące „Odbierz” i „Odrzuć”, w trakcie licznik czasu, „Wycisz” i „Rozłącz” – sterowanie idzie przez MainUI, tak jak dzwonienie
+- Po 8 s rozmowy ekran sam zwija się do zielonej pigułki w prawym górnym rogu (z czasem rozmowy); dotknięcie ją rozwija. Małe okno MainUI zostaje na wierzchu – radio zawsze je pokazuje, dlatego ekran CAR OS omija jego miejsce
+- Ostrzeżenia o fotoradarach z OpenStreetMap: baner u góry z odliczaniem metrów, sygnał i komunikat „Fotoradar za 500 metrów”; czerwony i migający, gdy jedziesz za szybko
+- Odcinkowy pomiar prędkości: zapowiedź przed odcinkiem, na odcinku średnia prędkość, ile zostało do końca i jak szybko można jechać, żeby średnia się zmieściła; na końcu podsumowanie
+- Odcinki z całej Polski są budowane co tydzień z OpenStreetMap i pobierają się same
+- W Niemczech ostrzeżenia wyłączają się same – tam są zabronione
+- Podpowiedź celu z Dziennika tras: po zapłonie „Jedziesz do: Praca?” (albo Dom, ulubione miejsce), gdy o tej porze i z tego miejsca zwykle tam jeździsz – jednym dotknięciem trasa
+- Przypomnienie o oponach: gdy przez kilka dni z rzędu średnia temperatura spada poniżej 7 °C albo idzie przymrozek – „Czas na opony zimowe”; wiosną przypomni o letnich. W Serwisie nowa karta „Opony”
+- Nowe przełączniki: Ustawienia → Pojazd i OBD2 (fotoradary, odcinki, dźwięk), Połączenia (ekran rozmowy), Autostart (podpowiedź celu)
+
 ## 1.104 · 2026-11-10
 Animację kropli można wyłączyć
 - Ustawienia → Wygląd → „Animacja kropli w menu” (widoczne przy włączonym Glass): wyłączona – kropla od razu przeskakuje na wybraną ikonę, bez przelewania i powiększania; wygląd Glass zostaje

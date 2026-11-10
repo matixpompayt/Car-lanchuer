@@ -327,7 +327,7 @@ private fun PersonRow(
 }
 
 @Composable
-private fun Avatar(name: String, photo: String?, size: Dp) {
+internal fun Avatar(name: String, photo: String?, size: Dp) {
     val ctx = LocalContext.current
     val img by produceState<ImageBitmap?>(null, photo) {
         value = photo?.let { p ->

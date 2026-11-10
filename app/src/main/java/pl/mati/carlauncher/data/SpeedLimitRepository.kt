@@ -80,7 +80,8 @@ object SpeedLimitRepository {
     private fun tick() {
         if (!Prefs.speedLimits.value) {
             limit.value = null; over.value = false
-            if (!Prefs.mapSigns.value) return
+            // znaki (w tym fotoradary) potrzebne też do ostrzeżeń
+            if (!Prefs.mapSigns.value && !Prefs.cameraAlerts.value) return
         }
         val l = LocationRepository.location.value ?: return
         // najpierw dane offline (plik z GitHuba); online tylko poza ich obszarem

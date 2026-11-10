@@ -80,6 +80,7 @@ fun ServiceScreen() {
                 }
             }
         }
+        TireCard()
         LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             val dues = items.map { ServiceRepository.due(it) }
                 .sortedWith(compareByDescending<ServiceRepository.Due> { it.overdue }.thenByDescending { it.soon }.thenByDescending { it.fraction })

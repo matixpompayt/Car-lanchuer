@@ -63,3 +63,18 @@ jobs:
               --notes "Plik dla CAR OS – aktualizowany automatycznie co tydzień z OpenStreetMap (© współtwórcy OpenStreetMap, ODbL). Radio pobiera go samo."
           fi
           gh release upload speed-data out/speedlimits.bin --clobber
+
+      - name: Odcinkowe pomiary prędkości (cała Polska)
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          curl -fsSL --retry 3 -o osm/poland.osm.pbf "https://download.geofabrik.de/europe/poland-latest.osm.pbf"
+          osmium tags-filter osm/poland.osm.pbf r/enforcement -o osm/poland.enf.pbf --overwrite
+          osmium tags-filter osm/poland.osm.pbf \
+            w/highway=motorway,motorway_link,trunk,trunk_link,primary,primary_link,secondary,secondary_link,tertiary,tertiary_link,unclassified \
+            -o osm/poland.roads.pbf --overwrite
+          rm -f osm/poland.osm.pbf
+          ls -lh osm/poland.*.pbf
+          python3 tools/speedlimits/sections.py out/sections.json --enf osm/poland.enf.pbf --roads osm/poland.roads.pbf
+          gh release upload speed-data out/sections.json --clobber

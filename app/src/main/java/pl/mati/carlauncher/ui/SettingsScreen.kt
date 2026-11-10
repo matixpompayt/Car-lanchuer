@@ -151,7 +151,7 @@ fun SettingsScreen() {
                 "disp" -> displayPage()
                 "sound" -> soundPage()
                 "conn" -> connPage()
-                "car" -> { carPage(); careSection(); speedSection(); alertsSection() }
+                "car" -> { carPage(); careSection(); speedSection(); watchSection(); alertsSection() }
                 "auto" -> autostartPage()
                 "update" -> updatePage()
                 "connect" -> connectPage()
@@ -618,6 +618,14 @@ private fun LazyListScope.connPage() {
         val ctx = LocalContext.current
         SettingRow("Urządzenia Bluetooth", "Parowanie telefonu i adaptera OBD2", onClick = { Launch.start(ctx, Intent(Settings.ACTION_BLUETOOTH_SETTINGS)) }) { Chevron() }
     }
+    item {
+        val v by Prefs.callScreen.collectAsState()
+        SettingRow(
+            "Ekran rozmowy CAR OS",
+            "Przy połączeniu: imię i zdjęcie z kontaktów, odbierz / odrzuć / wycisz. Małe okno MainUI zostaje na wierzchu – tak działa radio",
+            onClick = { Prefs.setCallScreen(!v) },
+        ) { CarSwitch(v) }
+    }
 }
 
 private fun LazyListScope.carPage() {
@@ -788,6 +796,36 @@ private fun LazyListScope.speedSection() {
     }
 }
 
+private fun LazyListScope.watchSection() {
+    item { SectionLabel("Fotoradary i odcinkowe pomiary (OpenStreetMap)") }
+    item {
+        val v by Prefs.cameraAlerts.collectAsState()
+        SettingRow("Ostrzegaj o fotoradarach", "Baner z odliczaniem metrów, gdy fotoradar jest przed autem (do 1 km)", onClick = { Prefs.setCameraAlerts(!v) }) { CarSwitch(v) }
+    }
+    item {
+        val v by Prefs.sectionAlerts.collectAsState()
+        val inf by pl.mati.carlauncher.data.RoadWatch.info.collectAsState()
+        SettingRow(
+            "Odcinkowy pomiar prędkości",
+            "Średnia na odcinku, ile zostało i jak szybko można jechać do końca\n$inf",
+            onClick = { Prefs.setSectionAlerts(!v) },
+        ) { CarSwitch(v) }
+    }
+    item {
+        val v by Prefs.cameraSound.collectAsState()
+        SettingRow("Dźwięk i komunikat głosowy", "Sygnał i np. „Fotoradar za 500 metrów” (działa też przy wyłączonym głosie nawigacji)", onClick = { Prefs.setCameraSound(!v) }) { CarSwitch(v) }
+    }
+    item {
+        val st by pl.mati.carlauncher.data.RoadWatch.state.collectAsState()
+        Text(
+            (st.blocked?.let { "$it.\n" } ?: "") +
+                "W Niemczech ostrzeżenia wyłączają się same (tam to zabronione). Dane: współtwórcy OpenStreetMap – nie wszystkie urządzenia są na mapie, " +
+                "a niektóre mogą być nieaktualne. Zawsze jedź zgodnie ze znakami.",
+            fontSize = 15.sp, color = CarColors.Muted,
+        )
+    }
+}
+
 private fun LazyListScope.alertsSection() {
     item { SectionLabel("Fotoradary i ostrzeżenia (CamSam)") }
     item {
@@ -861,6 +899,14 @@ private fun LazyListScope.autostartPage() {
             if (p.home.isBlank() && p.work.isBlank()) "Najpierw dodaj adresy domu i pracy (System → Ulubione miejsca)"
             else "Propozycja trasy według grafiku: 2 h przed zmianą do pracy, po zmianie do domu",
             onClick = { Prefs.setSuggestHome(!v) },
+        ) { CarSwitch(v) }
+    }
+    item {
+        val v by Prefs.destSuggest.collectAsState()
+        SettingRow(
+            "Podpowiedź celu z Dziennika tras",
+            "Po zapłonie: dokąd zwykle jedziesz z tego miejsca o tej porze (np. rano do pracy, wieczorem do domu) – wystarczą 2 podobne jazdy",
+            onClick = { Prefs.setDestSuggest(!v) },
         ) { CarSwitch(v) }
     }
     workScheduleSection()

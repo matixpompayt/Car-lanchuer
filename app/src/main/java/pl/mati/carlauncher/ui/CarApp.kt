@@ -197,7 +197,10 @@ private fun Shell() {
         }
         FullMapOverlay()
         RoadAlertBanner()
+        RoadWatchBanner()
         HomeSuggestionBanner()
+        DestinationBanner()
+        TireBanner()
         TurboBanner()
         ControlCenter()
         VolumeHud()
@@ -205,6 +208,7 @@ private fun Shell() {
         CanScannerOverlay()
         VoiceOverlay()
         WhatsNewOverlay()
+        CallOverlay()
     }
 }
 

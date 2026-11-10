@@ -103,6 +103,18 @@ object Prefs {
     val speedLimits = MutableStateFlow(true)
     val speedTolerance = MutableStateFlow(5)
     val speedBeep = MutableStateFlow(false)
+    /** Własny ekran rozmowy (imię i zdjęcie z książki, odbierz / odrzuć / wycisz). */
+    val callScreen = MutableStateFlow(true)
+    /** Ostrzeżenia: fotoradary, odcinkowy pomiar prędkości; dźwięk ostrzeżenia. */
+    val cameraAlerts = MutableStateFlow(true)
+    val sectionAlerts = MutableStateFlow(true)
+    val cameraSound = MutableStateFlow(true)
+    /** Podpowiedzi celu z dziennika tras (rano praca, wieczorem dom). */
+    val destSuggest = MutableStateFlow(true)
+    /** Opony: "" – nie wiadomo, "summer", "winter", "all"; kiedy zmienione; przypomnienie odłożone do. */
+    val tireType = MutableStateFlow("")
+    val tireChanged = MutableStateFlow(0L)
+    val tireSnooze = MutableStateFlow(0L)
 
     /** Surowy dostęp dla repozytoriów (trasy, serwis) i kopii zapasowej. */
     val store: SharedPreferences? get() = sp
@@ -160,6 +172,14 @@ object Prefs {
         speedLimits.value = p.getBoolean("speed_limits", true)
         speedTolerance.value = p.getInt("speed_tol", 5)
         speedBeep.value = p.getBoolean("speed_beep", false)
+        callScreen.value = p.getBoolean("call_screen", true)
+        cameraAlerts.value = p.getBoolean("camera_alerts", true)
+        sectionAlerts.value = p.getBoolean("section_alerts", true)
+        cameraSound.value = p.getBoolean("camera_sound", true)
+        destSuggest.value = p.getBoolean("dest_suggest", true)
+        tireType.value = p.getString("tire_type", "") ?: ""
+        tireChanged.value = p.getLong("tire_changed", 0L)
+        tireSnooze.value = p.getLong("tire_snooze", 0L)
         profile.value = Profile(
             name = p.getString("p_name", "") ?: "",
             brand = p.getString("p_brand", "Volkswagen") ?: "Volkswagen",
@@ -239,6 +259,16 @@ object Prefs {
     fun setSpeedLimits(v: Boolean) { speedLimits.value = v; edit { putBoolean("speed_limits", v) } }
     fun setSpeedTolerance(v: Int) { speedTolerance.value = v.coerceIn(0, 20); edit { putInt("speed_tol", speedTolerance.value) } }
     fun setSpeedBeep(v: Boolean) { speedBeep.value = v; edit { putBoolean("speed_beep", v) } }
+    fun setCallScreen(v: Boolean) { callScreen.value = v; edit { putBoolean("call_screen", v) } }
+    fun setCameraAlerts(v: Boolean) { cameraAlerts.value = v; edit { putBoolean("camera_alerts", v) } }
+    fun setSectionAlerts(v: Boolean) { sectionAlerts.value = v; edit { putBoolean("section_alerts", v) } }
+    fun setCameraSound(v: Boolean) { cameraSound.value = v; edit { putBoolean("camera_sound", v) } }
+    fun setDestSuggest(v: Boolean) { destSuggest.value = v; edit { putBoolean("dest_suggest", v) } }
+    fun setTires(type: String, changedAt: Long = System.currentTimeMillis()) {
+        tireType.value = type; tireChanged.value = changedAt; tireSnooze.value = 0L
+        edit { putString("tire_type", type); putLong("tire_changed", changedAt); putLong("tire_snooze", 0L) }
+    }
+    fun setTireSnooze(until: Long) { tireSnooze.value = until; edit { putLong("tire_snooze", until) } }
     fun setMapsInBackground(v: Boolean) { mapsInBackground.value = v; edit { putBoolean("maps_bg", v) } }
 
     fun setProfile(np: Profile) {

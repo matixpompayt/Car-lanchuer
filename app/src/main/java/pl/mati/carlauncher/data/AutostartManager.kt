@@ -66,6 +66,9 @@ object AutostartManager {
             }
         }
 
+        DestinationHints.onIgnition(ctx)
+        TireReminder.onIgnition(ctx)
+
         ServiceRepository.load()
         ServiceRepository.checkReminders()
         if (ServiceRepository.overdue().isNotEmpty()) serviceAlert.value = true

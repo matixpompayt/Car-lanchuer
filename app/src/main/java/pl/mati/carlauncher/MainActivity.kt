@@ -85,12 +85,14 @@ class MainActivity : ComponentActivity() {
         ForecastRepository.start()
         pl.mati.carlauncher.data.OfflineSpeed.init(this)
         pl.mati.carlauncher.data.SpeedLimitRepository.start()
+        pl.mati.carlauncher.data.RoadWatch.start(this)
         pl.mati.carlauncher.data.ThemeManager.start(this)
         pl.mati.carlauncher.data.ConnectRepository.init()
         pl.mati.carlauncher.data.ParkingRepository.start()
         pl.mati.carlauncher.data.PlacesRepository.load()
         pl.mati.carlauncher.data.FuelPrices.start(this)
         pl.mati.carlauncher.data.PhoneBook.start(this)
+        pl.mati.carlauncher.data.CallState.start(this)
         ContextCompat.registerReceiver(
             this, AutostartManager.screenReceiver,
             IntentFilter().apply {
