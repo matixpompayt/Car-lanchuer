@@ -47,6 +47,8 @@ object Prefs {
     val reverseCam = MutableStateFlow(true)
     val mapsInBackground = MutableStateFlow(true)
     val roadAlerts = MutableStateFlow(true)
+    /** Ostrzeżenia CamSam / Yanosika z telefonu (przez CAR OS Connect). */
+    val phoneAlerts = MutableStateFlow(true)
     val homeTiles = MutableStateFlow("speed,coolant,boost")
     /** Układ ekranu głównego: udział mapy w szerokości, mapa po prawej, widoczność mapy i muzyki. */
     val homeSplit = MutableStateFlow(0.6f)
@@ -134,6 +136,7 @@ object Prefs {
         reverseCam.value = p.getBoolean("reverse_cam", true)
         mapsInBackground.value = p.getBoolean("maps_bg", true)
         roadAlerts.value = p.getBoolean("road_alerts", true)
+        phoneAlerts.value = p.getBoolean("phone_alerts", true)
         homeTiles.value = p.getString("home_tiles", "speed,coolant,boost") ?: "speed,coolant,boost"
         homeSplit.value = p.getFloat("home_split", 0.6f)
         uiTheme.value = p.getString("ui_theme", null) ?: if (p.getBoolean("ui2", false)) "minimal" else "classic"
@@ -227,6 +230,7 @@ object Prefs {
     fun setBtApp(v: String) { btApp.value = v; edit { putString("bt_app", v) } }
     fun setHomeWeekdaysOnly(v: Boolean) { homeWeekdaysOnly.value = v; edit { putBoolean("home_weekdays", v) } }
     fun setRoadAlerts(v: Boolean) { roadAlerts.value = v; edit { putBoolean("road_alerts", v) } }
+    fun setPhoneAlerts(v: Boolean) { phoneAlerts.value = v; edit { putBoolean("phone_alerts", v) } }
     fun setCarBody(v: String) { carBody.value = v; edit { putString("car_body", v) }; ConnectRepository.publishStatusSoon() }
     fun setCarPaint(v: Int) { carPaint.value = v; edit { putInt("car_paint", v) }; ConnectRepository.publishStatusSoon() }
     fun setMapEngine(v: String) { mapEngine.value = v; edit { putString("map_engine", v) } }

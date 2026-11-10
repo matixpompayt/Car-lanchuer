@@ -2,6 +2,14 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
+## next
+Ostrzeżenia CamSam z telefonu
+- CamSam / CamSam PLUS albo Yanosik może teraz działać na telefonie – jego ostrzeżenia (fotoradar, kontrola, odcinek…) pokazują się na pomarańczowym banerze w CAR OS, jak z CamSam w radiu
+- Przesyła je CAR OS Connect (w telefonie: Ustawienia → Ostrzeżenia drogowe); radio potrzebuje internetu
+- Na banerze duże odliczanie metrów do fotoradaru – radio odlicza samo z prędkości auta, między wiadomościami z telefonu
+- Ustawienia → Pojazd i OBD2 → „CamSam z telefonu”: przełącznik i kiedy ostatnio coś przyszło
+- Gdy telefon przestanie wysyłać (np. brak internetu), baner znika sam po 45 s
+
 ## 1.105 · 2026-11-10
 Ekran rozmowy, fotoradary, podpowiedzi celu i opony
 - Własny ekran rozmowy: przy połączeniu imię i zdjęcie z kontaktów, pulsujące „Odbierz” i „Odrzuć”, w trakcie licznik czasu, „Wycisz” i „Rozłącz” – sterowanie idzie przez MainUI, tak jak dzwonienie

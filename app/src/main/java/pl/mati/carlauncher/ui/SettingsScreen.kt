@@ -827,10 +827,25 @@ private fun LazyListScope.watchSection() {
 }
 
 private fun LazyListScope.alertsSection() {
-    item { SectionLabel("Fotoradary i ostrzeżenia (CamSam)") }
+    item { SectionLabel("Fotoradary i ostrzeżenia (CamSam w radiu lub w telefonie)") }
     item {
         val v by Prefs.roadAlerts.collectAsState()
         SettingRow("Pokazuj ostrzeżenia", "Fotoradary i kontrole z CamSam / CamSam PLUS na każdym ekranie CAR OS", onClick = { Prefs.setRoadAlerts(!v) }) { CarSwitch(v) }
+    }
+    item {
+        val v by Prefs.phoneAlerts.collectAsState()
+        val paired by pl.mati.carlauncher.data.ConnectRepository.paired.collectAsState()
+        val last by AlertRepository.lastPhone.collectAsState()
+        SettingRow(
+            "CamSam z telefonu",
+            "Ostrzeżenia CamSam / Yanosika z telefonu przez CAR OS Connect (w telefonie: Ustawienia → Ostrzeżenia drogowe). Radio potrzebuje internetu.\n" +
+                when {
+                    !paired -> "Telefon nie jest połączony – Ustawienia → Połączenia → CAR OS Connect"
+                    last == 0L -> "Z telefonu jeszcze nic nie przyszło"
+                    else -> "Ostatnie ostrzeżenie z telefonu: " + formatTime(last)
+                },
+            onClick = { Prefs.setPhoneAlerts(!v) },
+        ) { CarSwitch(v) }
     }
     item {
         val ctx = LocalContext.current

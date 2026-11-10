@@ -8,6 +8,7 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.TextView
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
 
 /**
  * Ostrzeżenia drogowe z CamSam / CamSam PLUS (com.camsam, com.camsam.plus) i Yanosika.
@@ -17,7 +18,14 @@ import kotlinx.coroutines.flow.MutableStateFlow
  */
 object AlertRepository {
 
-    data class Alert(val pkg: String, val app: String, val title: String, val text: String, val time: Long, val source: String)
+    data class Alert(
+        val pkg: String, val app: String, val title: String, val text: String, val time: Long, val source: String,
+        /** Odległość z tekstu ostrzeżenia (m) i kiedy ją odczytano (elapsedRealtime) – radio odlicza dalej samo. */
+        val distM: Int? = null,
+        val distAt: Long = android.os.SystemClock.elapsedRealtime(),
+    ) {
+        val fromPhone get() = source == "p"
+    }
     data class Raw(val app: String, val source: String, val title: String, val text: String, val ongoing: Boolean, val time: Long)
 
     val current = MutableStateFlow<Alert?>(null)
@@ -134,15 +142,61 @@ object AlertRepository {
         val all = "$title $text"
         val isAlert = ALERT.containsMatchIn(all) && !IDLE.containsMatchIn(all)
         if (isAlert) {
-            current.value = Alert(pkg, app, title.ifBlank { app }, text, System.currentTimeMillis(), source)
+            current.value = Alert(pkg, app, title.ifBlank { app }, text, System.currentTimeMillis(), source, distanceIn("$title $text"))
         } else if (current.value?.pkg == pkg && current.value?.source == source) {
             current.value = null // to samo źródło wróciło do „spokojnie”
         }
     }
 
+    // ---------- 3) CamSam na telefonie (CAR OS Connect) ----------
+
+    /** Kiedy ostatnio przyszło ostrzeżenie z telefonu. */
+    val lastPhone = MutableStateFlow(0L)
+    private var phoneWatch: kotlinx.coroutines.Job? = null
+    private val watchScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Default)
+
+    // „350 m”, „1,2 km” – ale nie „50 km/h”
+    private val DIST = Regex("(\\d+(?:[.,]\\d+)?)\\s*(km|m)(?!\\s*/\\s*h)\\b", RegexOption.IGNORE_CASE)
+
+    /** Odległość z tekstu w metrach (pierwsza sensowna). */
+    fun distanceIn(s: String): Int? {
+        for (m in DIST.findAll(s)) {
+            val v = m.groupValues[1].replace(',', '.').toDoubleOrNull() ?: continue
+            val meters = (if (m.groupValues[2].equals("km", true)) v * 1000 else v).toInt()
+            if (meters in 1..20_000) return meters
+        }
+        return null
+    }
+
+    fun fromPhone(o: org.json.JSONObject) {
+        val t = o.optLong("t")
+        // stare wiadomości (przekaźnik oddaje zaległe po ponownym połączeniu) – pomijamy
+        if (t > 0 && kotlin.math.abs(System.currentTimeMillis() - t) > 90_000) return
+        if (!Prefs.roadAlerts.value || !Prefs.phoneAlerts.value) return
+        val app = o.optString("app").ifBlank { "CamSam" }
+        val title = o.optString("title").ifBlank { app }
+        val text = o.optString("text")
+        lastPhone.value = System.currentTimeMillis()
+        keep("$app (telefon)", "telefon", title, text, false)
+        current.value = Alert("phone", "$app · telefon", title, text, System.currentTimeMillis(), "p", distanceIn("$title $text"))
+        // telefon podtrzymuje ostrzeżenie co ~25 s – bez wiadomości przez 45 s znika samo
+        phoneWatch?.cancel()
+        phoneWatch = watchScope.launch {
+            kotlinx.coroutines.delay(45_000)
+            if (current.value?.fromPhone == true) current.value = null
+        }
+    }
+
+    fun phoneEnd(o: org.json.JSONObject) {
+        val t = o.optLong("t")
+        if (t > 0 && kotlin.math.abs(System.currentTimeMillis() - t) > 90_000) return
+        phoneWatch?.cancel()
+        if (current.value?.fromPhone == true) current.value = null
+    }
+
     /** Próbne ostrzeżenie – sprawdzenie, jak wygląda baner. */
     fun test() {
-        current.value = Alert("com.camsam.plus", "CamSam PLUS", "Fotoradar", "350 m · ograniczenie 50", System.currentTimeMillis(), "t")
+        current.value = Alert("com.camsam.plus", "CamSam PLUS", "Fotoradar", "350 m · ograniczenie 50", System.currentTimeMillis(), "t", 350)
     }
 
     fun dismiss() {

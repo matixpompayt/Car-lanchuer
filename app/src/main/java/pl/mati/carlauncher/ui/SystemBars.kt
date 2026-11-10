@@ -399,12 +399,13 @@ fun RoadAlertBanner() {
                     Modifier
                         .clip(RoundedCornerShape(22.dp))
                         .background(Color(0xFFFF8A1F))
-                        .clickable { Launch.pkg(ctx, a.pkg) }
+                        .clickable { if (a.fromPhone) AlertRepository.dismiss() else Launch.pkg(ctx, a.pkg) }
                         .padding(start = 18.dp, end = 8.dp, top = 10.dp, bottom = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
                     Icon(Icons.Rounded.Warning, null, tint = Color(0xFF1A1205), modifier = Modifier.size(34.dp))
+                    a.distM?.let { AlertCountdown(it, a.distAt) }
                     Column(Modifier.padding(end = 6.dp)) {
                         Text(a.title, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1A1205), maxLines = 1, overflow = TextOverflow.Ellipsis)
                         if (a.text.isNotBlank()) Text(a.text, fontSize = 17.sp, color = Color(0xFF3A2608), maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -420,6 +421,29 @@ fun RoadAlertBanner() {
     }
 }
 
+
+/** Odległość z ostrzeżenia odliczana z prędkości auta między kolejnymi wiadomościami. */
+@Composable
+private fun AlertCountdown(dist: Int, at: Long) {
+    val left by androidx.compose.runtime.produceState(dist, dist, at) {
+        var d = dist.toDouble()
+        var last = android.os.SystemClock.elapsedRealtime()
+        // odległość mogła się zmniejszyć, zanim baner się pokazał
+        d -= ((last - at).coerceIn(0, 10_000) / 1000.0) * ((pl.mati.carlauncher.data.LocationRepository.gpsSpeed.value ?: 0) / 3.6)
+        while (true) {
+            value = d.coerceAtLeast(0.0).toInt()
+            delay(500)
+            val now = android.os.SystemClock.elapsedRealtime()
+            val v = (pl.mati.carlauncher.data.LocationRepository.gpsSpeed.value ?: 0) / 3.6
+            d -= v * (now - last) / 1000.0
+            last = now
+        }
+    }
+    Text(
+        if (left >= 1000) String.format(java.util.Locale("pl"), "%.1f km", left / 1000.0) else "${(left / 10) * 10} m",
+        fontSize = 30.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1A1205),
+    )
+}
 
 /** „Jedziesz do domu?” – po zapłonie w ustawionych godzinach. */
 @Composable

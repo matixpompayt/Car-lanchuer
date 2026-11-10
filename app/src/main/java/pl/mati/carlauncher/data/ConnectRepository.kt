@@ -405,6 +405,9 @@ object ConnectRepository {
                 Toaster.show("Dodano do ulubionych z telefonu: ${p.name}")
                 publishStatusSoon()
             }
+            // ostrzeżenie CamSam / Yanosika z telefonu
+            "alert" -> AlertRepository.fromPhone(o)
+            "alert_end" -> AlertRepository.phoneEnd(o)
             // dom / praca ustawione w telefonie
             "place_set" -> {
                 val work = o.optString("slot") == "work"
