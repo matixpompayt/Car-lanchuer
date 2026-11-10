@@ -2,7 +2,7 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
-## next
+## 1.104 · 2026-11-10
 Animację kropli można wyłączyć
 - Ustawienia → Wygląd → „Animacja kropli w menu” (widoczne przy włączonym Glass): wyłączona – kropla od razu przeskakuje na wybraną ikonę, bez przelewania i powiększania; wygląd Glass zostaje
 - Kropla szanuje też ogólny przełącznik „Animacje”
