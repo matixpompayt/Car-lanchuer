@@ -242,6 +242,15 @@ private fun LazyListScope.lookPage() {
             onClick = { Prefs.setGlassUi(!g) },
         ) { CarSwitch(g) }
     }
+    item {
+        val g by Prefs.glassUi.collectAsState()
+        val a by Prefs.glassAnim.collectAsState()
+        if (g) SettingRow(
+            "Animacja kropli w menu",
+            if (a) "Kropla przelewa się między ikonami i powiększa je" else "Wyłączona – kropla od razu przeskakuje, wygląd Glass zostaje",
+            onClick = { Prefs.setGlassAnim(!a) },
+        ) { CarSwitch(a) }
+    }
     item { SectionLabel("Dzień / noc") }
     item {
         val mode by Prefs.themeMode.collectAsState()

@@ -68,6 +68,8 @@ object Prefs {
     val animations = MutableStateFlow(true)
     /** Interfejs Glass w stylu iOS 26 (wczesny dostęp) – nakładka na każdy motyw. */
     val glassUi = MutableStateFlow(false)
+    /** Animacja kropli w menu Glass (wył. = kropla od razu przeskakuje, wygląd zostaje). */
+    val glassAnim = MutableStateFlow(true)
     /** Nie pozwalaj wysuwać systemowego paska / zasłony powiadomień nad CAR OS. */
     val blockStatusBar = MutableStateFlow(true)
     /** Tryb dzień/noc: "lights" (światła auta), "sun", "light", "dark". */
@@ -136,6 +138,7 @@ object Prefs {
         btApp.value = p.getString("bt_app", "") ?: ""
         animations.value = p.getBoolean("animations", true)
         glassUi.value = p.getBoolean("glass_ui", false)
+        glassAnim.value = p.getBoolean("glass_anim", true)
         blockStatusBar.value = p.getBoolean("block_status_bar", true)
         themeMode.value = p.getString("theme_mode", "lights") ?: "lights"
         lightVariant.value = p.getString("light_variant", "perla") ?: "perla"
@@ -232,6 +235,7 @@ object Prefs {
     fun setBlockStatusBar(v: Boolean) { blockStatusBar.value = v; edit { putBoolean("block_status_bar", v) } }
     fun setAnimations(v: Boolean) { animations.value = v; edit { putBoolean("animations", v) } }
     fun setGlassUi(v: Boolean) { glassUi.value = v; edit { putBoolean("glass_ui", v) } }
+    fun setGlassAnim(v: Boolean) { glassAnim.value = v; edit { putBoolean("glass_anim", v) } }
     fun setSpeedLimits(v: Boolean) { speedLimits.value = v; edit { putBoolean("speed_limits", v) } }
     fun setSpeedTolerance(v: Int) { speedTolerance.value = v.coerceIn(0, 20); edit { putInt("speed_tol", speedTolerance.value) } }
     fun setSpeedBeep(v: Boolean) { speedBeep.value = v; edit { putBoolean("speed_beep", v) } }

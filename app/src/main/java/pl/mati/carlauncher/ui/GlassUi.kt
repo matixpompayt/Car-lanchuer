@@ -300,6 +300,10 @@ fun Modifier.liquidNavHost(st: LiquidNavState, selected: Int, inset: Dp = 0.dp):
     val origin = remember { mutableStateOf(Offset.Zero) }
     val target = st.items[selected]
     val light = CarColors.isLight
+    val glassAnim by Prefs.glassAnim.collectAsState()
+    val allAnim by Prefs.animations.collectAsState()
+    // animacje wyłączone (tu albo globalnie) – kropla od razu na miejscu, bez przelewania i lupy
+    val anim = glassAnim && allAnim
     LaunchedEffect(selected, target) {
         if (target == null || selected < 0) { vis.animateTo(0f, spring(stiffness = 600f)); return@LaunchedEffect }
         val c = target.center
@@ -318,6 +322,10 @@ fun Modifier.liquidNavHost(st: LiquidNavState, selected: Int, inset: Dp = 0.dp):
             return@LaunchedEffect
         }
         dir = if (ax > front.value) 1 else -1
+        if (!anim) {
+            front.snapTo(ax); rear.snapTo(ax); cross.snapTo(cr); len.snapTo(l); thick.snapTo(t); lift.snapTo(0f)
+            return@LaunchedEffect
+        }
         launch { front.animateTo(ax, spring(dampingRatio = 0.78f, stiffness = 420f)) }
         launch { delay(45); rear.animateTo(ax, spring(dampingRatio = 0.55f, stiffness = 190f)) }
         launch { cross.animateTo(cr, spring(dampingRatio = 0.8f, stiffness = 500f)) }
