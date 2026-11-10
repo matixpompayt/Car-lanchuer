@@ -2,7 +2,7 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
-## next
+## 1.105 · 2026-11-10
 Ekran rozmowy, fotoradary, podpowiedzi celu i opony
 - Własny ekran rozmowy: przy połączeniu imię i zdjęcie z kontaktów, pulsujące „Odbierz” i „Odrzuć”, w trakcie licznik czasu, „Wycisz” i „Rozłącz” – sterowanie idzie przez MainUI, tak jak dzwonienie
 - Po 8 s rozmowy ekran sam zwija się do zielonej pigułki w prawym górnym rogu (z czasem rozmowy); dotknięcie ją rozwija. Małe okno MainUI zostaje na wierzchu – radio zawsze je pokazuje, dlatego ekran CAR OS omija jego miejsce
