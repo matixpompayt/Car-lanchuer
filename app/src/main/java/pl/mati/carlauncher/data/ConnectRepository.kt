@@ -195,11 +195,12 @@ object ConnectRepository {
 
     fun publishPark(s: ParkingRepository.Spot, force: Boolean = false) {
         if (key(false) == null) return
-        val sig = "${s.lat},${s.lon},${s.time},${s.address}"
+        val fin = ParkingRepository.isFinal
+        val sig = "${s.lat},${s.lon},${s.time},${s.address},$fin"
         if (!force && sig == lastParkSig) return
         lastParkSig = sig
         send(
-            JSONObject().put("type", "park").put("lat", s.lat).put("lon", s.lon).put("t", s.time).put("a", s.address ?: "")
+            JSONObject().put("type", "park").put("lat", s.lat).put("lon", s.lon).put("t", s.time).put("a", s.address ?: "").put("fin", fin)
                 .put("body", Prefs.carBody.value).put("paint", Prefs.carPaint.value),
         )
     }

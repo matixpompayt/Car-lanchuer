@@ -2,6 +2,11 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
+## next
+Parkowanie w CAR OS Connect
+- Do telefonu idzie tylko prawdziwe parkowanie (zgaszenie auta, wyłączenie ekranu, ręczny zapis) – postoje w trakcie jazdy zostają tylko w radiu
+- Mniej wiadomości do telefonu przy jeździe po mieście
+
 ## 1.106 · 2026-11-10
 Ostrzeżenia CamSam z telefonu
 - CamSam / CamSam PLUS albo Yanosik może teraz działać na telefonie – jego ostrzeżenia (fotoradar, kontrola, odcinek…) pokazują się na pomarańczowym banerze w CAR OS, jak z CamSam w radiu

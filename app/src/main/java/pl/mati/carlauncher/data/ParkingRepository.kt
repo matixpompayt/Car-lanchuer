@@ -28,6 +28,12 @@ object ParkingRepository {
     }
 
     val spot = MutableStateFlow<Spot?>(null)
+    /**
+     * true – prawdziwe parkowanie (zgaszenie / wyłączenie ekranu / ręczny zapis),
+     * false – tylko postój w trakcie jazdy (≥ 20 s). Telefon pokazuje „zaparkowane” tylko dla prawdziwego.
+     */
+    @Volatile var isFinal = true
+        private set
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var started = false
@@ -58,7 +64,7 @@ object ParkingRepository {
             if (stoppedSince == 0L) stoppedSince = now
             if (!savedThisStop && now - stoppedSince >= 20_000) {
                 savedThisStop = true
-                saveHere(stoppedSince)
+                saveHere(stoppedSince, fin = false)
             }
         }
     }
@@ -66,17 +72,18 @@ object ParkingRepository {
     /** Wywoływane przy wyłączeniu ekranu / zatrzymaniu aplikacji. */
     fun saveNow() {
         if (!drove && spot.value != null) return
-        saveHere(System.currentTimeMillis())
+        saveHere(System.currentTimeMillis(), fin = true)
     }
 
     /** Ręczny zapis z przycisku „Zapisz teraz”. Zwraca false, gdy brak pozycji GPS. */
-    fun saveManual(): Boolean = saveHere(System.currentTimeMillis(), manual = true)
+    fun saveManual(): Boolean = saveHere(System.currentTimeMillis(), manual = true, fin = true)
 
-    private fun saveHere(time: Long, manual: Boolean = false): Boolean {
+    private fun saveHere(time: Long, manual: Boolean = false, fin: Boolean): Boolean {
         val l = LocationRepository.location.value ?: return false
         val prev = spot.value
         val same = prev != null && RouteRepository.dist(prev.lat, prev.lon, l.latitude, l.longitude) < 40
         val s = Spot(l.latitude, l.longitude, if (same && !manual) prev!!.time else time, if (same) prev!!.address else null)
+        isFinal = fin
         spot.value = s
         persist(s)
         if (s.address == null) {
@@ -99,9 +106,10 @@ object ParkingRepository {
     }
 
     private fun persist(s: Spot) {
-        val o = JSONObject().put("lat", s.lat).put("lon", s.lon).put("t", s.time).put("a", s.address ?: "")
+        val o = JSONObject().put("lat", s.lat).put("lon", s.lon).put("t", s.time).put("a", s.address ?: "").put("fin", isFinal)
         Prefs.store?.edit()?.putString("parking", o.toString())?.apply()
-        ConnectRepository.publishPark(s)
+        // postoje w trakcie jazdy nie idą do telefonu (tam „zaparkowane” = rozłączenie z radiem)
+        if (isFinal) ConnectRepository.publishPark(s)
     }
 
     private fun load() {
@@ -109,6 +117,7 @@ object ParkingRepository {
         try {
             val o = JSONObject(raw)
             spot.value = Spot(o.getDouble("lat"), o.getDouble("lon"), o.getLong("t"), o.optString("a").ifBlank { null })
+            isFinal = o.optBoolean("fin", true)
         } catch (_: Exception) {}
     }
 
