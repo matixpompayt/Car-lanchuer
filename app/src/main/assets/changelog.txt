@@ -2,7 +2,7 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
-## next
+## 1.107 · 2026-11-10
 Parkowanie w CAR OS Connect
 - Do telefonu idzie tylko prawdziwe parkowanie (zgaszenie auta, wyłączenie ekranu, ręczny zapis) – postoje w trakcie jazdy zostają tylko w radiu
 - Mniej wiadomości do telefonu przy jeździe po mieście
