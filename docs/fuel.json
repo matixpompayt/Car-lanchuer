@@ -320,9 +320,14 @@
    "date": "2026-11-10",
    "price": 3.85,
    "src": "www.autocentrum.pl"
+  },
+  {
+   "date": "2026-11-11",
+   "price": 3.88,
+   "src": "www.autocentrum.pl"
   }
  ],
  "source": "Ceny maksymalne: obwieszczenia Ministra Energii (Monitor Polski). LPG: średnia detaliczna z serwisów cenowych.",
- "updated": "2026-11-10T14:48:02+00:00",
+ "updated": "2026-11-11T21:23:57+00:00",
  "v": 2
 }
