@@ -2,7 +2,7 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
-## next
+## 1.109 · 2026-11-12
 Korki na mapie i czas przyjazdu z korkami
 - Korki na mapie: odcinki wolniejsze niż zwykle na żółto, pomarańczowo i czerwono (TomTom, odświeżane co 5 min)
 - Czas przyjazdu z korkami: trasa jest sprawdzana w TomTom co 3 min – przyjazd i pozostały czas uwzględniają korki, obok „korki +7 min”
