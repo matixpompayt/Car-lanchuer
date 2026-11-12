@@ -142,6 +142,16 @@ private class VectorHolder(ctx: Context) {
                 PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
             ),
         )
+        // korki na trasie (z TomTom) – nad linią trasy, kolor wg wielkości opóźnienia
+        st.addSource(GeoJsonSource(SRC_JAMS))
+        add(
+            LineLayer(L_JAMS, SRC_JAMS).withProperties(
+                PropertyFactory.lineColor(org.maplibre.android.style.expressions.Expression.toColor(org.maplibre.android.style.expressions.Expression.get("c"))),
+                PropertyFactory.lineWidth(8.5f),
+                PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
+                PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
+            ),
+        )
         add(
             CircleLayer(L_DEST, SRC_DEST).withProperties(
                 PropertyFactory.circleRadius(9f),
@@ -537,6 +547,42 @@ private class VectorHolder(ctx: Context) {
         }))
     }
 
+    /** Warstwa natężenia ruchu TomTom (null – wyłącz). Pod trasą, nad drogami. */
+    fun setTraffic(url: String?) {
+        val st = style ?: return
+        try {
+            st.getLayer(L_TRAFFIC)?.let { st.removeLayer(L_TRAFFIC) }
+            st.getSource(SRC_TRAFFIC)?.let { st.removeSource(SRC_TRAFFIC) }
+            if (url == null) return
+            val ts = org.maplibre.android.style.sources.TileSet("2.1.0", url)
+            ts.setMinZoom(6f)
+            ts.setMaxZoom(22f)
+            ts.setAttribution("© TomTom")
+            st.addSource(org.maplibre.android.style.sources.RasterSource(SRC_TRAFFIC, ts, 512))
+            val layer = org.maplibre.android.style.layers.RasterLayer(L_TRAFFIC, SRC_TRAFFIC)
+                .withProperties(PropertyFactory.rasterOpacity(0.9f), PropertyFactory.rasterFadeDuration(0f))
+            if (st.getLayer(L_ALTS) != null) st.addLayerBelow(layer, L_ALTS) else st.addLayer(layer)
+        } catch (_: Exception) {
+        }
+    }
+
+    fun setJams(jams: List<pl.mati.carlauncher.data.TrafficRepository.Jam>) {
+        val s = style?.getSourceAs<GeoJsonSource>(SRC_JAMS) ?: return
+        s.setGeoJson(FeatureCollection.fromFeatures(jams.filter { it.points.size >= 2 }.map { j ->
+            Feature.fromGeometry(LineString.fromLngLats(j.points.map { Point.fromLngLat(it.longitude, it.latitude) })).apply {
+                addStringProperty(
+                    "c",
+                    when {
+                        j.kind == "ROAD_CLOSURE" || j.magnitude == 4 -> "#7A0E0E"
+                        j.magnitude == 3 -> "#D9302B"
+                        j.magnitude == 2 -> "#F26B1D"
+                        else -> "#F5A623"
+                    },
+                )
+            }
+        }))
+    }
+
     fun setDest(p: GeoPoint?) {
         val s = style?.getSourceAs<GeoJsonSource>(SRC_DEST) ?: return
         s.setGeoJson(FeatureCollection.fromFeatures(listOfNotNull(p?.let { Feature.fromGeometry(Point.fromLngLat(it.longitude, it.latitude)) })))
@@ -550,6 +596,10 @@ private class VectorHolder(ctx: Context) {
         const val L_CASING = "caros-route-casing"
         const val L_ROUTE = "caros-route-line"
         const val L_DEST = "caros-dest-dot"
+        const val SRC_TRAFFIC = "caros-traffic"
+        const val L_TRAFFIC = "caros-traffic-flow"
+        const val SRC_JAMS = "caros-jams"
+        const val L_JAMS = "caros-jams-line"
         const val SRC_ME = "caros-me"
         const val SRC_SIGNS = "caros-signs"
         const val L_SIGNS = "caros-signs-layer"
@@ -671,6 +721,22 @@ fun VectorMap(modifier: Modifier, full: Boolean = false) {
         h.setLine(VectorHolder.SRC_ROUTE, listOfNotNull(p.chosen?.points))
         h.setDest(p.dest.point)
         h.showBounds(p.alternatives.flatMap { it.points })
+    }
+
+    // korki: warstwa natężenia ruchu (odświeżana co 5 min) i korki na trasie
+    val tKey by Prefs.tomtomKey.collectAsState()
+    val tMap by Prefs.trafficMap.collectAsState()
+    val tTick by pl.mati.carlauncher.data.TrafficRepository.tick.collectAsState()
+    LaunchedEffect(tKey, tMap, tTick, ready) {
+        if (ready) h.setTraffic(if (tMap) pl.mati.carlauncher.data.TrafficRepository.flowTilesUrl() else null)
+    }
+    val tInfo by pl.mati.carlauncher.data.TrafficRepository.info.collectAsState()
+    val tPlan by pl.mati.carlauncher.data.TrafficRepository.plan.collectAsState()
+    LaunchedEffect(tInfo, tPlan, route?.id, planKey, ready) {
+        if (!ready) return@LaunchedEffect
+        val p = plan
+        val jams = if (p != null) p.chosen?.let { tPlan[it.id]?.jams } else tInfo?.takeIf { it.routeId == route?.id }?.jams
+        h.setJams(jams ?: emptyList())
     }
 
     DisposableEffect(lifecycle) {

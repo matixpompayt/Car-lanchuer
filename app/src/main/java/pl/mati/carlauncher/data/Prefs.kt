@@ -49,6 +49,11 @@ object Prefs {
     val roadAlerts = MutableStateFlow(true)
     /** Ostrzeżenia CamSam / Yanosika z telefonu (przez CAR OS Connect). */
     val phoneAlerts = MutableStateFlow(true)
+    /** Korki (TomTom): klucz, warstwa na mapie, czas z korkami, komunikat głosowy o korku. */
+    val tomtomKey = MutableStateFlow("")
+    val trafficMap = MutableStateFlow(true)
+    val trafficEta = MutableStateFlow(true)
+    val trafficVoice = MutableStateFlow(true)
     val homeTiles = MutableStateFlow("speed,coolant,boost")
     /** Układ ekranu głównego: udział mapy w szerokości, mapa po prawej, widoczność mapy i muzyki. */
     val homeSplit = MutableStateFlow(0.6f)
@@ -137,6 +142,10 @@ object Prefs {
         mapsInBackground.value = p.getBoolean("maps_bg", true)
         roadAlerts.value = p.getBoolean("road_alerts", true)
         phoneAlerts.value = p.getBoolean("phone_alerts", true)
+        tomtomKey.value = p.getString("tomtom_key", "") ?: ""
+        trafficMap.value = p.getBoolean("traffic_map", true)
+        trafficEta.value = p.getBoolean("traffic_eta", true)
+        trafficVoice.value = p.getBoolean("traffic_voice", true)
         homeTiles.value = p.getString("home_tiles", "speed,coolant,boost") ?: "speed,coolant,boost"
         homeSplit.value = p.getFloat("home_split", 0.6f)
         uiTheme.value = p.getString("ui_theme", null) ?: if (p.getBoolean("ui2", false)) "minimal" else "classic"
@@ -231,6 +240,10 @@ object Prefs {
     fun setHomeWeekdaysOnly(v: Boolean) { homeWeekdaysOnly.value = v; edit { putBoolean("home_weekdays", v) } }
     fun setRoadAlerts(v: Boolean) { roadAlerts.value = v; edit { putBoolean("road_alerts", v) } }
     fun setPhoneAlerts(v: Boolean) { phoneAlerts.value = v; edit { putBoolean("phone_alerts", v) } }
+    fun setTomtomKey(v: String) { tomtomKey.value = v.trim(); edit { putString("tomtom_key", v.trim()) } }
+    fun setTrafficMap(v: Boolean) { trafficMap.value = v; edit { putBoolean("traffic_map", v) } }
+    fun setTrafficEta(v: Boolean) { trafficEta.value = v; edit { putBoolean("traffic_eta", v) } }
+    fun setTrafficVoice(v: Boolean) { trafficVoice.value = v; edit { putBoolean("traffic_voice", v) } }
     fun setCarBody(v: String) { carBody.value = v; edit { putString("car_body", v) }; ConnectRepository.publishStatusSoon() }
     fun setCarPaint(v: Int) { carPaint.value = v; edit { putInt("car_paint", v) }; ConnectRepository.publishStatusSoon() }
     fun setMapEngine(v: String) { mapEngine.value = v; edit { putString("map_engine", v) } }

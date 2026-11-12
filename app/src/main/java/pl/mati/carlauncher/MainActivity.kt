@@ -86,6 +86,7 @@ class MainActivity : ComponentActivity() {
         pl.mati.carlauncher.data.OfflineSpeed.init(this)
         pl.mati.carlauncher.data.SpeedLimitRepository.start()
         pl.mati.carlauncher.data.RoadWatch.start(this)
+        pl.mati.carlauncher.data.TrafficRepository.start(this)
         pl.mati.carlauncher.data.ThemeManager.start(this)
         pl.mati.carlauncher.data.ConnectRepository.init()
         pl.mati.carlauncher.data.ParkingRepository.start()

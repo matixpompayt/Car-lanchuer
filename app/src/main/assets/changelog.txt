@@ -2,6 +2,16 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
+## next
+Korki na mapie i czas przyjazdu z korkami
+- Korki na mapie: odcinki wolniejsze niż zwykle na żółto, pomarańczowo i czerwono (TomTom, odświeżane co 5 min)
+- Czas przyjazdu z korkami: trasa jest sprawdzana w TomTom co 3 min – przyjazd i pozostały czas uwzględniają korki, obok „korki +7 min”
+- Korki zaznaczone na samej trasie (kolor wg opóźnienia), zamknięte drogi na ciemnoczerwono
+- Przy wyborze wariantu: czas każdej trasy z korkami, „korki +X min” albo „bez korków” – najszybsza liczona z korkami
+- Komunikat głosowy o większym korku przed autem: „Korek za 3 kilometry, około 6 minut opóźnienia” (raz na korek)
+- Wymaga darmowego klucza TomTom (developer.tomtom.com, bez karty). Wklej go w telefonie: CAR OS Connect → Ustawienia → Korki w CAR OS → Wyślij do auta. Można też wpisać w Ustawienia → Wygląd → Korki (TomTom)
+- Darmowy limit: 2 500 zapytań i 50 000 kafelków mapy dziennie – licznik w ustawieniach
+
 ## 1.107 · 2026-11-10
 Parkowanie w CAR OS Connect
 - Do telefonu idzie tylko prawdziwe parkowanie (zgaszenie auta, wyłączenie ekranu, ręczny zapis) – postoje w trakcie jazdy zostają tylko w radiu

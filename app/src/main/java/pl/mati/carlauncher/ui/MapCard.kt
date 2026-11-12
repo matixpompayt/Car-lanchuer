@@ -71,6 +71,22 @@ import androidx.compose.animation.core.animateFloat
 import java.util.Calendar
 import kotlin.math.roundToInt
 
+/** Opóźnienie przez korki jeszcze przed autem (s) dla bieżącej trasy; 0 – brak danych. */
+@Composable
+fun rememberTrafficDelay(routeId: Long): Int {
+    val info by pl.mati.carlauncher.data.TrafficRepository.info.collectAsState()
+    val along by RouteRepository.alongNow.collectAsState()
+    val i = info ?: return 0
+    if (i.routeId != routeId) return 0
+    return pl.mati.carlauncher.data.TrafficRepository.delayAhead(along)
+}
+
+fun trafficColor(delayS: Int): androidx.compose.ui.graphics.Color = when {
+    delayS >= 15 * 60 -> androidx.compose.ui.graphics.Color(0xFFE5483F)
+    delayS >= 5 * 60 -> androidx.compose.ui.graphics.Color(0xFFF26B1D)
+    else -> androidx.compose.ui.graphics.Color(0xFFF5A623)
+}
+
 fun formatDistance(m: Double): String =
     if (m >= 1000) "${(m / 1000).toFloat().pl1()} km" else "${(m / 10).roundToInt() * 10} m"
 
@@ -190,9 +206,17 @@ fun MapCard(
                         } else {
                             val remM = p?.remainingM ?: r.distanceM
                             val remS = p?.remainingS ?: r.durationS
+                            val jam = rememberTrafficDelay(r.id)
                             Text(
-                                "${formatEta(remS)} przyjazd",
-                                fontSize = 20.sp, fontWeight = FontWeight.SemiBold,
+                                androidx.compose.ui.text.buildAnnotatedString {
+                                    append("${formatEta(remS)} przyjazd")
+                                    if (jam >= 60) {
+                                        pushStyle(androidx.compose.ui.text.SpanStyle(color = trafficColor(jam)))
+                                        append("  ·  korki +${(jam / 60.0).roundToInt()} min")
+                                        pop()
+                                    }
+                                },
+                                fontSize = 20.sp, fontWeight = FontWeight.SemiBold, maxLines = 1,
                             )
                             Text(
                                 "${(remS / 60).roundToInt()} min · ${formatDistance(remM)} · ${r.dest.name}",

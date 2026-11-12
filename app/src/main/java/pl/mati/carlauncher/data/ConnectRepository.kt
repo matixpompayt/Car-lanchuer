@@ -406,6 +406,15 @@ object ConnectRepository {
                 Toaster.show("Dodano do ulubionych z telefonu: ${p.name}")
                 publishStatusSoon()
             }
+            // ustawienia z telefonu (np. klucz TomTom do korków)
+            "cfg" -> {
+                val k = o.optString("tomtom", "").trim()
+                if (o.has("tomtom")) {
+                    Prefs.setTomtomKey(k)
+                    if (k.isBlank()) pl.mati.carlauncher.ui.Toaster.show("Klucz TomTom usunięty z telefonu – korki wyłączone")
+                    else TrafficRepository.testKey { pl.mati.carlauncher.ui.Toaster.show("Klucz TomTom z telefonu: $it") }
+                }
+            }
             // ostrzeżenie CamSam / Yanosika z telefonu
             "alert" -> AlertRepository.fromPhone(o)
             "alert_end" -> AlertRepository.phoneEnd(o)

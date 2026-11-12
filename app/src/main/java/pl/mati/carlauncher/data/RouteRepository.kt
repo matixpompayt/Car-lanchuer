@@ -63,6 +63,9 @@ object RouteRepository {
 
     data class Progress(val remainingM: Double, val remainingS: Double, val arrived: Boolean)
 
+    /** Przejechane metry bieżącej trasy (do korków przed autem). */
+    val alongNow = MutableStateFlow(0.0)
+
     val route = MutableStateFlow<Route?>(null)
     val plan = MutableStateFlow<Plan?>(null)
     val progress = MutableStateFlow<Progress?>(null)
@@ -450,7 +453,10 @@ object RouteRepository {
                     lastIdx = near.index
                     val remaining = max(0.0, r.distanceM - near.along)
                     val arrived = dist(loc.latitude, loc.longitude, r.dest.lat, r.dest.lon) < 40
-                    progress.value = Progress(remaining, r.durationS * (remaining / max(1.0, r.distanceM)), arrived)
+                    // czas z korkami (TomTom), a bez danych – proporcjonalnie z OSRM
+                    val remS = TrafficRepository.remainingS(r, remaining) ?: (r.durationS * (remaining / max(1.0, r.distanceM)))
+                    progress.value = Progress(remaining, remS, arrived)
+                    alongNow.value = near.along
                     if (own) Guidance.update(r, near.along, loc)
                     if (arrived) {
                         delay(15_000)

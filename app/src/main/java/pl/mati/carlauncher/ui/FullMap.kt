@@ -242,6 +242,8 @@ private fun ClusterMap() {
                             } else {
                                 Text(formatEta(remS), fontSize = 24.sp, fontWeight = FontWeight.Bold, color = accent)
                                 Text("${(remS / 60).roundToInt()} min · ${formatDistance(remM)}", fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+                                val jam = if (r != null) rememberTrafficDelay(r.id) else 0
+                                if (jam >= 60) Text("korki +${(jam / 60.0).roundToInt()} min", fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = trafficColor(jam))
                             }
                             RoundIconButton(Icons.Rounded.Close, "Zakończ trasę", 38.dp, {
                                 if (!editing) pl.mati.carlauncher.data.RouteRepository.cancel(ctx)

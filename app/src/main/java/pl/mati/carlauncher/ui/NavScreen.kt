@@ -234,7 +234,10 @@ private fun ColumnScope.PlannerPanel(p: RouteRepository.Plan, onAddStop: () -> U
             }
             p.error != null -> Text(p.error, fontSize = 17.sp, color = CarColors.Orange)
             else -> {
-                val fastest = p.alternatives.minOf { it.durationS }
+                val tPlan by pl.mati.carlauncher.data.TrafficRepository.plan.collectAsState()
+                // czas z korkami (TomTom), gdy jest; inaczej z OSRM
+                fun timeOf(r: RouteRepository.Route): Double = tPlan[r.id]?.travelS?.toDouble() ?: r.durationS
+                val fastest = p.alternatives.minOf { timeOf(it) }
                 p.alternatives.forEachIndexed { i, r ->
                     val sel = i == p.selected
                     val shape = RoundedCornerShape(18.dp)
@@ -249,10 +252,20 @@ private fun ColumnScope.PlannerPanel(p: RouteRepository.Plan, onAddStop: () -> U
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Column(Modifier.weight(1f)) {
-                            Text("${(r.durationS / 60).roundToInt()} min", fontSize = 26.sp, fontWeight = FontWeight.Bold, color = if (sel) accent else CarColors.Text)
-                            val diff = ((r.durationS - fastest) / 60).roundToInt()
+                            val t = timeOf(r)
+                            val ti = tPlan[r.id]
+                            Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                Text("${(t / 60).roundToInt()} min", fontSize = 26.sp, fontWeight = FontWeight.Bold, color = if (sel) accent else CarColors.Text)
+                                if (ti != null && ti.delayS >= 60) {
+                                    Text("korki +${(ti.delayS / 60.0).roundToInt()} min", fontSize = 17.sp, fontWeight = FontWeight.SemiBold, color = trafficColor(ti.delayS), modifier = Modifier.padding(bottom = 3.dp))
+                                } else if (ti != null) {
+                                    Text("bez korków", fontSize = 17.sp, fontWeight = FontWeight.SemiBold, color = CarColors.Green, modifier = Modifier.padding(bottom = 3.dp))
+                                }
+                            }
+                            val diff = ((t - fastest) / 60).roundToInt()
                             Text(
-                                formatDistance(r.distanceM) + " · przyjazd " + formatEta(r.durationS) + (if (diff > 0) " · +$diff min" else " · najszybsza"),
+                                formatDistance(r.distanceM) + " · przyjazd " + formatEta(t) + (if (diff > 0) " · +$diff min" else " · najszybsza") +
+                                    (ti?.jams?.count { it.kind == "ROAD_CLOSURE" }?.takeIf { it > 0 }?.let { " · zamknięta droga!" } ?: ""),
                                 fontSize = 15.sp, color = CarColors.Muted,
                             )
                         }

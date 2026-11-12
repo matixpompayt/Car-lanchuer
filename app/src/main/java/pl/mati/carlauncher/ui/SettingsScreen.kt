@@ -328,6 +328,7 @@ private fun LazyListScope.lookPage() {
             }, height = 52.dp)
         }
     }
+    trafficSection()
     item {
         val v by Prefs.mapSigns.collectAsState()
         SettingRow("Znaki na mapie", "Sygnalizacja świetlna, STOP, ustąp pierwszeństwa, przejścia, przejazdy kolejowe, fotoradary (OpenStreetMap)", onClick = { Prefs.setMapSigns(!v) }) { CarSwitch(v) }
@@ -432,6 +433,61 @@ private fun LazyListScope.lookPage() {
                 }
             }
         }
+    }
+}
+
+private fun LazyListScope.trafficSection() {
+    item { SectionLabel("Korki (TomTom)") }
+    item {
+        val key by Prefs.tomtomKey.collectAsState()
+        val err by pl.mati.carlauncher.data.TrafficRepository.error.collectAsState()
+        val used by pl.mati.carlauncher.data.TrafficRepository.usedToday.collectAsState()
+        val paired by pl.mati.carlauncher.data.ConnectRepository.paired.collectAsState()
+        var edit by remember { mutableStateOf(false) }
+        var text by remember { mutableStateOf("") }
+        var result by remember { mutableStateOf<String?>(null) }
+        CarCard(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(horizontal = 22.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("Klucz TomTom", fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+                Text(
+                    if (key.isBlank()) "Korki na mapie i czas z korkami wymagają darmowego klucza: developer.tomtom.com → załóż konto (bez karty) → " +
+                        "„API Keys” → skopiuj klucz. Najwygodniej wkleić go w telefonie: CAR OS Connect → Ustawienia → Korki." +
+                        (if (!paired) " (Telefon nie jest połączony – można też wpisać tutaj.)" else "")
+                    else "Klucz: ${key.take(4)}…${key.takeLast(4)} · dziś zapytań: $used / 2500 (kafelki mapy liczone osobno)",
+                    fontSize = 15.sp, color = CarColors.Muted,
+                )
+                (result ?: err)?.let { Text(it, fontSize = 15.sp, color = if (it.startsWith("Klucz działa")) CarColors.Green else CarColors.Orange) }
+                if (edit) {
+                    CarTextField(text, { text = it.filter { c -> c.isLetterOrDigit() }.take(64) }, "wklej lub wpisz klucz", Modifier.fillMaxWidth(),
+                        imeAction = androidx.compose.ui.text.input.ImeAction.Done,
+                        onDone = { Prefs.setTomtomKey(text); edit = false; result = null; pl.mati.carlauncher.data.TrafficRepository.testKey { result = it } })
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    if (edit) {
+                        PrimaryButton("Zapisz", { Prefs.setTomtomKey(text); edit = false; result = null; pl.mati.carlauncher.data.TrafficRepository.testKey { result = it } })
+                        SecondaryButton("Anuluj", { edit = false }, height = 56.dp)
+                    } else {
+                        SecondaryButton(if (key.isBlank()) "Wpisz klucz" else "Zmień klucz", { text = key; edit = true }, height = 56.dp)
+                        if (key.isNotBlank()) {
+                            SecondaryButton("Sprawdź", { result = "Sprawdzam…"; pl.mati.carlauncher.data.TrafficRepository.testKey { result = it } }, height = 56.dp)
+                            SecondaryButton("Usuń", { Prefs.setTomtomKey(""); result = null }, height = 56.dp)
+                        }
+                    }
+                }
+            }
+        }
+    }
+    item {
+        val v by Prefs.trafficMap.collectAsState()
+        SettingRow("Korki na mapie", "Odcinki wolniejsze niż zwykle: żółty, pomarańczowy, czerwony (odświeżane co 5 min)", onClick = { Prefs.setTrafficMap(!v) }) { CarSwitch(v) }
+    }
+    item {
+        val v by Prefs.trafficEta.collectAsState()
+        SettingRow("Czas przyjazdu z korkami", "Trasa sprawdzana w TomTom co 3 min: czas, opóźnienie i korki zaznaczone na trasie, także przy wyborze wariantu", onClick = { Prefs.setTrafficEta(!v) }) { CarSwitch(v) }
+    }
+    item {
+        val v by Prefs.trafficVoice.collectAsState()
+        SettingRow("Komunikat o korku", "Głosem: „Korek za 3 kilometry, około 6 minut opóźnienia” (tylko większe, raz na korek)", onClick = { Prefs.setTrafficVoice(!v) }) { CarSwitch(v) }
     }
 }
 
