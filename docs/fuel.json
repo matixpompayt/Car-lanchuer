@@ -303,6 +303,14 @@
    "eli": "MP/2026/1121",
    "published": "2026-11-10",
    "from": "2026-11-11"
+  },
+  {
+   "pb95": 6.06,
+   "pb98": 6.68,
+   "on": 7.54,
+   "eli": "gov:maksymalna-cena-detaliczna-paliw-obowiazujaca-13-listopada-2026-r",
+   "published": "2026-11-12",
+   "from": "2026-11-13"
   }
  ],
  "lpgHistory": [
@@ -333,6 +341,6 @@
   }
  ],
  "source": "Ceny maksymalne: obwieszczenia Ministra Energii (Monitor Polski). LPG: średnia detaliczna z serwisów cenowych.",
- "updated": "2026-11-12T15:05:10+00:00",
+ "updated": "2026-11-12T21:51:33+00:00",
  "v": 2
 }
