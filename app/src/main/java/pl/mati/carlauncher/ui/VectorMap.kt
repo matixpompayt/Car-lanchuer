@@ -557,7 +557,6 @@ private class VectorHolder(ctx: Context) {
             val ts = org.maplibre.android.style.sources.TileSet("2.1.0", url)
             ts.setMinZoom(6f)
             ts.setMaxZoom(22f)
-            ts.setAttribution("© TomTom")
             st.addSource(org.maplibre.android.style.sources.RasterSource(SRC_TRAFFIC, ts, 512))
             val layer = org.maplibre.android.style.layers.RasterLayer(L_TRAFFIC, SRC_TRAFFIC)
                 .withProperties(PropertyFactory.rasterOpacity(0.9f), PropertyFactory.rasterFadeDuration(0f))

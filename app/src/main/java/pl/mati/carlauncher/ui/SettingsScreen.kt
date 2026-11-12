@@ -479,7 +479,7 @@ private fun LazyListScope.trafficSection() {
     }
     item {
         val v by Prefs.trafficMap.collectAsState()
-        SettingRow("Korki na mapie", "Odcinki wolniejsze niż zwykle: żółty, pomarańczowy, czerwony (odświeżane co 5 min)", onClick = { Prefs.setTrafficMap(!v) }) { CarSwitch(v) }
+        SettingRow("Korki na mapie", "Odcinki wolniejsze niż zwykle: żółty, pomarańczowy, czerwony (odświeżane co 5 min, dane © TomTom)", onClick = { Prefs.setTrafficMap(!v) }) { CarSwitch(v) }
     }
     item {
         val v by Prefs.trafficEta.collectAsState()
