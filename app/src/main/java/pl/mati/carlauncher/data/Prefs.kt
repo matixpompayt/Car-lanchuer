@@ -54,6 +54,9 @@ object Prefs {
     val trafficMap = MutableStateFlow(true)
     val trafficEta = MutableStateFlow(true)
     val trafficVoice = MutableStateFlow(true)
+    /** Pozycja na żywo do telefonu: co ile sekund (0 – na bieżąco) i adres bazy Firebase (pusty – tylko przekaźnik). */
+    val liveInterval = MutableStateFlow(10)
+    val fbUrl = MutableStateFlow("")
     val homeTiles = MutableStateFlow("speed,coolant,boost")
     /** Układ ekranu głównego: udział mapy w szerokości, mapa po prawej, widoczność mapy i muzyki. */
     val homeSplit = MutableStateFlow(0.6f)
@@ -146,6 +149,8 @@ object Prefs {
         trafficMap.value = p.getBoolean("traffic_map", true)
         trafficEta.value = p.getBoolean("traffic_eta", true)
         trafficVoice.value = p.getBoolean("traffic_voice", true)
+        liveInterval.value = p.getInt("live_iv", 10)
+        fbUrl.value = p.getString("fb_url", "") ?: ""
         homeTiles.value = p.getString("home_tiles", "speed,coolant,boost") ?: "speed,coolant,boost"
         homeSplit.value = p.getFloat("home_split", 0.6f)
         uiTheme.value = p.getString("ui_theme", null) ?: if (p.getBoolean("ui2", false)) "minimal" else "classic"
@@ -244,6 +249,8 @@ object Prefs {
     fun setTrafficMap(v: Boolean) { trafficMap.value = v; edit { putBoolean("traffic_map", v) } }
     fun setTrafficEta(v: Boolean) { trafficEta.value = v; edit { putBoolean("traffic_eta", v) } }
     fun setTrafficVoice(v: Boolean) { trafficVoice.value = v; edit { putBoolean("traffic_voice", v) } }
+    fun setLiveInterval(v: Int) { liveInterval.value = v; edit { putInt("live_iv", v) } }
+    fun setFbUrl(v: String) { fbUrl.value = v; edit { putString("fb_url", v) } }
     fun setCarBody(v: String) { carBody.value = v; edit { putString("car_body", v) }; ConnectRepository.publishStatusSoon() }
     fun setCarPaint(v: Int) { carPaint.value = v; edit { putInt("car_paint", v) }; ConnectRepository.publishStatusSoon() }
     fun setMapEngine(v: String) { mapEngine.value = v; edit { putString("map_engine", v) } }

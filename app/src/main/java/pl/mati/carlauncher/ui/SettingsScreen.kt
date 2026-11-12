@@ -1295,7 +1295,15 @@ private fun LazyListScope.connectPage() {
     }
     item {
         val v by Prefs.shareLive.collectAsState()
-        SettingRow("Auto na żywo w telefonie", "W czasie jazdy pozycja auta co minutę w CAR OS Connect (np. gdy ktoś inny jedzie autem)", onClick = { Prefs.setShareLive(!v) }) { CarSwitch(v) }
+        val fb by Prefs.fbUrl.collectAsState()
+        val iv by Prefs.liveInterval.collectAsState()
+        val fbErr by ConnectRepository.fbError.collectAsState()
+        SettingRow(
+            "Auto na żywo w telefonie",
+            if (fb.isBlank()) "W czasie jazdy pozycja auta co minutę w CAR OS Connect (np. gdy ktoś inny jedzie autem). Szybciej z Firebase – ustawia się w telefonie: Ustawienia → Pozycja auta na żywo"
+            else "W czasie jazdy pozycja auta ${if (iv <= 0) "na bieżąco" else "co $iv s"} przez Firebase (${fb.removePrefix("https://").substringBefore('.')})" + (fbErr?.let { " · $it" } ?: ""),
+            onClick = { Prefs.setShareLive(!v) },
+        ) { CarSwitch(v) }
     }
     item {
         var gen by remember { mutableIntStateOf(0) }

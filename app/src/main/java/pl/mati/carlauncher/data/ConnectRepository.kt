@@ -84,17 +84,70 @@ object ConnectRepository {
     private var liveMoving = false
 
     private fun maybeLive(l: android.location.Location) {
-        if (!Prefs.shareLive.value || key(false) == null) return
+        if (!Prefs.shareLive.value) return
+        val k = key(false) ?: return
         val now = System.currentTimeMillis()
         val moving = l.hasSpeed() && l.speed > 2f
+        if (moving) liveMoving = true
+        // Firebase: co wybrany czas (postój w trakcie jazdy – co 30 s, żeby telefon wiedział, że auto stoi w korku)
+        if (liveMoving) firebaseLive(k, l, moving)
         if (!moving) return
-        if (now - lastLive < 60_000) return
+        // przekaźnik (limit ok. 250 wiadomości dziennie): co minutę, a gdy działa Firebase – co 5 min
+        // (z przekaźnika telefon w tle wie, że „auto ruszyło”)
+        val gap = if (now - fbOkAt < 60_000) 5 * 60_000L else 60_000L
+        if (now - lastLive < gap) return
         lastLive = now
-        liveMoving = true
         send(
             JSONObject().put("type", "live").put("lat", l.latitude).put("lon", l.longitude)
                 .put("spd", (l.speed * 3.6).toInt()).put("brg", l.bearing.toInt()).put("t", now).put("m", true),
         )
+    }
+
+    // ---------- pozycja na żywo przez Firebase (Realtime Database użytkownika) ----------
+    private var fbLast = 0L
+    @Volatile private var fbBusy = false
+    /** Ostatni udany zapis do Firebase (ms) i ostatni błąd – do ustawień. */
+    @Volatile var fbOkAt = 0L
+        private set
+    val fbError = MutableStateFlow<String?>(null)
+
+    private fun firebaseLive(k: ByteArray, l: android.location.Location?, moving: Boolean, force: Boolean = false) {
+        val base = Prefs.fbUrl.value
+        if (base.isBlank()) return
+        val now = System.currentTimeMillis()
+        val iv = Prefs.liveInterval.value
+        val gap = if (!moving && !force) 30_000L else if (iv <= 0) 1000L else iv * 1000L
+        if (!force && now - fbLast < gap - 250) return
+        if (fbBusy && !force) return
+        fbLast = now
+        fbBusy = true
+        val plain = JSONObject().put("type", "live").put("lat", l?.latitude ?: 0.0).put("lon", l?.longitude ?: 0.0)
+            .put("spd", if (l != null && l.hasSpeed()) (l.speed * 3.6).toInt() else 0).put("brg", l?.bearing?.toInt() ?: 0)
+            .put("t", now).put("m", moving || !force)
+        val body = JSONObject().put("d", encrypt(k, plain.toString())).put("ts", JSONObject().put(".sv", "timestamp")).toString()
+        scope.launch(Dispatchers.IO) {
+            try {
+                val c = URL(base + "/caros/" + topicOf(k, "live") + ".json").openConnection() as HttpURLConnection
+                c.connectTimeout = 8_000
+                c.readTimeout = 10_000
+                c.requestMethod = "PUT"
+                c.doOutput = true
+                c.setRequestProperty("Content-Type", "application/json")
+                try {
+                    c.outputStream.use { it.write(body.toByteArray()) }
+                    val code = c.responseCode
+                    if (code in 200..299) { fbOkAt = System.currentTimeMillis(); fbError.value = null }
+                    else fbError.value = if (code == 401 || code == 403) "Baza odrzuca zapis – sprawdź reguły w Firebase" else "Firebase: błąd $code"
+                    try { (if (code in 200..299) c.inputStream else c.errorStream)?.close() } catch (_: Exception) {}
+                } finally {
+                    c.disconnect()
+                }
+            } catch (_: Exception) {
+                fbError.value = "Brak połączenia z Firebase"
+            } finally {
+                fbBusy = false
+            }
+        }
     }
 
     /** Koniec jazdy: telefon przestaje pokazywać „auto w drodze”. */
@@ -102,6 +155,8 @@ object ConnectRepository {
         if (!liveMoving || key(false) == null) return
         liveMoving = false
         val l = LocationRepository.location.value
+        // Firebase od razu: auto stoi (telefon pokaże miejsce parkowania)
+        key(false)?.let { firebaseLive(it, l, moving = false, force = true) }
         send(
             JSONObject().put("type", "live").put("lat", l?.latitude ?: 0.0).put("lon", l?.longitude ?: 0.0)
                 .put("spd", 0).put("t", System.currentTimeMillis()).put("m", false),
@@ -408,6 +463,16 @@ object ConnectRepository {
             }
             // ustawienia z telefonu (np. klucz TomTom do korków)
             "cfg" -> {
+                if (o.has("live_iv")) Prefs.setLiveInterval(o.optInt("live_iv", 10).coerceIn(0, 60))
+                if (o.has("fb")) {
+                    val u = o.optString("fb", "").trim()
+                    if (u.isEmpty() || u.startsWith("https://")) {
+                        if (u != Prefs.fbUrl.value) {
+                            Prefs.setFbUrl(u)
+                            pl.mati.carlauncher.ui.Toaster.show(if (u.isEmpty()) "Firebase wyłączony – pozycja do telefonu co minutę" else "Firebase z telefonu zapisany – pozycja na żywo w czasie jazdy")
+                        }
+                    }
+                }
                 val k = o.optString("tomtom", "").trim()
                 if (o.has("tomtom")) {
                     Prefs.setTomtomKey(k)
