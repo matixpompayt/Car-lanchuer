@@ -2,7 +2,7 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
-## next
+## 1.110 · 2026-11-12
 Auto na żywo w telefonie – szybciej
 - Pozycja auta do CAR OS Connect co wybrany czas: 30 s, 10 s, 5 s albo na bieżąco (wybiera się w telefonie)
 - Przez Twoją darmową bazę Firebase (adres wysyła telefon) – bez limitu przekaźnika; dane zaszyfrowane kluczem z parowania
