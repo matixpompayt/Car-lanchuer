@@ -2,7 +2,7 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
-## next
+## 1.111 · 2026-11-14
 Sprawdzenie drugiego ekranu (licznik przez HDMI)
 - Ustawienia → Wyświetlacz → „Licznik / drugi ekran”: lista ekranów, które widzi Android, z rozdzielczością
 - Jeśli licznik jest osobnym ekranem – przycisk „Test na liczniku” pokazuje na nim napis „CAR OS – drugi ekran” (krok przed osobnym widokiem na licznik)
