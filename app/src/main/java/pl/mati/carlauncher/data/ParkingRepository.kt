@@ -108,8 +108,9 @@ object ParkingRepository {
     private fun persist(s: Spot) {
         val o = JSONObject().put("lat", s.lat).put("lon", s.lon).put("t", s.time).put("a", s.address ?: "").put("fin", isFinal)
         Prefs.store?.edit()?.putString("parking", o.toString())?.apply()
-        // postoje w trakcie jazdy nie idą do telefonu (tam „zaparkowane” = rozłączenie z radiem)
-        if (isFinal) ConnectRepository.publishPark(s)
+        // do telefonu idzie każdy zapis z oznaczeniem: prawdziwe parkowanie albo postój w trakcie jazdy.
+        // Telefon w aucie pomija postoje; gdy sam nie zdąży zapisać miejsca, ostatni postój jest zapasem.
+        ConnectRepository.publishPark(s)
     }
 
     private fun load() {
