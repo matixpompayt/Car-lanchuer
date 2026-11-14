@@ -2,6 +2,12 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
+## next
+Sprawdzenie drugiego ekranu (licznik przez HDMI)
+- Ustawienia → Wyświetlacz → „Licznik / drugi ekran”: lista ekranów, które widzi Android, z rozdzielczością
+- Jeśli licznik jest osobnym ekranem – przycisk „Test na liczniku” pokazuje na nim napis „CAR OS – drugi ekran” (krok przed osobnym widokiem na licznik)
+- Pokazuje też aplikacje w radiu, które mogą obsługiwać box HDMI
+
 ## 1.110 · 2026-11-12
 Auto na żywo w telefonie – szybciej
 - Pozycja auta do CAR OS Connect co wybrany czas: 30 s, 10 s, 5 s albo na bieżąco (wybiera się w telefonie)

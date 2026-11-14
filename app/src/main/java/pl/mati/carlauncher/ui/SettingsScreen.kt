@@ -553,6 +553,8 @@ private fun LazyListScope.displayPage() {
             onClick = { SystemControls.requestWriteSettings(ctx) },
         ) { StatusText(can) }
     }
+    item { SectionLabel("Licznik / drugi ekran") }
+    item { DisplaysCard() }
     item { SectionLabel("Launcher") }
     item {
         val ctx = LocalContext.current
