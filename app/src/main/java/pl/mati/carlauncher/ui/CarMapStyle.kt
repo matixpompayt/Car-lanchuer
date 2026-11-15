@@ -21,6 +21,11 @@ object CarMapStyle {
 
     const val STYLE_URL = "https://tiles.openfreemap.org/styles/liberty"
     const val BUILDINGS_3D = "caros-buildings-3d"
+    /** Płaskie budynki (widok 2D): wypełnienie + obrys, żeby było widać kształt domów. */
+    const val BUILDINGS_2D = "caros-buildings-2d"
+    const val BUILDINGS_2D_LINE = "caros-buildings-2d-line"
+    /** Numery domów (warstwa „housenumber” z OpenMapTiles). */
+    const val HOUSENUM = "caros-housenumber"
 
     private fun has(id: String, vararg keys: String) = keys.any { id.contains(it) }
 
@@ -107,6 +112,71 @@ object CarMapStyle {
             }
         }
         swapBuildings(style, light)
+        recolorOwn(style, light)
+    }
+
+    // kolory naszych warstw 2D i numerów (pętla wyżej ich nie rusza albo nadpisuje kolorem z palety)
+    private fun recolorOwn(style: Style, light: Boolean) {
+        try {
+            (style.getLayer(BUILDINGS_2D) as? FillLayer)?.setProperties(
+                PropertyFactory.fillColor(Color.parseColor(if (light) "#C3C9D1" else "#1D242E")),
+                PropertyFactory.fillOutlineColor(Color.parseColor(if (light) "#C3C9D1" else "#1D242E")),
+            )
+            (style.getLayer(BUILDINGS_2D_LINE) as? LineLayer)?.setProperties(
+                PropertyFactory.lineColor(Color.parseColor(if (light) "#9DA6B2" else "#36414F")),
+            )
+            (style.getLayer(HOUSENUM) as? SymbolLayer)?.setProperties(
+                PropertyFactory.textColor(Color.parseColor(if (light) "#4A5460" else "#9CA6B3")),
+                PropertyFactory.textHaloColor(Color.parseColor(if (light) "#EEF1F4" else "#0A0C0F")),
+            )
+        } catch (_: Exception) {
+        }
+    }
+
+    /** Płaskie kształty budynków – widoczne w 2D (w 3D są bryły). */
+    fun add2dBuildings(style: Style, below: String?, light: Boolean) {
+        if (style.getLayer(BUILDINGS_2D) != null) return
+        val src = style.sources.firstOrNull { it.id == "openmaptiles" }?.id ?: return
+        val fill = FillLayer(BUILDINGS_2D, src).withSourceLayer("building").withProperties(
+            PropertyFactory.fillOpacity(Expression.interpolate(Expression.linear(), Expression.zoom(), Expression.stop(14, 0f), Expression.stop(15, 1f))),
+        )
+        fill.minZoom = 14f
+        val line = LineLayer(BUILDINGS_2D_LINE, src).withSourceLayer("building").withProperties(
+            PropertyFactory.lineWidth(Expression.interpolate(Expression.linear(), Expression.zoom(), Expression.stop(15, 0.6f), Expression.stop(18, 1.6f))),
+            PropertyFactory.lineOpacity(Expression.interpolate(Expression.linear(), Expression.zoom(), Expression.stop(14.5, 0f), Expression.stop(15.5, 1f))),
+        )
+        line.minZoom = 14.5f
+        // pod budynkami 3D (gdyby oba były widoczne), nad drogami
+        val anchor = style.layers.firstOrNull { it.id.startsWith(BUILDINGS_3D) }?.id ?: below
+        if (anchor != null) { style.addLayerBelow(fill, anchor); style.addLayerBelow(line, anchor) } else { style.addLayer(fill); style.addLayer(line) }
+        recolorOwn(style, light)
+    }
+
+    /** Numery domów od dużego przybliżenia (ok. 16,5) – nad budynkami, pod resztą napisów. */
+    fun addHouseNumbers(style: Style, below: String?, light: Boolean) {
+        if (style.getLayer(HOUSENUM) != null) return
+        val src = style.sources.firstOrNull { it.id == "openmaptiles" }?.id ?: return
+        // oryginalna warstwa stylu – ukryj (żeby nie było dubli), weź z niej czcionkę
+        var font: Array<String>? = null
+        style.layers.filterIsInstance<SymbolLayer>().filter { it.sourceLayer == "housenumber" && !it.id.startsWith("caros-") }.forEach {
+            try { if (font == null) font = it.textFont.value } catch (_: Exception) {}
+            it.setProperties(PropertyFactory.visibility(Property.NONE))
+        }
+        val layer = SymbolLayer(HOUSENUM, src).withSourceLayer("housenumber").withProperties(
+            PropertyFactory.textField(Expression.toString(Expression.get("housenumber"))),
+            PropertyFactory.textFont(font ?: arrayOf("Noto Sans Regular")),
+            PropertyFactory.textSize(Expression.interpolate(Expression.linear(), Expression.zoom(), Expression.stop(16.5, 11f), Expression.stop(19, 15f))),
+            PropertyFactory.textHaloWidth(1.3f),
+            PropertyFactory.textPadding(3f),
+            PropertyFactory.textAllowOverlap(false),
+        )
+        layer.minZoom = 16.5f
+        if (below != null) style.addLayerBelow(layer, below) else style.addLayer(layer)
+        recolorOwn(style, light)
+    }
+
+    fun setHouseNumbers(style: Style, on: Boolean) {
+        try { style.getLayer(HOUSENUM)?.setProperties(PropertyFactory.visibility(if (on) Property.VISIBLE else Property.NONE)) } catch (_: Exception) {}
     }
 
     /**
@@ -202,6 +272,10 @@ object CarMapStyle {
     fun set3d(style: Style, on: Boolean) {
         style.layers.filter { it.id.startsWith(BUILDINGS_3D) }.forEach {
             it.setProperties(PropertyFactory.visibility(if (on) Property.VISIBLE else Property.NONE))
+        }
+        // w 2D wyraźne kształty domów zamiast brył
+        listOf(BUILDINGS_2D, BUILDINGS_2D_LINE).forEach { id ->
+            try { style.getLayer(id)?.setProperties(PropertyFactory.visibility(if (on) Property.NONE else Property.VISIBLE)) } catch (_: Exception) {}
         }
     }
 }

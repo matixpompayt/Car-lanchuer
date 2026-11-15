@@ -113,6 +113,9 @@ private class VectorHolder(ctx: Context) {
         st.addImage(IMG_EMPTY, android.graphics.Bitmap.createBitmap(1, 1, android.graphics.Bitmap.Config.ARGB_8888))
         val below = CarMapStyle.firstSymbolId(st)
         CarMapStyle.add3dBuildings(st, below, CarColors.isLight)
+        CarMapStyle.add2dBuildings(st, below, CarColors.isLight)
+        CarMapStyle.addHouseNumbers(st, below, CarColors.isLight)
+        CarMapStyle.setHouseNumbers(st, Prefs.mapHouseNumbers.value)
         initRoads(st)
         st.addSource(GeoJsonSource(SRC_ALTS))
         st.addSource(GeoJsonSource(SRC_ROUTE))
@@ -671,6 +674,12 @@ fun VectorMap(modifier: Modifier, full: Boolean = false) {
     val lightMap = CarColors.isLight
     LaunchedEffect(lightMap, ready) {
         if (ready) h.applyTheme(lightMap)
+    }
+
+    // numery domów (przełącznik w ustawieniach mapy)
+    val houseNums by Prefs.mapHouseNumbers.collectAsState()
+    LaunchedEffect(houseNums, ready) {
+        if (ready) h.style?.let { CarMapStyle.setHouseNumbers(it, houseNums) }
     }
 
     // 2D / 3D i obrót mapy

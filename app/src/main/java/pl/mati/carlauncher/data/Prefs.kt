@@ -92,6 +92,8 @@ object Prefs {
     /** Mapa: "vector" = OpenFreeMap 3D (MapLibre), "osm" = klasyczne kafelki OSM. */
     val mapEngine = MutableStateFlow("vector")
     val map3d = MutableStateFlow(true)
+    /** Numery domów na mapie (od dużego przybliżenia). */
+    val mapHouseNumbers = MutableStateFlow(true)
     val mapHeadingUp = MutableStateFlow(true)
     /** Przyciąganie pozycji auta do drogi na mapie. */
     val mapSnap = MutableStateFlow(true)
@@ -175,6 +177,7 @@ object Prefs {
         briNight.value = p.getInt("bri_night", 35)
         mapEngine.value = p.getString("map_engine", "vector") ?: "vector"
         map3d.value = p.getBoolean("map_3d", true)
+        mapHouseNumbers.value = p.getBoolean("map_housenum", true)
         mapHeadingUp.value = p.getBoolean("map_heading_up", true)
         mapSnap.value = p.getBoolean("map_snap", true)
         mapSigns.value = p.getBoolean("map_signs", true)
@@ -255,6 +258,7 @@ object Prefs {
     fun setCarPaint(v: Int) { carPaint.value = v; edit { putInt("car_paint", v) }; ConnectRepository.publishStatusSoon() }
     fun setMapEngine(v: String) { mapEngine.value = v; edit { putString("map_engine", v) } }
     fun setMap3d(v: Boolean) { map3d.value = v; edit { putBoolean("map_3d", v) } }
+    fun setMapHouseNumbers(v: Boolean) { mapHouseNumbers.value = v; edit { putBoolean("map_housenum", v) } }
     fun setNavEngine(v: String) { navEngine.value = v; edit { putString("nav_engine", v) } }
     fun setClusterStretch(v: Float) {
         val r = (Math.round(v.coerceIn(1f, 2.2f) * 100) / 100f)

@@ -2,6 +2,12 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
+## next
+Numery domów i kształty budynków na mapie
+- Numery domów na mapie po mocnym przybliżeniu (poziom ulic) – przełącznik w Ustawienia → Wygląd → „Numery domów”
+- Widok 2D: wyraźne kształty domów z obrysem zamiast prawie niewidocznych plam (w 3D bez zmian – bryły)
+- Kolory dopasowane do trybu dziennego i nocnego
+
 ## 1.113 · 2026-11-15
 Pogoda na trasie – od nowa
 - Przeliczana co 1 km jazdy: „Deszcz za 12 km (ok. 14:20), przez 8 km”, a w deszczu „Deszcz – jeszcze ok. 5 km”
