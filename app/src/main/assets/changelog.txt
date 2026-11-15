@@ -2,7 +2,7 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
-## next
+## 1.115 · 2026-11-15
 Numery domów w 3D
 - W widoku 3D budynki nie zasłaniają już numerów domów – numery są rysowane nad mapą, zawsze na wierzchu
 - Nie nachodzą na siebie; bliższe auta mają pierwszeństwo, przy większym przybliżeniu są większe
