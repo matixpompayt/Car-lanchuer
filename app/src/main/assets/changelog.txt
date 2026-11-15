@@ -2,7 +2,7 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
-## next
+## 1.113 · 2026-11-15
 Pogoda na trasie – od nowa
 - Przeliczana co 1 km jazdy: „Deszcz za 12 km (ok. 14:20), przez 8 km”, a w deszczu „Deszcz – jeszcze ok. 5 km”
 - Prognoza dla punktów co ok. 3 km na całej pozostałej trasie, z dokładnością do 15 minut, na godzinę, o której tam dojedziesz (z korkami)
