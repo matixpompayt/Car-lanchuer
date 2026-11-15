@@ -2,6 +2,14 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
+## next
+Pogoda na trasie – od nowa
+- Przeliczana co 1 km jazdy: „Deszcz za 12 km (ok. 14:20), przez 8 km”, a w deszczu „Deszcz – jeszcze ok. 5 km”
+- Prognoza dla punktów co ok. 3 km na całej pozostałej trasie, z dokładnością do 15 minut, na godzinę, o której tam dojedziesz (z korkami)
+- Więcej zjawisk: deszcz, ulewa, mżawka, śnieg, marznący deszcz (ślisko), burza, mgła, silny wiatr, mróz na trasie
+- Ekran Pogoda: wszystkie odcinki ze złą pogodą po kolei i temperatura na miejscu
+- Nowe dane co 20 min i po zmianie trasy
+
 ## 1.112 · 2026-11-14
 Parkowanie w CAR OS Connect – poprawka
 - Do telefonu znów idzie też ostatni postój auta (oznaczony jako postój) – zapas, gdy telefon sam nie zdąży zapisać miejsca albo radio wyłączy się, zanim wyśle miejsce po zgaszeniu

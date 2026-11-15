@@ -44,6 +44,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -178,8 +179,8 @@ fun MapCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Icon(if (w.rain) weatherIcon(w.code) else Icons.Rounded.WbSunny, null, tint = if (w.rain) CarColors.RainText else CarColors.Green, modifier = Modifier.size(22.dp))
-                Text(w.text, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                Icon(routeWxIcon(w), null, tint = if (w.rain) CarColors.RainText else if (w.kind == "frost") androidx.compose.ui.graphics.Color(0xFF7FC8FF) else CarColors.Green, modifier = Modifier.size(22.dp))
+                Text(w.text, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 420.dp))
             }
         }
 

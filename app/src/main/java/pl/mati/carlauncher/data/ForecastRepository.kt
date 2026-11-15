@@ -20,8 +20,20 @@ object ForecastRepository {
     data class Day(val time: Long, val max: Double, val min: Double, val precipSum: Double, val code: Int)
     data class Forecast(val temp: Double, val code: Int, val wind: Double, val hours: List<Hour>, val days: List<Day>, val fetched: Long)
 
-    /** Pogoda na trasie: pierwszy odcinek z opadem (km od startu, przybliżona godzina). */
-    data class RouteWeather(val rain: Boolean, val code: Int, val kmAhead: Int?, val atTime: Long?, val text: String)
+    /** Zjawisko na odcinku trasy (km od auta), na godzinę dojazdu. */
+    data class WxEvent(val kind: String, val name: String, val fromKm: Double, val toKm: Double, val atTime: Long, val code: Int, val temp: Double?)
+
+    /**
+     * Pogoda na trasie (przeliczana co 1 km): najważniejsze zjawisko przed autem i lista wszystkich odcinków.
+     * [rain] – jest się czego wystrzegać (opad, mgła, wiatr…), [kmAhead] – ile km przed autem.
+     */
+    data class RouteWeather(
+        val rain: Boolean, val code: Int, val kmAhead: Int?, val atTime: Long?, val text: String,
+        val events: List<WxEvent> = emptyList(),
+        val destTemp: Double? = null,
+        val updatedAt: Long = 0,
+        val kind: String = "",
+    )
 
     val forecast = MutableStateFlow<Forecast?>(null)
     val routeWeather = MutableStateFlow<RouteWeather?>(null)
@@ -55,11 +67,8 @@ object ForecastRepository {
                 delay(5000)
             }
         }
-        scope.launch {
-            RouteRepository.route.collect { r ->
-                if (r == null) routeWeather.value = null else computeRoute(r)
-            }
-        }
+        // pogoda na trasie – osobny moduł, przeliczany co 1 km
+        RouteWeatherRepository.start()
     }
 
     fun refresh() {
@@ -150,51 +159,6 @@ object ForecastRepository {
             // nowa miejscowość → świeża pogoda (najwyżej co 5 min)
             if ((changed || far) && now - lastForecast > 5 * 60_000) refreshNow()
         } catch (_: Exception) {
-        }
-    }
-
-    private fun computeRoute(r: RouteRepository.Route) {
-        scope.launch {
-            try {
-                val fractions = listOf(0.15, 0.3, 0.45, 0.6, 0.75, 0.9, 1.0)
-                val pts = fractions.map { f ->
-                    val target = r.distanceM * f
-                    val idx = r.cumulative.indexOfFirst { it >= target }.let { if (it < 0) r.points.lastIndex else it }
-                    Triple(f, r.points[idx], r.cumulative[idx])
-                }
-                val lats = pts.joinToString(",") { String.format(Locale.US, "%.3f", it.second.latitude) }
-                val lons = pts.joinToString(",") { String.format(Locale.US, "%.3f", it.second.longitude) }
-                val body = get(
-                    "https://api.open-meteo.com/v1/forecast?latitude=$lats&longitude=$lons" +
-                        "&hourly=precipitation,weather_code&timeformat=unixtime&forecast_days=2",
-                )
-                val arr = JSONArray(body)
-                val start = System.currentTimeMillis()
-                for (i in pts.indices) {
-                    val (f, _, distAt) = pts[i]
-                    val eta = start + (r.durationS * f * 1000).toLong()
-                    val h = arr.getJSONObject(i).getJSONObject("hourly")
-                    val t = h.getJSONArray("time")
-                    var k = 0
-                    while (k < t.length() - 1 && t.getLong(k + 1) * 1000 <= eta) k++
-                    val p = h.getJSONArray("precipitation").optDouble(k, 0.0)
-                    val code = h.getJSONArray("weather_code").optInt(k, 0)
-                    if (p >= 0.2 || code in 51..67 || code in 71..86 || code >= 95) {
-                        val km = (distAt / 1000).roundToInt()
-                        val what = when {
-                            code >= 95 -> "Burza"
-                            code in 71..77 || code in 85..86 -> "Śnieg"
-                            code in 51..57 -> "Mżawka"
-                            else -> "Deszcz"
-                        }
-                        routeWeather.value = RouteWeather(true, code, km, eta, if (km <= 1) "$what na starcie" else "$what za ok. $km km")
-                        return@launch
-                    }
-                }
-                routeWeather.value = RouteWeather(false, 0, null, null, "Bez opadów na trasie")
-            } catch (_: Exception) {
-                routeWeather.value = null
-            }
         }
     }
 

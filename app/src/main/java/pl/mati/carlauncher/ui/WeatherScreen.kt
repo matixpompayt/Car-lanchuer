@@ -57,6 +57,15 @@ fun weatherText(code: Int): String = when (code) {
     else -> "—"
 }
 
+/** Ikona zjawiska na trasie (mróz i wiatr mają własne). */
+fun routeWxIcon(w: ForecastRepository.RouteWeather): ImageVector = when {
+    w.kind == "frost" -> Icons.Rounded.AcUnit
+    w.kind == "wind" -> Icons.Rounded.Air
+    w.kind == "fog" -> Icons.Rounded.Cloud
+    w.rain -> weatherIcon(w.code)
+    else -> Icons.Rounded.WbSunny
+}
+
 fun weatherIcon(code: Int): ImageVector = when (code) {
     0, 1 -> Icons.Rounded.WbSunny
     2 -> Icons.Rounded.WbCloudy
@@ -118,10 +127,16 @@ fun WeatherScreen() {
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
-                    Icon(if (r.rain) weatherIcon(r.code) else Icons.Rounded.WbSunny, null, tint = if (r.rain) CarColors.RainText else CarColors.Green, modifier = Modifier.size(32.dp))
-                    Column {
-                        Caption("Na trasie")
-                        Text(r.text + (r.atTime?.let { " (ok. ${formatTime(it)})" } ?: ""), fontSize = 19.sp, fontWeight = FontWeight.SemiBold)
+                    Icon(routeWxIcon(r), null, tint = if (r.rain) CarColors.RainText else CarColors.Green, modifier = Modifier.size(32.dp))
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Caption("Na trasie · przeliczane co 1 km")
+                        Text(r.text, fontSize = 19.sp, fontWeight = FontWeight.SemiBold)
+                        // wszystkie odcinki (bez pierwszego, który jest wyżej), max 4
+                        r.events.filter { it.kind != "frost" || r.kind == "frost" }.drop(1).take(4).forEach { e ->
+                            val span = if (e.fromKm < 0.6) "teraz – ${e.toKm.roundToInt()} km" else "${e.fromKm.roundToInt()}–${e.toKm.roundToInt().coerceAtLeast(e.fromKm.roundToInt() + 1)} km"
+                            Text("${e.name}: $span, ok. ${formatTime(e.atTime)}", fontSize = 16.sp, color = CarColors.Text2)
+                        }
+                        r.destTemp?.let { Text("Na miejscu ok. ${it.roundToInt()}°", fontSize = 16.sp, color = CarColors.Muted) }
                     }
                 }
             }
