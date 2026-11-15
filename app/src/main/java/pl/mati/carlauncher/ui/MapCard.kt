@@ -163,7 +163,15 @@ fun MapCard(
         val bannerUp = nav != null || guide != null
 
         // Ograniczenie prędkości (OSM) + aktualna prędkość
-        if (showSpeed) SpeedLimitBadge(Modifier.align(Alignment.TopStart).padding(top = (if (bannerUp) 128.dp else 16.dp) + topPad, start = 16.dp))
+        // + znaczek „CamSam działa” (CamSam na telefonie)
+        Column(
+            Modifier.align(Alignment.TopStart).padding(top = (if (bannerUp) 128.dp else 16.dp) + topPad, start = 16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            if (showSpeed) SpeedLimitBadge(Modifier)
+            CamSamChip()
+        }
 
         // Pogoda na trasie
         val rw by ForecastRepository.routeWeather.collectAsState()

@@ -23,6 +23,9 @@ object AlertRepository {
         /** Odległość z tekstu ostrzeżenia (m) i kiedy ją odczytano (elapsedRealtime) – radio odlicza dalej samo. */
         val distM: Int? = null,
         val distAt: Long = android.os.SystemClock.elapsedRealtime(),
+        /** Z okienka CamSam na telefonie: jego ikona ostrzeżenia i pasek odległości (R/Y/G/-). */
+        val icon: android.graphics.Bitmap? = null,
+        val bar: String = "",
     ) {
         val fromPhone get() = source == "p"
     }
@@ -177,6 +180,7 @@ object AlertRepository {
         val title = o.optString("title").ifBlank { app }
         val text = o.optString("text")
         lastPhone.value = System.currentTimeMillis()
+        if (dismissedKey == "n:$title") return
         keep("$app (telefon)", "telefon", title, text, false)
         current.value = Alert("phone", "$app · telefon", title, text, System.currentTimeMillis(), "p", distanceIn("$title $text"))
         // telefon podtrzymuje ostrzeżenie co ~25 s – bez wiadomości przez 45 s znika samo
@@ -190,8 +194,72 @@ object AlertRepository {
     fun phoneEnd(o: org.json.JSONObject) {
         val t = o.optLong("t")
         if (t > 0 && kotlin.math.abs(System.currentTimeMillis() - t) > 90_000) return
+        dismissedKey = null
         phoneWatch?.cancel()
         if (current.value?.fromPhone == true) current.value = null
+    }
+
+    // ---------- okienko CamSam z telefonu + „CamSam działa” ----------
+
+    /** CamSam włączony na telefonie: kiedy ostatnio telefon to potwierdził (0 – wyłączony) i która aplikacja. */
+    val phoneCamsamAt = MutableStateFlow(0L)
+    val phoneCamsamApp = MutableStateFlow("CamSam")
+    private var hudIcon: android.graphics.Bitmap? = null
+    private var hudIconId = ""
+
+    /** Znaczek „CamSam działa” gaśnie po 12 min bez wiadomości (telefon podtrzymuje co 5 min). */
+    fun phoneCamsamOn(now: Long = System.currentTimeMillis()): Boolean {
+        val at = phoneCamsamAt.value
+        return at > 0 && now - at < 12 * 60_000L && Prefs.phoneAlerts.value
+    }
+
+    fun camsamState(o: org.json.JSONObject) {
+        val t = o.optLong("t")
+        if (t > 0 && kotlin.math.abs(System.currentTimeMillis() - t) > 10 * 60_000L) return
+        phoneCamsamApp.value = o.optString("app").ifBlank { "CamSam" }
+        phoneCamsamAt.value = if (o.optBoolean("on")) System.currentTimeMillis() else 0L
+        if (!o.optBoolean("on") && current.value?.fromPhone == true) current.value = null
+    }
+
+    fun fromHud(o: org.json.JSONObject) {
+        val t = o.optLong("t")
+        if (t > 0 && kotlin.math.abs(System.currentTimeMillis() - t) > 90_000) return
+        // okienko CamSam = aplikacja działa
+        phoneCamsamAt.value = System.currentTimeMillis()
+        if (!o.optBoolean("alert")) {
+            dismissedKey = null
+            phoneWatch?.cancel()
+            if (current.value?.fromPhone == true) current.value = null
+            return
+        }
+        if (!Prefs.roadAlerts.value || !Prefs.phoneAlerts.value) return
+        val app = o.optString("app").ifBlank { "CamSam" }
+        phoneCamsamApp.value = app
+        val id = o.optString("ih")
+        o.optString("icon").takeIf { it.isNotEmpty() }?.let { b64 ->
+            try {
+                val bytes = android.util.Base64.decode(b64, android.util.Base64.DEFAULT)
+                android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.let { hudIcon = it; hudIconId = id }
+            } catch (_: Exception) {}
+        }
+        val icon = if (id.isNotEmpty() && id == hudIconId) hudIcon else null
+        // ukryte palcem – nie wraca, dopóki to samo ostrzeżenie trwa
+        if (dismissedKey == "hud:$id") { lastPhone.value = System.currentTimeMillis(); return }
+        val txt = o.optString("txt")
+        val street = o.optString("street")
+        val prev = current.value
+        lastPhone.value = System.currentTimeMillis()
+        keep("$app (okienko na telefonie)", "telefon", "Ostrzeżenie", txt, false)
+        current.value = Alert(
+            "phone", "$app · telefon", "Ostrzeżenie $app", txt.ifBlank { street }, 
+            if (prev?.fromPhone == true) prev.time else System.currentTimeMillis(),
+            "p", distanceIn(txt), icon = icon, bar = o.optString("bar"),
+        )
+        phoneWatch?.cancel()
+        phoneWatch = watchScope.launch {
+            kotlinx.coroutines.delay(45_000)
+            if (current.value?.fromPhone == true) current.value = null
+        }
     }
 
     /** Próbne ostrzeżenie – sprawdzenie, jak wygląda baner. */
@@ -199,7 +267,13 @@ object AlertRepository {
         current.value = Alert("com.camsam.plus", "CamSam PLUS", "Fotoradar", "350 m · ograniczenie 50", System.currentTimeMillis(), "t", 350)
     }
 
+    /** Ostrzeżenie z telefonu ukryte palcem (telefon je podtrzymuje – bez tego wracałoby co 20 s). */
+    @Volatile
+    private var dismissedKey: String? = null
+
     fun dismiss() {
+        val c = current.value
+        if (c?.fromPhone == true) dismissedKey = if (c.bar.isNotEmpty() || c.icon != null) "hud:$hudIconId" else "n:${c.title}"
         current.value = null
     }
 

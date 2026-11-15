@@ -207,7 +207,10 @@ private fun ClusterMap() {
                             .border(9.dp, Color(0xFFE0262B), androidx.compose.foundation.shape.CircleShape),
                         contentAlignment = Alignment.Center,
                     ) { Text("50", color = Color(0xFF111111), fontWeight = FontWeight.Bold, fontSize = 30.sp) }
-                    else SpeedLimitBadge(Modifier)
+                    else Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        SpeedLimitBadge(Modifier)
+                        CamSamChip()
+                    }
                 }
 
                 Placed("buttons") {

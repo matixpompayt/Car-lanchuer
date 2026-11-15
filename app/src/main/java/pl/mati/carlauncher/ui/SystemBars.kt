@@ -80,6 +80,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import pl.mati.carlauncher.data.AlertRepository
+import androidx.compose.material.icons.rounded.PhoneAndroid
+import androidx.compose.ui.graphics.asImageBitmap
 import pl.mati.carlauncher.data.AutostartManager
 import pl.mati.carlauncher.data.RouteRepository
 import pl.mati.carlauncher.data.Prefs as P2
@@ -388,6 +390,8 @@ fun RoadAlertBanner() {
     val ctx = LocalContext.current
     LaunchedEffect(alert?.time) {
         val a = alert ?: return@LaunchedEffect
+        // z telefonu: znika na sygnał końca albo po 45 s ciszy (telefon podtrzymuje trwające ostrzeżenie)
+        if (a.fromPhone) return@LaunchedEffect
         delay(60_000)
         if (AlertRepository.current.value?.time == a.time) AlertRepository.dismiss()
     }
@@ -404,11 +408,22 @@ fun RoadAlertBanner() {
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
-                    Icon(Icons.Rounded.Warning, null, tint = Color(0xFF1A1205), modifier = Modifier.size(34.dp))
+                    val ic = a.icon
+                    if (ic != null) {
+                        // ta sama ikona co w okienku CamSam na telefonie
+                        val img = androidx.compose.runtime.remember(ic) { ic.asImageBitmap() }
+                        androidx.compose.foundation.Image(
+                            img, null,
+                            Modifier.size(54.dp).clip(RoundedCornerShape(12.dp)).background(Color(0xFF1A1205)).padding(3.dp),
+                        )
+                    } else {
+                        Icon(Icons.Rounded.Warning, null, tint = Color(0xFF1A1205), modifier = Modifier.size(34.dp))
+                    }
                     a.distM?.let { AlertCountdown(it, a.distAt) }
-                    Column(Modifier.padding(end = 6.dp)) {
+                    Column(Modifier.padding(end = 6.dp).widthIn(max = 520.dp)) {
                         Text(a.title, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1A1205), maxLines = 1, overflow = TextOverflow.Ellipsis)
                         if (a.text.isNotBlank()) Text(a.text, fontSize = 17.sp, color = Color(0xFF3A2608), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        if (a.bar.isNotEmpty()) HudBar(a.bar, Modifier.padding(top = 6.dp))
                     }
                     Text(a.app, fontSize = 14.sp, color = Color(0xFF3A2608))
                     Box(
@@ -421,6 +436,54 @@ fun RoadAlertBanner() {
     }
 }
 
+
+/** Pasek odległości z okienka CamSam (te same kolory segmentów co na telefonie). */
+@Composable
+private fun HudBar(bar: String, modifier: Modifier = Modifier) {
+    Row(modifier, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        bar.forEach { c ->
+            Box(
+                Modifier.size(width = 34.dp, height = 8.dp).clip(RoundedCornerShape(3.dp)).background(
+                    when (c) {
+                        'R' -> Color(0xFFD50000)
+                        'Y' -> Color(0xFFFFEA00)
+                        'G' -> Color(0xFF00A13A)
+                        else -> Color(0x553A2608)
+                    },
+                ),
+            )
+        }
+    }
+}
+
+/** „CamSam działa” – telefon z włączonym CamSam przesyła ostrzeżenia do radia. */
+@Composable
+fun CamSamChip(modifier: Modifier = Modifier) {
+    val at by AlertRepository.phoneCamsamAt.collectAsState()
+    val app by AlertRepository.phoneCamsamApp.collectAsState()
+    val on by Prefs.phoneAlerts.collectAsState()
+    var now by remember { mutableStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(at) {
+        while (true) {
+            now = System.currentTimeMillis()
+            delay(30_000)
+        }
+    }
+    if (!on || !AlertRepository.phoneCamsamOn(now)) return
+    Row(
+        modifier
+            .clip(RoundedCornerShape(14.dp))
+            .carSurface(RoundedCornerShape(14.dp), CarColors.Overlay, heavy = true)
+            .clickable { Toaster.show("$app działa na telefonie – ostrzeżenia pokażą się tutaj") }
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Box(Modifier.size(9.dp).clip(CircleShape).background(Color(0xFF2EC27E)))
+        Icon(Icons.Rounded.PhoneAndroid, null, tint = CarColors.Text2, modifier = Modifier.size(16.dp))
+        Text(app, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = CarColors.Text)
+    }
+}
 
 /** Odległość z ostrzeżenia odliczana z prędkości auta między kolejnymi wiadomościami. */
 @Composable

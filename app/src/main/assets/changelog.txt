@@ -2,6 +2,13 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
+## next
+CamSam z telefonu – znaczek i okienko
+- Na mapie (obok ograniczenia prędkości) znaczek „CamSam”, gdy CamSam działa na telefonie
+- Ostrzeżenie z okienka CamSam na telefonie: ta sama ikona znaku i pasek odległości co w CamSam
+- Ostrzeżenie z telefonu trwa, dopóki trwa w CamSam (np. cały odcinek); ukryte palcem nie wraca co chwilę
+- Wymaga CAR OS Connect 1.40 z włączonym „Odczyt okienka CamSam”
+
 ## 1.115 · 2026-11-15
 Numery domów w 3D
 - W widoku 3D budynki nie zasłaniają już numerów domów – numery są rysowane nad mapą, zawsze na wierzchu

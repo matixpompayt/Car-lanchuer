@@ -483,6 +483,8 @@ object ConnectRepository {
             // ostrzeżenie CamSam / Yanosika z telefonu
             "alert" -> AlertRepository.fromPhone(o)
             "alert_end" -> AlertRepository.phoneEnd(o)
+            "camsam" -> AlertRepository.camsamState(o)
+            "camsam_hud" -> AlertRepository.fromHud(o)
             // dom / praca ustawione w telefonie
             "place_set" -> {
                 val work = o.optString("slot") == "work"

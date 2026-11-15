@@ -898,13 +898,18 @@ private fun LazyListScope.alertsSection() {
         val v by Prefs.phoneAlerts.collectAsState()
         val paired by pl.mati.carlauncher.data.ConnectRepository.paired.collectAsState()
         val last by AlertRepository.lastPhone.collectAsState()
+        val camAt by AlertRepository.phoneCamsamAt.collectAsState()
         SettingRow(
             "CamSam z telefonu",
-            "Ostrzeżenia CamSam / Yanosika z telefonu przez CAR OS Connect (w telefonie: Ustawienia → Ostrzeżenia drogowe). Radio potrzebuje internetu.\n" +
+            "Ostrzeżenia CamSam / Yanosika z telefonu przez CAR OS Connect (w telefonie: Ustawienia → Ostrzeżenia drogowe → włącz też „Odczyt okienka CamSam”). " +
+                "Gdy CamSam działa na telefonie, na mapie jest znaczek. Radio potrzebuje internetu.\n" +
                 when {
                     !paired -> "Telefon nie jest połączony – Ustawienia → Połączenia → CAR OS Connect"
-                    last == 0L -> "Z telefonu jeszcze nic nie przyszło"
-                    else -> "Ostatnie ostrzeżenie z telefonu: " + formatTime(last)
+                    last == 0L && camAt == 0L -> "Z telefonu jeszcze nic nie przyszło"
+                    else -> listOfNotNull(
+                        if (AlertRepository.phoneCamsamOn()) "CamSam na telefonie działa (" + formatTime(camAt) + ")" else null,
+                        if (last > 0) "ostatnie ostrzeżenie: " + formatTime(last) else null,
+                    ).joinToString(" · ").ifBlank { "CamSam na telefonie wyłączony" }
                 },
             onClick = { Prefs.setPhoneAlerts(!v) },
         ) { CarSwitch(v) }
