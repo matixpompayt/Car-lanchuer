@@ -2,7 +2,7 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
-## next
+## 1.118 · 2026-11-15
 Zasięg w telefonie
 - Zasięg wysyłany do CAR OS Connect był czasem pusty (po uruchomieniu radia liczył się przed wczytaniem przebiegu) – teraz zawsze jest i liczy się na bieżąco
 
