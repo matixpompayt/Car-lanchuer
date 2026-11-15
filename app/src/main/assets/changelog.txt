@@ -2,7 +2,7 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
-## next
+## 1.117 · 2026-11-15
 Muzyka z kierownicy
 - Przyciski na kierownicy przewijają muzykę, która gra w CAR OS (Bluetooth, Spotify, YT Music…): następny, poprzedni, pauza
 - Działa nad każdą aplikacją po włączeniu „CAR OS – przyciski kierownicy” w ułatwieniach dostępu
