@@ -2,7 +2,7 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
-## next
+## 1.119 · 2026-11-15
 CamSam jako część mapy
 - Ostrzeżenia CamSam nie są już pomarańczowym paskiem jak powiadomienie – na mapie (pod ograniczeniem prędkości) jest panel CamSam
 - Gdy CamSam działa: mała karta „CamSam · bez zagrożeń”; przy ostrzeżeniu rozwija się w kartę z ikoną znaku, odliczaną odległością, ulicą i paskiem odległości
