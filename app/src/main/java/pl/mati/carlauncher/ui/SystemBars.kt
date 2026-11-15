@@ -8,6 +8,7 @@ import android.app.Activity
 import android.content.Intent
 import android.provider.Settings
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.togetherWith
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -383,59 +384,108 @@ fun VolumeHud() {
 }
 
 
-/** Pomarańczowy pasek ostrzeżenia z CamSam / Yanosik – na każdym ekranie. */
-@Composable
-fun RoadAlertBanner() {
-    val alert by AlertRepository.current.collectAsState()
-    val ctx = LocalContext.current
-    LaunchedEffect(alert?.time) {
-        val a = alert ?: return@LaunchedEffect
-        // z telefonu: znika na sygnał końca albo po 45 s ciszy (telefon podtrzymuje trwające ostrzeżenie)
-        if (a.fromPhone) return@LaunchedEffect
-        delay(60_000)
-        if (AlertRepository.current.value?.time == a.time) AlertRepository.dismiss()
-    }
-    Box(Modifier.fillMaxWidth().padding(start = CarColors.theme.insetStart, end = CarColors.theme.insetEnd, top = 58.dp + CarColors.theme.insetTop), contentAlignment = Alignment.TopCenter) {
-        AnimatedVisibility(alert != null, enter = fadeIn() + slideInVertically { -it }, exit = fadeOut() + slideOutVertically { -it }) {
-            val a = alert
-            if (a != null) {
-                Row(
-                    Modifier
-                        .clip(RoundedCornerShape(22.dp))
-                        .background(Color(0xFFFF8A1F))
-                        .clickable { if (a.fromPhone) AlertRepository.dismiss() else Launch.pkg(ctx, a.pkg) }
-                        .padding(start = 18.dp, end = 8.dp, top = 10.dp, bottom = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(14.dp),
-                ) {
-                    val ic = a.icon
-                    if (ic != null) {
-                        // ta sama ikona co w okienku CamSam na telefonie
-                        val img = androidx.compose.runtime.remember(ic) { ic.asImageBitmap() }
-                        androidx.compose.foundation.Image(
-                            img, null,
-                            Modifier.size(54.dp).clip(RoundedCornerShape(12.dp)).background(Color(0xFF1A1205)).padding(3.dp),
-                        )
-                    } else {
-                        Icon(Icons.Rounded.Warning, null, tint = Color(0xFF1A1205), modifier = Modifier.size(34.dp))
-                    }
-                    a.distM?.let { AlertCountdown(it, a.distAt) }
-                    Column(Modifier.padding(end = 6.dp).widthIn(max = 520.dp)) {
-                        Text(a.title, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1A1205), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        if (a.text.isNotBlank()) Text(a.text, fontSize = 17.sp, color = Color(0xFF3A2608), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        if (a.bar.isNotEmpty()) HudBar(a.bar, Modifier.padding(top = 6.dp))
-                    }
-                    Text(a.app, fontSize = 14.sp, color = Color(0xFF3A2608))
-                    Box(
-                        Modifier.size(44.dp).clip(CircleShape).clickable { AlertRepository.dismiss() },
-                        contentAlignment = Alignment.Center,
-                    ) { Icon(Icons.Rounded.Close, "Ukryj", tint = Color(0xFF1A1205), modifier = Modifier.size(24.dp)) }
-                }
-            }
+/** Ile map jest teraz na ekranie – na mapie ostrzeżenie CamSam jest częścią mapy (panel pod ograniczeniem). */
+object CamSamUi {
+    val maps = kotlinx.coroutines.flow.MutableStateFlow(0)
+
+    /** Wywołać w mapie: dopóki mapa jest na ekranie, ostrzeżenie pokazuje panel w mapie, nie pasek u góry. */
+    @Composable
+    fun RegisterMap() {
+        androidx.compose.runtime.DisposableEffect(Unit) {
+            maps.value = maps.value + 1
+            onDispose { maps.value = (maps.value - 1).coerceAtLeast(0) }
         }
     }
 }
 
+/** Automatyczne chowanie ostrzeżeń z radia (z telefonu znikają na sygnał końca / po 45 s ciszy). */
+@Composable
+private fun AlertAutoDismiss(alert: AlertRepository.Alert?) {
+    LaunchedEffect(alert?.time) {
+        val a = alert ?: return@LaunchedEffect
+        if (a.fromPhone) return@LaunchedEffect
+        delay(60_000)
+        if (AlertRepository.current.value?.time == a.time) AlertRepository.dismiss()
+    }
+}
+
+/**
+ * Ostrzeżenie CamSam na ekranach bez mapy – karta pod paskiem stanu w stylu systemu
+ * (na mapie pokazuje je panel CamSam, a ten pasek się nie pojawia).
+ */
+@Composable
+fun RoadAlertBanner() {
+    val alert by AlertRepository.current.collectAsState()
+    val maps by CamSamUi.maps.collectAsState()
+    AlertAutoDismiss(alert)
+    val show = alert != null && maps == 0
+    var last by remember { mutableStateOf<AlertRepository.Alert?>(null) }
+    alert?.let { last = it }
+    Box(Modifier.fillMaxWidth().padding(start = CarColors.theme.insetStart, end = CarColors.theme.insetEnd, top = 58.dp + CarColors.theme.insetTop), contentAlignment = Alignment.TopCenter) {
+        AnimatedVisibility(show, enter = fadeIn() + slideInVertically { -it }, exit = fadeOut() + slideOutVertically { -it }) {
+            last?.let { CamSamAlertCard(it, Modifier.widthIn(max = 640.dp)) }
+        }
+    }
+}
+
+/** Kolor ostrzeżenia: czerwony, gdy pasek CamSam ma czerwone segmenty albo jest blisko. */
+private fun alertTone(a: AlertRepository.Alert): Color =
+    if (a.bar.contains('R') || (a.distM ?: Int.MAX_VALUE) < 300) Color(0xFFFF4D4D) else Color(0xFFFF9F2E)
+
+/** Treść ostrzeżenia: ikona, odliczana odległość, nazwa, ulica, pasek – w kolorach interfejsu. */
+@Composable
+private fun CamSamAlertCard(a: AlertRepository.Alert, modifier: Modifier = Modifier, compact: Boolean = false) {
+    val ctx = LocalContext.current
+    val tone = alertTone(a)
+    val t = rememberInfiniteTransition(label = "cs")
+    val glow by t.animateFloat(0.55f, 1f, infiniteRepeatable(tween(700), RepeatMode.Reverse), label = "csg")
+    val shape = RoundedCornerShape(CarColors.theme.radius(20.dp))
+    Column(
+        modifier
+            .clip(shape)
+            .carSurface(shape, CarColors.Panel, heavy = true)
+            .border(2.dp, tone.copy(alpha = glow), shape)
+            .clickable { if (a.fromPhone || a.source == "t") AlertRepository.dismiss() else Launch.pkg(ctx, a.pkg) }
+            .padding(start = 14.dp, end = 10.dp, top = 12.dp, bottom = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            val ic = a.icon
+            Box(
+                Modifier.size(if (compact) 52.dp else 58.dp).clip(RoundedCornerShape(14.dp)).background(tone.copy(alpha = 0.16f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (ic != null) {
+                    // ta sama ikona co w okienku CamSam na telefonie
+                    val img = remember(ic) { ic.asImageBitmap() }
+                    androidx.compose.foundation.Image(img, null, Modifier.size(if (compact) 44.dp else 50.dp).clip(RoundedCornerShape(10.dp)))
+                } else {
+                    Icon(Icons.Rounded.Warning, null, tint = tone, modifier = Modifier.size(32.dp))
+                }
+            }
+            Column(Modifier.weight(1f, fill = false)) {
+                a.distM?.let { AlertCountdown(it, a.distAt, tone, if (compact) 26.sp else 30.sp) }
+                Text(
+                    a.title, fontSize = if (compact) 17.sp else 20.sp, fontWeight = FontWeight.Bold, color = CarColors.Text,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis,
+                )
+                if (a.text.isNotBlank()) Text(
+                    a.text, fontSize = if (compact) 14.sp else 16.sp, color = CarColors.Text2,
+                    maxLines = if (compact) 2 else 1, overflow = TextOverflow.Ellipsis,
+                )
+            }
+            Box(
+                Modifier.size(36.dp).clip(CircleShape).clickable { AlertRepository.dismiss() },
+                contentAlignment = Alignment.Center,
+            ) { Icon(Icons.Rounded.Close, "Ukryj", tint = CarColors.Muted, modifier = Modifier.size(20.dp)) }
+        }
+        if (a.bar.isNotEmpty()) HudBar(a.bar, Modifier.fillMaxWidth())
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Box(Modifier.size(7.dp).clip(CircleShape).background(tone))
+            Text(a.app, fontSize = 12.sp, color = CarColors.Muted, maxLines = 1)
+        }
+    }
+}
 
 /** Pasek odległości z okienka CamSam (te same kolory segmentów co na telefonie). */
 @Composable
@@ -443,12 +493,12 @@ private fun HudBar(bar: String, modifier: Modifier = Modifier) {
     Row(modifier, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         bar.forEach { c ->
             Box(
-                Modifier.size(width = 34.dp, height = 8.dp).clip(RoundedCornerShape(3.dp)).background(
+                Modifier.weight(1f).height(7.dp).clip(RoundedCornerShape(3.dp)).background(
                     when (c) {
-                        'R' -> Color(0xFFD50000)
-                        'Y' -> Color(0xFFFFEA00)
-                        'G' -> Color(0xFF00A13A)
-                        else -> Color(0x553A2608)
+                        'R' -> Color(0xFFE53935)
+                        'Y' -> Color(0xFFFFD600)
+                        'G' -> Color(0xFF2EC27E)
+                        else -> CarColors.Raised
                     },
                 ),
             )
@@ -456,9 +506,14 @@ private fun HudBar(bar: String, modifier: Modifier = Modifier) {
     }
 }
 
-/** „CamSam działa” – telefon z włączonym CamSam przesyła ostrzeżenia do radia. */
+/**
+ * Panel CamSam na mapie (pod ograniczeniem prędkości): gdy CamSam działa – mała karta „CamSam · bez zagrożeń”,
+ * przy ostrzeżeniu rozwija się w kartę z ikoną, odległością i paskiem. Gdy CamSam jest wyłączony – nic.
+ */
 @Composable
-fun CamSamChip(modifier: Modifier = Modifier) {
+fun CamSamPanel(modifier: Modifier = Modifier) {
+    CamSamUi.RegisterMap()
+    val alert by AlertRepository.current.collectAsState()
     val at by AlertRepository.phoneCamsamAt.collectAsState()
     val app by AlertRepository.phoneCamsamApp.collectAsState()
     val on by Prefs.phoneAlerts.collectAsState()
@@ -469,29 +524,58 @@ fun CamSamChip(modifier: Modifier = Modifier) {
             delay(30_000)
         }
     }
-    if (!on || !AlertRepository.phoneCamsamOn(now)) return
-    Row(
-        modifier
-            .clip(RoundedCornerShape(14.dp))
-            .carSurface(RoundedCornerShape(14.dp), CarColors.Overlay, heavy = true)
-            .clickable { Toaster.show("$app działa na telefonie – ostrzeżenia pokażą się tutaj") }
-            .padding(horizontal = 10.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        Box(Modifier.size(9.dp).clip(CircleShape).background(Color(0xFF2EC27E)))
-        Icon(Icons.Rounded.PhoneAndroid, null, tint = CarColors.Text2, modifier = Modifier.size(16.dp))
-        Text(app, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = CarColors.Text)
+    val running = on && AlertRepository.phoneCamsamOn(now)
+    val a = alert
+    androidx.compose.animation.AnimatedContent(
+        targetState = when {
+            a != null -> 2
+            running -> 1
+            else -> 0
+        },
+        transitionSpec = {
+            (fadeIn(tween(220)) + androidx.compose.animation.scaleIn(initialScale = 0.92f))
+                .togetherWith(fadeOut(tween(150)))
+                .using(androidx.compose.animation.SizeTransform(clip = false))
+        },
+        label = "camsam",
+        modifier = modifier,
+    ) { st ->
+        when (st) {
+            2 -> {
+                var shown by remember { mutableStateOf(a) }
+                AlertRepository.current.collectAsState().value?.let { shown = it }
+                shown?.let { CamSamAlertCard(it, Modifier.width(300.dp), compact = true) }
+            }
+            1 -> {
+                val shape = RoundedCornerShape(CarColors.theme.radius(16.dp))
+                Row(
+                    Modifier
+                        .clip(shape)
+                        .carSurface(shape, CarColors.Overlay, heavy = true)
+                        .clickable { Toaster.show("$app działa na telefonie – ostrzeżenia pokażą się tutaj") }
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Box(Modifier.size(9.dp).clip(CircleShape).background(Color(0xFF2EC27E)))
+                    Column {
+                        Text(app, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = CarColors.Text, maxLines = 1)
+                        Text("bez zagrożeń", fontSize = 12.sp, color = CarColors.Muted, maxLines = 1)
+                    }
+                }
+            }
+            else -> Box(Modifier.size(0.dp))
+        }
     }
 }
 
 /** Odległość z ostrzeżenia odliczana z prędkości auta między kolejnymi wiadomościami. */
 @Composable
-private fun AlertCountdown(dist: Int, at: Long) {
+private fun AlertCountdown(dist: Int, at: Long, color: Color, size: androidx.compose.ui.unit.TextUnit) {
     val left by androidx.compose.runtime.produceState(dist, dist, at) {
         var d = dist.toDouble()
         var last = android.os.SystemClock.elapsedRealtime()
-        // odległość mogła się zmniejszyć, zanim baner się pokazał
+        // odległość mogła się zmniejszyć, zanim ostrzeżenie się pokazało
         d -= ((last - at).coerceIn(0, 10_000) / 1000.0) * ((pl.mati.carlauncher.data.LocationRepository.gpsSpeed.value ?: 0) / 3.6)
         while (true) {
             value = d.coerceAtLeast(0.0).toInt()
@@ -504,7 +588,7 @@ private fun AlertCountdown(dist: Int, at: Long) {
     }
     Text(
         if (left >= 1000) String.format(java.util.Locale("pl"), "%.1f km", left / 1000.0) else "${(left / 10) * 10} m",
-        fontSize = 30.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1A1205),
+        fontSize = size, fontWeight = FontWeight.Bold, color = color,
     )
 }
 

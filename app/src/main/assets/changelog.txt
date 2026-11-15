@@ -2,6 +2,14 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
+## next
+CamSam jako część mapy
+- Ostrzeżenia CamSam nie są już pomarańczowym paskiem jak powiadomienie – na mapie (pod ograniczeniem prędkości) jest panel CamSam
+- Gdy CamSam działa: mała karta „CamSam · bez zagrożeń”; przy ostrzeżeniu rozwija się w kartę z ikoną znaku, odliczaną odległością, ulicą i paskiem odległości
+- Kolor ramki: pomarańczowy, a czerwony gdy jesteś blisko (czerwony pasek w CamSam albo poniżej 300 m)
+- Gdy CamSam jest wyłączony, panelu nie ma
+- Na ekranach bez mapy ostrzeżenie pokazuje się jako karta w stylu systemu pod paskiem stanu
+
 ## 1.118 · 2026-11-15
 Zasięg w telefonie
 - Zasięg wysyłany do CAR OS Connect był czasem pusty (po uruchomieniu radia liczył się przed wczytaniem przebiegu) – teraz zawsze jest i liczy się na bieżąco

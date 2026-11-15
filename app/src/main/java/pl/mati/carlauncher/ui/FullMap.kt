@@ -209,7 +209,7 @@ private fun ClusterMap() {
                     ) { Text("50", color = Color(0xFF111111), fontWeight = FontWeight.Bold, fontSize = 30.sp) }
                     else Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         SpeedLimitBadge(Modifier)
-                        CamSamChip()
+                        CamSamPanel()
                     }
                 }
 

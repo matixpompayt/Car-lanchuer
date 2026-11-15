@@ -170,7 +170,7 @@ fun MapCard(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             if (showSpeed) SpeedLimitBadge(Modifier)
-            CamSamChip()
+            CamSamPanel()
         }
 
         // Pogoda na trasie
