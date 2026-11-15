@@ -2,6 +2,11 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
+## next
+Numery domów w 3D
+- W widoku 3D budynki nie zasłaniają już numerów domów – numery są rysowane nad mapą, zawsze na wierzchu
+- Nie nachodzą na siebie; bliższe auta mają pierwszeństwo, przy większym przybliżeniu są większe
+
 ## 1.114 · 2026-11-15
 Numery domów i kształty budynków na mapie
 - Numery domów na mapie po mocnym przybliżeniu (poziom ulic) – przełącznik w Ustawienia → Wygląd → „Numery domów”

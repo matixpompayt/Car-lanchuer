@@ -115,7 +115,7 @@ private class VectorHolder(ctx: Context) {
         CarMapStyle.add3dBuildings(st, below, CarColors.isLight)
         CarMapStyle.add2dBuildings(st, below, CarColors.isLight)
         CarMapStyle.addHouseNumbers(st, below, CarColors.isLight)
-        CarMapStyle.setHouseNumbers(st, Prefs.mapHouseNumbers.value)
+        CarMapStyle.setHouseNumbers(st, Prefs.mapHouseNumbers.value && !Prefs.map3d.value)
         initRoads(st)
         st.addSource(GeoJsonSource(SRC_ALTS))
         st.addSource(GeoJsonSource(SRC_ROUTE))
@@ -677,9 +677,10 @@ fun VectorMap(modifier: Modifier, full: Boolean = false) {
     }
 
     // numery domów (przełącznik w ustawieniach mapy)
+    // w 2D – zwykła warstwa mapy; w 3D budynki by je zasłoniły, więc rysujemy je nad mapą (HouseNumbersOverlay)
     val houseNums by Prefs.mapHouseNumbers.collectAsState()
-    LaunchedEffect(houseNums, ready) {
-        if (ready) h.style?.let { CarMapStyle.setHouseNumbers(it, houseNums) }
+    LaunchedEffect(houseNums, is3d, ready) {
+        if (ready) h.style?.let { CarMapStyle.setHouseNumbers(it, houseNums && !is3d) }
     }
 
     // 2D / 3D i obrót mapy
@@ -774,6 +775,7 @@ fun VectorMap(modifier: Modifier, full: Boolean = false) {
 
     Box(modifier) {
         AndroidView(factory = { h.view }, modifier = Modifier.fillMaxSize())
+        HouseNumbersOverlay(if (ready) h.map else null, if (ready) h.style else null, houseNums && is3d, CarColors.isLight, Modifier.fillMaxSize())
         // na pełnym ekranie przyciski są w układzie licznika (ClusterMap)
         if (!full) Column(
             Modifier.align(Alignment.CenterEnd).padding(end = 16.dp),
