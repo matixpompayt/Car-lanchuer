@@ -2,7 +2,7 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
-## next
+## 1.116 · 2026-11-15
 CamSam z telefonu – znaczek i okienko
 - Na mapie (obok ograniczenia prędkości) znaczek „CamSam”, gdy CamSam działa na telefonie
 - Ostrzeżenie z okienka CamSam na telefonie: ta sama ikona znaku i pasek odległości co w CamSam
