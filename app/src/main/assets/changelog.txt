@@ -2,6 +2,13 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
+## next
+Muzyka z kierownicy
+- Przyciski na kierownicy przewijają muzykę, która gra w CAR OS (Bluetooth, Spotify, YT Music…): następny, poprzedni, pauza
+- Działa nad każdą aplikacją po włączeniu „CAR OS – przyciski kierownicy” w ułatwieniach dostępu
+- Nauka przycisków: Ustawienia → Dźwięk → Przyciski na kierownicy → „Naucz przycisk” – naciśnij przycisk i wybierz akcję (utwór, pauza, wyciszenie, komenda głosowa, muzyka, nawigacja, ekran główny)
+- Podgląd ostatnich naciśnięć – widać, czy radio w ogóle przekazuje przycisk
+
 ## 1.116 · 2026-11-15
 CamSam z telefonu – znaczek i okienko
 - Na mapie (obok ograniczenia prędkości) znaczek „CamSam”, gdy CamSam działa na telefonie

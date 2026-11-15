@@ -2,5 +2,7 @@
 <resources>
     <string name="app_name">Car Launcher</string>
     <string name="shade_guard_label">CAR OS – pasek systemowy</string>
+    <string name="wheel_keys_label">CAR OS – przyciski kierownicy</string>
+    <string name="wheel_keys_desc">Przyciski na kierownicy (następny / poprzedni utwór i nauczone przyciski) działają w CAR OS nad każdą aplikacją. Usługa widzi tylko naciśnięcia przycisków – nie czyta ekranu ani tego, co wpisujesz.</string>
     <string name="shade_guard_desc">Gdy CAR OS jest na ekranie, od razu zamyka wysuniętą zasłonę powiadomień Androida. Nie czyta treści innych aplikacji ani tego, co wpisujesz.</string>
 </resources>

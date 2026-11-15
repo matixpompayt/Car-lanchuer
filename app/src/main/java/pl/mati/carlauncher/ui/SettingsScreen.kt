@@ -76,6 +76,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import pl.mati.carlauncher.data.AlertRepository
+import pl.mati.carlauncher.data.SteeringKeys
 import pl.mati.carlauncher.data.BackupManager
 import pl.mati.carlauncher.data.LocationRepository
 import pl.mati.carlauncher.data.MediaRepository
@@ -606,6 +607,7 @@ private fun LazyListScope.soundPage() {
         val ctx = LocalContext.current
         SettingRow("Korektor", "Systemowy korektor dźwięku", onClick = { Launch.equalizer(ctx) }) { Chevron() }
     }
+    wheelSection()
     item { SectionLabel("Diagnostyka źródeł") }
     item {
         val ctx = LocalContext.current
@@ -648,6 +650,108 @@ private fun LazyListScope.soundPage() {
             if (access) "Włączony – sterowanie muzyką i manewry działają" else "Wymagany do sterowania muzyką i manewrów",
             onClick = { Launch.notificationAccess(ctx) },
         ) { StatusText(access) }
+    }
+}
+
+/** Przyciski na kierownicy: przewijanie muzyki, nauka przycisków, podgląd naciśnięć. */
+private fun LazyListScope.wheelSection() {
+    item { SectionLabel("Przyciski na kierownicy") }
+    item {
+        val on by SteeringKeys.enabled.collectAsState()
+        SettingRow(
+            "Sterowanie muzyką z kierownicy",
+            "Następny / poprzedni utwór i pauza przewijają to, co gra w CAR OS (Bluetooth, Spotify, YT Music…). Gdy w CAR OS wybrane jest radio FM, strzałki zostają przy stacjach radia.",
+            onClick = { SteeringKeys.setEnabled(!on) },
+        ) { CarSwitch(on) }
+    }
+    item {
+        val ctx = LocalContext.current
+        val svc by SteeringKeys.serviceOn.collectAsState()
+        var enabledInSystem by remember { mutableStateOf(SteeringKeys.serviceEnabled(ctx)) }
+        LaunchedEffect(Unit) {
+            while (true) {
+                enabledInSystem = SteeringKeys.serviceEnabled(ctx)
+                kotlinx.coroutines.delay(1500)
+            }
+        }
+        SettingRow(
+            "Działanie nad każdą aplikacją",
+            if (svc || enabledInSystem) "Włączone – przyciski działają też, gdy na ekranie są Mapy, Spotify itd."
+            else "Bez tego przyciski działają tylko na ekranach CAR OS. Dotknij → Ułatwienia dostępu → „CAR OS – przyciski kierownicy” → włącz.",
+            onClick = { pl.mati.carlauncher.data.ShadeGuard.openAccessibilitySettings(ctx) },
+        ) { StatusText(svc || enabledInSystem) }
+    }
+    item {
+        val until by SteeringKeys.learnUntil.collectAsState()
+        val learned by SteeringKeys.learned.collectAsState()
+        val map by SteeringKeys.bindings.collectAsState()
+        val log by SteeringKeys.log.collectAsState()
+        var now by remember { mutableStateOf(android.os.SystemClock.elapsedRealtime()) }
+        LaunchedEffect(until) {
+            while (android.os.SystemClock.elapsedRealtime() < until) {
+                now = android.os.SystemClock.elapsedRealtime()
+                kotlinx.coroutines.delay(250)
+            }
+            now = android.os.SystemClock.elapsedRealtime()
+        }
+        val learning = now < until
+        Column(
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).carSurface(RoundedCornerShape(18.dp), CarColors.Card).padding(horizontal = 20.dp, vertical = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text("Nauka przycisku", fontSize = 19.sp, fontWeight = FontWeight.SemiBold)
+            val l = learned
+            when {
+                learning -> Text(
+                    "Naciśnij teraz przycisk na kierownicy… (${((until - now) / 1000).coerceAtLeast(0)} s)",
+                    fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = LocalAccent.current,
+                )
+                l != null -> {
+                    Text("Przycisk: ${l.label} (${l.via})" + (l.action?.let { " – teraz: ${it.label}" } ?: ""), fontSize = 17.sp)
+                    Text("Co ma robić?", fontSize = 15.sp, color = CarColors.Muted)
+                    SteeringKeys.Action.values().toList().chunked(3).forEach { row ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            row.forEach { a ->
+                                SecondaryButton(a.label, {
+                                    SteeringKeys.bind(l.id, a)
+                                    SteeringKeys.stopLearning()
+                                    Toaster.show("Przypisano: ${a.label}")
+                                }, Modifier.weight(1f), height = 56.dp)
+                            }
+                            repeat(3 - row.size) { Box(Modifier.weight(1f)) }
+                        }
+                    }
+                }
+                else -> Text(
+                    "Standardowe przyciski (następny / poprzedni / pauza) działają od razu. Jeśli któryś przycisk nic nie robi albo robi coś innego – naucz go: " +
+                        "dotknij „Naucz”, naciśnij przycisk na kierownicy i wybierz, co ma robić.",
+                    fontSize = 15.sp, color = CarColors.Muted,
+                )
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                if (learning || l != null) SecondaryButton("Anuluj", { SteeringKeys.stopLearning() }, Modifier.weight(1f), height = 56.dp)
+                else PrimaryButton("Naucz przycisk", { SteeringKeys.startLearning() }, Modifier.weight(1f))
+                if (map.isNotEmpty()) SecondaryButton("Usuń wszystkie", { SteeringKeys.resetAll() }, Modifier.weight(1f), height = 56.dp)
+            }
+            if (map.isNotEmpty()) {
+                Text("Nauczone przyciski", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                map.forEach { (id, a) ->
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text("${SteeringKeys.label(id)} → ${a.label}", fontSize = 16.sp, color = CarColors.Text2, modifier = Modifier.weight(1f))
+                        Text("Usuń", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = LocalAccent.current,
+                            modifier = Modifier.clip(RoundedCornerShape(10.dp)).clickable { SteeringKeys.unbind(id) }.padding(horizontal = 10.dp, vertical = 6.dp))
+                    }
+                }
+            }
+            Text("Ostatnie naciśnięcia", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+            if (log.isEmpty()) Text("Nic jeszcze nie przyszło – naciśnij przycisk na kierownicy. Jeśli nic się tu nie pojawia, radio nie przekazuje przycisku do Androida (ustaw go w ustawieniach fabrycznych radia: Kierownica / SWC / CAN).", fontSize = 15.sp, color = CarColors.Muted)
+            log.take(8).forEach { p ->
+                Text(
+                    formatTime(p.time) + " · ${p.label} · ${p.via} → " + (p.action?.label ?: "nieprzypisany"),
+                    fontSize = 14.sp, color = CarColors.Text2,
+                )
+            }
+        }
     }
 }
 

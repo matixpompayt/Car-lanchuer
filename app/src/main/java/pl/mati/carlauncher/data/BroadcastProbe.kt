@@ -45,7 +45,7 @@ object BroadcastProbe {
     /** Dane auta z dekodera CAN (obroty, temperatury, paliwo, drzwi…). */
     private val CAN_INTEREST = Regex("(can|mcu|car|speed|rpm|engine|motor|fuel|oil|temp|water|odo|mile|volt|batt|door|gear|reverse|tpms|obd|ecu|data|status|trip|info|report|update|changed|notify)", RegexOption.IGNORE_CASE)
 
-    private val INTEREST = Regex("(radio|rds|fm|freq|band|bt|blue|a2dp|avrcp|music|media|track|song|id3|play|meta|info|report|station|ill|light|lamp|night|day|dimm|backl|mcu|car|acc|canbus)", RegexOption.IGNORE_CASE)
+    private val INTEREST = Regex("(radio|rds|fm|freq|band|bt|blue|a2dp|avrcp|music|media|track|song|id3|play|meta|info|report|station|ill|light|lamp|night|day|dimm|backl|mcu|car|acc|canbus|key|swc|wheel|steer|button|btn)", RegexOption.IGNORE_CASE)
 
     fun start(ctx: Context, pkg: String?) {
         appCtx = ctx.applicationContext
@@ -60,7 +60,7 @@ object BroadcastProbe {
         scope.launch {
             val sp = Prefs.store
             val ver = try { ctx.packageManager.getPackageInfo(pkg, 0).longVersionCode } catch (_: Exception) { -1L }
-            val cacheKey = "probe2_$pkg:$ver"
+            val cacheKey = "probe3_$pkg:$ver"
             val cached = sp?.getString("probe_actions", null)?.takeIf { sp.getString("probe_key", null) == cacheKey }
             val list = if (cached != null) {
                 val a = JSONArray(cached)
@@ -160,6 +160,7 @@ object BroadcastProbe {
             if (pairs.isEmpty()) "" else " → " + pairs.entries.joinToString(", ") { "${it.key}=${it.value}" }.take(300)
         log.value = (listOf(line) + log.value).take(40)
         HeadlightDetector.onBroadcast(action, pairs)
+        try { SteeringKeys.onBroadcast(action, pairs) } catch (_: Exception) {}
         CanRepository.observeBundle(action, pairs)
         if (action.endsWith("headsetclient.profile.action.AG_EVENT")) {
             PhoneStatusRepository.onAgEvent(pairs)

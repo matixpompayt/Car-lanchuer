@@ -98,5 +98,18 @@
                 android:name="android.accessibilityservice"
                 android:resource="@xml/shade_guard" />
         </service>
+
+        <service
+            android:name=".service.WheelKeysService"
+            android:exported="false"
+            android:label="@string/wheel_keys_label"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/wheel_keys" />
+        </service>
     </application>
 </manifest>

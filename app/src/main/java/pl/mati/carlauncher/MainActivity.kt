@@ -94,6 +94,7 @@ class MainActivity : ComponentActivity() {
         pl.mati.carlauncher.data.FuelPrices.start(this)
         pl.mati.carlauncher.data.PhoneBook.start(this)
         pl.mati.carlauncher.data.CallState.start(this)
+        pl.mati.carlauncher.data.SteeringKeys.init(this)
         ContextCompat.registerReceiver(
             this, AutostartManager.screenReceiver,
             IntentFilter().apply {
@@ -150,6 +151,14 @@ class MainActivity : ComponentActivity() {
         hideSystemBars()
         MediaRepository.attach(this)
         SystemControls.refresh(this)
+    }
+
+    /** Przyciski kierownicy, gdy CAR OS jest na ekranie (bez usługi ułatwień dostępu – z nią obsługuje je usługa). */
+    override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
+        if (!pl.mati.carlauncher.data.SteeringKeys.serviceOn.value) {
+            try { if (pl.mati.carlauncher.data.SteeringKeys.onKey(event, "okno")) return true } catch (_: Exception) {}
+        }
+        return super.dispatchKeyEvent(event)
     }
 
     /** Przycisk głosowy na kierownicy / radiu → komenda głosowa CAR OS. */
