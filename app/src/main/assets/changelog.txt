@@ -2,6 +2,10 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
+## next
+Zasięg w telefonie
+- Zasięg wysyłany do CAR OS Connect był czasem pusty (po uruchomieniu radia liczył się przed wczytaniem przebiegu) – teraz zawsze jest i liczy się na bieżąco
+
 ## 1.117 · 2026-11-15
 Muzyka z kierownicy
 - Przyciski na kierownicy przewijają muzykę, która gra w CAR OS (Bluetooth, Spotify, YT Music…): następny, poprzedni, pauza

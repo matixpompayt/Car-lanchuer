@@ -95,6 +95,8 @@ object FuelRepository {
 
     /** Spalanie, koszty, zasięg – po każdej zmianie i co jakiś czas (przebieg rośnie). */
     fun recompute() {
+        // przebieg musi być już wczytany – inaczej zasięg wychodził pusty (start radia: paliwo przed serwisem)
+        try { ServiceRepository.load() } catch (_: Exception) {}
         val list = fills.value.sortedBy { it.odoKm }
         // odcinki pełny → pełny
         var totalL = 0.0
@@ -133,7 +135,9 @@ object FuelRepository {
         // ile zostało w baku: od ostatniego „do pełna” + dolane później − spalone wg przebiegu
         val lastFull = list.lastOrNull { it.full }
         val use = avg ?: (if (Prefs.profile.value.isDiesel) 6.5 else 8.0)
-        val odo = if (ServiceRepository.odometerSet.value) ServiceRepository.odometerKm.value else null
+        // bez ustawionego licznika: przebieg z ostatniego tankowania + trasy przejechane od tamtej pory
+        val odo = if (ServiceRepository.odometerSet.value) ServiceRepository.odometerKm.value
+        else lastFull?.let { lf -> lf.odoKm + (try { TripRepository.summary(lf.time).distanceM } catch (_: Exception) { 0.0 }) / 1000.0 }
         var left: Double? = null
         var range: Double? = null
         if (lastFull != null && odo != null) {
@@ -162,11 +166,14 @@ object FuelRepository {
 
     fun toJson(): JSONObject {
         load()
+        // zawsze świeży zasięg (przebieg rośnie w czasie jazdy)
+        try { recompute() } catch (_: Exception) {}
         val s = stats.value
         val a = JSONArray()
         fills.value.take(30).forEach { a.put(it.toJson()) }
         return JSONObject().put("tank", tankL.value).put("fills", a)
             .put("avg", s.avgL100 ?: JSONObject.NULL).put("range", s.rangeKm ?: JSONObject.NULL)
             .put("ckm", s.costPerKm ?: JSONObject.NULL).put("est", s.estimated)
+            .put("use", s.avgL100 ?: (if (Prefs.profile.value.isDiesel) 6.5 else 8.0))
     }
 }
