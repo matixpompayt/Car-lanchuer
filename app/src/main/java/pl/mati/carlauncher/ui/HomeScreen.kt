@@ -96,6 +96,7 @@ fun HomeScreen() {
         HomeStyle.SPORT -> { HomeSport(); return }
         HomeStyle.FULLMAP -> { HomeFullMap(); return }
         HomeStyle.RETRO -> { HomeRetro(); return }
+        HomeStyle.MIAMI -> { HomeMiami(); return }
         HomeStyle.CLASSIC -> Unit
     }
     val editing by UiState.homeEdit.collectAsState()

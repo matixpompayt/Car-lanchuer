@@ -31,15 +31,16 @@ import androidx.compose.ui.unit.sp
 enum class NavStyle { DOCK, BOTTOM, TOP_TABS, RIGHT_RAIL, FLOATING }
 
 /** Układ ekranu głównego. */
-enum class HomeStyle { CLASSIC, MINIMAL, VW, SPORT, FULLMAP, RETRO }
+enum class HomeStyle { CLASSIC, MINIMAL, VW, SPORT, FULLMAP, RETRO, MIAMI }
 
 /** Tło całego systemu. */
-enum class BgStyle { WALLPAPER, SOLID, VW, SPORT, RETRO }
+enum class BgStyle { WALLPAPER, SOLID, VW, SPORT, RETRO, MIAMI }
 
 private val NUM_DEFAULT = FontFamily(Typeface.create("sans-serif-condensed", Typeface.BOLD))
 private val NUM_SPORT = FontFamily(Typeface.create("sans-serif-condensed", Typeface.BOLD_ITALIC))
 private val NUM_RETRO = FontFamily(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD))
 private val NUM_VW = FontFamily(Typeface.create("sans-serif-condensed", Typeface.NORMAL))
+private val NUM_MIAMI = FontFamily(Typeface.create("sans-serif-black", Typeface.ITALIC))
 private val BODY_CONDENSED = FontFamily(Typeface.create("sans-serif-condensed", Typeface.NORMAL))
 val MONO: FontFamily = FontFamily(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD))
 
@@ -106,7 +107,13 @@ object SysThemes {
         corner = (-4).dp, borders = true, borderWidth = 1.5.dp, accent = Color(0xFF00E5FF), numFont = NUM_RETRO, bodyFont = BODY_CONDENSED,
     )
 
-    val ALL = listOf(CLASSIC, MINIMAL, VW, SPORT, FULLMAP, RETRO)
+    val MIAMI = SysTheme(
+        "miami", "Miami", "Zachód słońca nad oceanem i palmy, mapa Miami z budynkami, prędkość w kolorach zachodu; wieczorem neon, w dzień pastele",
+        NavStyle.FLOATING, HomeStyle.MIAMI, BgStyle.MIAMI, Palettes.MIAMI, Palettes.MIAMI_DAY,
+        corner = 6.dp, borders = false, pill = true, accent = Color(0xFFFF4FA3), numFont = NUM_MIAMI, compactStatus = true,
+    )
+
+    val ALL = listOf(CLASSIC, MINIMAL, VW, SPORT, FULLMAP, RETRO, MIAMI)
     fun byId(id: String) = ALL.firstOrNull { it.id == id } ?: CLASSIC
 }
 
@@ -132,6 +139,7 @@ private fun ThemePreview(t: SysTheme, modifier: Modifier) {
     val acc = t.accent ?: LocalAccent.current
     val bg = when (t.bg) {
         BgStyle.RETRO -> androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Color(0xFF12052A), Color(0xFF3A0A4A), Color(0xFF12052A)))
+        BgStyle.MIAMI -> androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Color(0xFF2E0E58), Color(0xFFFF7A5C), Color(0xFF3A1458)))
         else -> androidx.compose.ui.graphics.SolidColor(p.bg)
     }
     val r = t.radius(6.dp)
@@ -167,6 +175,7 @@ private fun ThemePreview(t: SysTheme, modifier: Modifier) {
                     repeat(3) { Box(Modifier.width(20.dp).height(8.dp).clip(RoundedCornerShape(4.dp)).background(p.overlay)) }
                 }
             }
+            HomeStyle.MIAMI -> MiamiPreview(m)
             HomeStyle.RETRO -> Row(m.padding(5.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 block(Modifier.weight(1.3f).fillMaxHeight(), p.mapBg)
                 Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(4.dp)) {

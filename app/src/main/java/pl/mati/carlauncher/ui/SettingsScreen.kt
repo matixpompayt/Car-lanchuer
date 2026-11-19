@@ -228,7 +228,16 @@ private fun LazyListScope.lookPage() {
         Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
             SysThemes.ALL.chunked(3).forEach { row ->
                 Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                    row.forEach { th -> ThemeCard(th, t == th.id, Modifier.weight(1f)) { Prefs.setUiTheme(th.id) } }
+                    row.forEach { th ->
+                        ThemeCard(th, t == th.id, Modifier.weight(1f)) {
+                            Prefs.setUiTheme(th.id)
+                            // motyw Miami = mapa Miami z realistycznymi budynkami
+                            if (th.id == SysThemes.MIAMI.id) {
+                                Prefs.setMapTheme(CarMapStyle.THEME_MIAMI)
+                                Prefs.setMapRealBuildings(true)
+                            }
+                        }
+                    }
                     repeat(3 - row.size) { Box(Modifier.weight(1f)) }
                 }
             }

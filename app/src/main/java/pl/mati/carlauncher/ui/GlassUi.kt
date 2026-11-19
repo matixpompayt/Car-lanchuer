@@ -110,6 +110,7 @@ private fun renderBlur(brush: Brush, bg: BgStyle, w: Int, h: Int): ImageBitmap {
             when (bg) {
                 BgStyle.SPORT -> drawCarbon(w.toFloat(), h.toFloat())
                 BgStyle.RETRO -> drawRetro(w.toFloat(), h.toFloat())
+                BgStyle.MIAMI -> drawMiami(w.toFloat(), h.toFloat(), CarColors.isLight)
                 else -> {}
             }
         }

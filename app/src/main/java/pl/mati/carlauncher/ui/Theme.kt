@@ -135,6 +135,28 @@ object Palettes {
         Color(0xFF1A2A5A), Color(0xFF00F0FF),
     )
 
+    /** Miami – wieczór: fiolet zachodu, półprzezroczyste karty (widać niebo i palmy), róż i turkus. */
+    val MIAMI = Palette(
+        "miami", "Miami", false,
+        Color(0xFF1A0E2E), Color(0xFF12081F), Color(0xFF1E1033),
+        Color(0xC724143E), Color(0xC72A1848), Color(0xE6201238), Color(0xFF3A2160), Color(0xFF22143A),
+        Color(0xFF4D2E6A), Color(0xFFFFF2FA), Color(0xFFF2CFE6), Color(0xFFC49ADB), Color(0xFF8A64A8),
+        Color(0xFF3A2160), Color(0xFF4A2A78), Color(0xE61A0B2E),
+        Color(0xFF3DFFB0), Color(0xFFFFB347), Color(0xFFFF4D6D), Color(0xFF4A0A2A), Color(0xFF6A0A3A),
+        Color(0xFF1A2A5A), Color(0xFF7FE8FF),
+    )
+
+    /** Miami – dzień: brzoskwinia i róż, białe półprzezroczyste karty. */
+    val MIAMI_DAY = Palette(
+        "miami_day", "Miami dzień", true,
+        Color(0xFFFFE9DF), Color(0xFFFFDCCF), Color(0xFFFFF1EA),
+        Color(0xD9FFF6F1), Color(0xD9FFEDE6), Color(0xF0FFF3EE), Color(0xFFFFFFFF), Color(0xFFF7E2CF),
+        Color(0xFFF2C2CF), Color(0xFF3A1532), Color(0xFF5A2A50), Color(0xFF8E5E82), Color(0xFFB08AA6),
+        Color(0xFFF2CAD6), Color(0xFFE8B4C6), Color(0xEBFFF4EE),
+        Color(0xFF1E9E6A), Color(0xFFE07A10), Color(0xFFE0345A), Color(0xFFFAD0DA), Color(0xFFF4B0C2),
+        Color(0xFFCFEFF5), Color(0xFF1A7C93),
+    )
+
     /** Wygląd 2.0 – dzień: jasnoszary i biały, bez obramowań. */
     val LIGHT2 = Palette(
         "light2", "Biel", true,

@@ -150,6 +150,7 @@ private fun Shell() {
     Box(Modifier.fillMaxSize().background(bgBrush)) {
         if (th.bg == BgStyle.SPORT) CarbonPattern()
         if (th.bg == BgStyle.RETRO) RetroBackground()
+        if (th.bg == BgStyle.MIAMI) MiamiBackground()
         when (th.nav) {
             NavStyle.BOTTOM -> Column(Modifier.fillMaxSize()) {
                 // Minimal: pasek stanu u góry, ekran na całą szerokość, pasek aplikacji na dole

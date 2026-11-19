@@ -2,6 +2,14 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
+## next
+Motyw Miami i różnorodne budynki
+- Nowy motyw systemu „Miami”: zachód słońca nad oceanem, panorama miasta i palmy w tle; wieczorem neon, w dzień pastele
+- Ekran główny Miami: mapa w ramce w kolorach zachodu, duża prędkość z gradientem, odtwarzacz z pulsującą poświatą, menu w kapsule
+- Wybranie motywu włącza mapę Miami z realistycznymi budynkami
+- Budynki dużo bardziej różnorodne: 8 rodzajów domów (tynk, cegła, siding, nowoczesne, okiennice, łukowe okna), kamienice z gzymsami, hale i fabryki (blacha, cegła), biurowce, 6 rodzajów bloków (balkony, kolorowe pasy, loggie), 5 wieżowców (różne szkło, betonowa siatka)
+- 3 rodzaje sklepów na parterze (szyld, markiza w paski, witryna), dachy w 6 kolorach i różnej wysokości
+
 ## 1.123 · 2026-11-19
 Realistyczne budynki 3D
 - Bryły zamienione na budynki: domy (tynk, okna, okiennice, dachówka), bloki (płyta, okna, balkony z kolorowymi barierkami), hale i fabryki (blacha, pas okien), wieżowce (szkło)
