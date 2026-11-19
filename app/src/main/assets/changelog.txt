@@ -2,6 +2,13 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
+## next
+Styl mapy Miami
+- Nowy styl mapy „Miami”: Ustawienia → Wygląd → Mapa → Styl mapy
+- Dzień: piaskowe tło, turkusowa woda, pastelowe budynki, różowe autostrady i pomarańczowe drogi główne
+- Noc: granatowo-fioletowo, neonowe drogi (róż, pomarańcz, turkus) z poświatą, fioletowe budynki 3D
+- Przełącza się dzień/noc razem z wyglądem CAR OS; „Standardowy” to dotychczasowy wygląd
+
 ## 1.119 · 2026-11-15
 CamSam jako część mapy
 - Ostrzeżenia CamSam nie są już pomarańczowym paskiem jak powiadomienie – na mapie (pod ograniczeniem prędkości) jest panel CamSam

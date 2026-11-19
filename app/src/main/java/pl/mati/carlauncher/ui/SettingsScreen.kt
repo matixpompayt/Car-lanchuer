@@ -299,6 +299,21 @@ private fun LazyListScope.lookPage() {
             ChoiceChip("Klasyczna (OSM)", engine == "osm", Modifier.weight(1f)) { Prefs.setMapEngine("osm") }
         }
     }
+    item {
+        val theme by Prefs.mapTheme.collectAsState()
+        val light = CarColors.isLight
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Styl mapy", fontSize = 17.sp, fontWeight = FontWeight.SemiBold, color = CarColors.Text)
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                MapThemePreview("Standardowy", "Stonowany, jak cały CAR OS", false, light, theme == CarMapStyle.THEME_STD, Modifier.weight(1f)) {
+                    Prefs.setMapTheme(CarMapStyle.THEME_STD)
+                }
+                MapThemePreview("Miami", if (light) "Dzień: piasek, turkus, pastele" else "Noc: neonowe drogi z poświatą", true, light, theme == CarMapStyle.THEME_MIAMI, Modifier.weight(1f)) {
+                    Prefs.setMapTheme(CarMapStyle.THEME_MIAMI)
+                }
+            }
+        }
+    }
     item { CarIconPicker() }
     item {
         val v by Prefs.map3d.collectAsState()
@@ -1138,6 +1153,48 @@ private fun LazyListScope.workScheduleSection() {
 }
 
 /** Podgląd jasnego wariantu: tło, karta, napis, akcent. */
+/** Podgląd stylu mapy: kawałek „mapy” w kolorach stylu (dzień/noc wg obecnego wyglądu). */
+@Composable
+private fun MapThemePreview(name: String, sub: String, miami: Boolean, light: Boolean, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
+    val accent = LocalAccent.current
+    // kolory z palet mapy (tło, woda, zieleń, autostrada, główna, boczna)
+    val c = when {
+        miami && light -> listOf(0xFFF6E6D6, 0xFF4FCFDF, 0xFFB3E3C0, 0xFFFF5C9E, 0xFFFFAE55, 0xFFFFFFFF)
+        miami -> listOf(0xFF130B26, 0xFF0A1838, 0xFF0E2129, 0xFFFF3D9A, 0xFFFF8A3D, 0xFF22C3D6)
+        light -> listOf(0xFFDADFE4, 0xFFA9C6DC, 0xFFC4D9C3, 0xFFF1D9A0, 0xFFF7F8FA, 0xFFF4F5F7)
+        else -> listOf(0xFF0B0E12, 0xFF0C1A25, 0xFF0E1914, 0xFF677180, 0xFF535C69, 0xFF434B56)
+    }.map { Color(it) }
+    val glow = miami && !light
+    Column(
+        modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(CarColors.Card)
+            .border(3.dp, if (selected) accent else Color.Transparent, RoundedCornerShape(16.dp))
+            .clickable(onClick = onClick)
+            .padding(10.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        androidx.compose.foundation.Canvas(Modifier.fillMaxWidth().height(96.dp).clip(RoundedCornerShape(10.dp))) {
+            val w = size.width
+            val h = size.height
+            drawRect(c[0])
+            drawCircle(c[1], radius = h * 0.75f, center = androidx.compose.ui.geometry.Offset(w * 1.02f, h * 1.05f))
+            drawRect(c[2], topLeft = androidx.compose.ui.geometry.Offset(w * 0.08f, h * 0.1f), size = androidx.compose.ui.geometry.Size(w * 0.22f, h * 0.3f))
+            fun road(col: Color, x0: Float, y0: Float, x1: Float, y1: Float, width: Float) {
+                val a = androidx.compose.ui.geometry.Offset(x0 * w, y0 * h)
+                val b = androidx.compose.ui.geometry.Offset(x1 * w, y1 * h)
+                if (glow) drawLine(col.copy(alpha = 0.28f), a, b, strokeWidth = width * 4.5f, cap = androidx.compose.ui.graphics.StrokeCap.Round)
+                drawLine(col, a, b, strokeWidth = width, cap = androidx.compose.ui.graphics.StrokeCap.Round)
+            }
+            road(c[5], 0.55f, -0.1f, 0.4f, 1.1f, 4f)
+            road(c[4], -0.1f, 0.62f, 1.1f, 0.42f, 6f)
+            road(c[3], -0.1f, 0.2f, 1.1f, 0.95f, 8f)
+        }
+        Text(name, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, color = if (selected) accent else CarColors.Text)
+        Text(sub, fontSize = 13.sp, color = CarColors.Muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+}
+
 @Composable
 private fun PalettePreview(p: Palette, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
     val accent = LocalAccent.current
