@@ -673,7 +673,8 @@ fun VectorMap(modifier: Modifier, full: Boolean = false) {
     // dzień / noc
     val lightMap = CarColors.isLight
     val mapTheme by Prefs.mapTheme.collectAsState()
-    LaunchedEffect(lightMap, mapTheme, ready) {
+    val realBld by Prefs.mapRealBuildings.collectAsState()
+    LaunchedEffect(lightMap, mapTheme, realBld, ready) {
         if (ready) h.applyTheme(lightMap)
     }
 

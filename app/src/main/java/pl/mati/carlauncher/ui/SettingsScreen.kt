@@ -320,6 +320,14 @@ private fun LazyListScope.lookPage() {
         SettingRow("Budynki 3D", "Pochylony widok z budynkami (dane OpenStreetMap). W 2D – płaskie kształty domów z obrysem", onClick = { Prefs.setMap3d(!v) }) { CarSwitch(v) }
     }
     item {
+        val v by Prefs.mapRealBuildings.collectAsState()
+        SettingRow(
+            "Realistyczne budynki",
+            "Domy, bloki, hale i wieżowce z oknami, dachami i sklepami na parterze (wieczorem świecą okna). Wyłączone = gładkie bryły",
+            onClick = { Prefs.setMapRealBuildings(!v) },
+        ) { CarSwitch(v) }
+    }
+    item {
         val v by Prefs.mapHouseNumbers.collectAsState()
         SettingRow("Numery domów", "Na mapie po mocnym przybliżeniu (poziom ulic)", onClick = { Prefs.setMapHouseNumbers(!v) }) { CarSwitch(v) }
     }

@@ -367,7 +367,17 @@ object CarMapStyle {
         )
     }
 
-    private fun buildingsId(light: Boolean) = BUILDINGS_3D + "-" + pl.mati.carlauncher.data.Prefs.mapTheme.value + if (light) "-l" else "-d"
+    private fun realBuildings() = pl.mati.carlauncher.data.Prefs.mapRealBuildings.value
+    private fun miami() = pl.mati.carlauncher.data.Prefs.mapTheme.value == THEME_MIAMI
+
+    /** Prefiks warstw budynków dla stylu, pory dnia i rodzaju (realistyczne / bryły). */
+    private fun buildingsId(light: Boolean) =
+        BUILDINGS_3D + "-" + pl.mati.carlauncher.data.Prefs.mapTheme.value + (if (light) "-l" else "-d") + (if (realBuildings()) "-r" else "-p")
+
+    /** Warstwy budynków: realistyczne (ściany z oknami, sklepy, dachy) albo jedna bryła w kolorze. */
+    private fun buildingLayers(style: Style, prefix: String, src: String, light: Boolean): List<FillExtrusionLayer> =
+        if (realBuildings()) BuildingSkins.layers(style, prefix, src, miami(), light)
+        else listOf(buildingsLayer(prefix, src, light))
 
     /**
      * Kolor budynków zależy od wysokości (wyrażenie per budynek), a MapLibre „wypieka” go
@@ -377,18 +387,17 @@ object CarMapStyle {
      */
     private fun swapBuildings(style: Style, light: Boolean) {
         val want = buildingsId(light)
-        if (style.getLayer(want) != null) return
-        val old = style.layers.firstOrNull { it is FillExtrusionLayer && it.id.startsWith(BUILDINGS_3D) } ?: return
-        val src = (old as FillExtrusionLayer).sourceId
-        val fresh = buildingsLayer(want, src, light)
-        try {
-            fresh.setProperties(PropertyFactory.visibility(old.visibility.value ?: Property.VISIBLE))
-        } catch (_: Exception) {
+        val olds = style.layers.filter { it is FillExtrusionLayer && it.id.startsWith(BUILDINGS_3D) }
+        if (olds.isEmpty() || olds.any { it.id.startsWith(want) }) return
+        val first = olds.first() as FillExtrusionLayer
+        val vis = try { first.visibility.value ?: Property.VISIBLE } catch (_: Exception) { Property.VISIBLE }
+        for (fresh in buildingLayers(style, want, first.sourceId, light)) {
+            try { fresh.setProperties(PropertyFactory.visibility(vis)) } catch (_: Exception) {}
+            style.addLayerBelow(fresh, first.id)
         }
-        style.addLayerBelow(fresh, old.id)
-        val oldId = old.id
+        val ids = olds.map { it.id }
         android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-            try { style.removeLayer(oldId) } catch (_: Exception) {}
+            ids.forEach { id -> try { style.removeLayer(id) } catch (_: Exception) {} }
         }, 450)
     }
 
@@ -429,8 +438,9 @@ object CarMapStyle {
     fun add3dBuildings(style: Style, below: String?, light: Boolean = false) {
         if (style.layers.any { it.id.startsWith(BUILDINGS_3D) }) return
         val src = style.sources.firstOrNull { it.id == "openmaptiles" }?.id ?: return
-        val layer = buildingsLayer(buildingsId(light), src, light)
-        if (below != null) style.addLayerBelow(layer, below) else style.addLayer(layer)
+        for (layer in buildingLayers(style, buildingsId(light), src, light)) {
+            if (below != null) style.addLayerBelow(layer, below) else style.addLayer(layer)
+        }
     }
 
     fun set3d(style: Style, on: Boolean) {

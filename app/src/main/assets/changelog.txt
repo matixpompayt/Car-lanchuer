@@ -2,6 +2,14 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
+## next
+Realistyczne budynki 3D
+- Bryły zamienione na budynki: domy (tynk, okna, okiennice, dachówka), bloki (płyta, okna, balkony z kolorowymi barierkami), hale i fabryki (blacha, pas okien), wieżowce (szkło)
+- Bloki i wieżowce mają sklepy na parterze (witryny i szyldy)
+- Wieczorem świeci się część okien
+- Działa w obu stylach mapy (Standardowy i Miami) – w Miami pastelowe kolory i neonowe okna
+- Przełącznik: Ustawienia → Mapa → Realistyczne budynki
+
 ## 1.121 · 2026-11-19
 Miami: palmy i zachód słońca
 - Styl mapy Miami w widoku 3D: palmy wzdłuż ulic (po obu stronach, bliższe większe)

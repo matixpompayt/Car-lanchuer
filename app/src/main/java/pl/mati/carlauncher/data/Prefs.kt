@@ -96,6 +96,8 @@ object Prefs {
     val mapHouseNumbers = MutableStateFlow(true)
     /** Styl mapy: "std" – standardowy (dzień/noc), "miami" – zachód słońca / neon. */
     val mapTheme = MutableStateFlow("std")
+    /** Budynki 3D jak prawdziwe (okna, dachy, sklepy) zamiast gładkich brył. */
+    val mapRealBuildings = MutableStateFlow(true)
     val mapHeadingUp = MutableStateFlow(true)
     /** Przyciąganie pozycji auta do drogi na mapie. */
     val mapSnap = MutableStateFlow(true)
@@ -181,6 +183,7 @@ object Prefs {
         map3d.value = p.getBoolean("map_3d", true)
         mapHouseNumbers.value = p.getBoolean("map_housenum", true)
         mapTheme.value = p.getString("map_theme", "std") ?: "std"
+        mapRealBuildings.value = p.getBoolean("map_real_bld", true)
         mapHeadingUp.value = p.getBoolean("map_heading_up", true)
         mapSnap.value = p.getBoolean("map_snap", true)
         mapSigns.value = p.getBoolean("map_signs", true)
@@ -263,6 +266,7 @@ object Prefs {
     fun setMap3d(v: Boolean) { map3d.value = v; edit { putBoolean("map_3d", v) } }
     fun setMapHouseNumbers(v: Boolean) { mapHouseNumbers.value = v; edit { putBoolean("map_housenum", v) } }
     fun setMapTheme(v: String) { mapTheme.value = v; edit { putString("map_theme", v) } }
+    fun setMapRealBuildings(v: Boolean) { mapRealBuildings.value = v; edit { putBoolean("map_real_bld", v) } }
     fun setNavEngine(v: String) { navEngine.value = v; edit { putString("nav_engine", v) } }
     fun setClusterStretch(v: Float) {
         val r = (Math.round(v.coerceIn(1f, 2.2f) * 100) / 100f)
