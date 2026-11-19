@@ -180,7 +180,8 @@ object CarMapStyle {
                 return
             }
             val src = lastRoad.sourceId
-            val markColor = Color.parseColor(if (light) "#FFFFFF" else "#FFD84D")
+            // linie na jezdni zawsze białe (wieczorem lekko przygaszone)
+            val markColor = Color.parseColor(if (light) "#FFFFFF" else "#F2F2F2")
             val marks = style.getLayer(MARKS) as? LineLayer
             if (marks == null) {
                 val m = LineLayer(MARKS, src).withSourceLayer("transportation").withProperties(

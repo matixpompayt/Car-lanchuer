@@ -2,6 +2,10 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
+## next
+Białe linie na drogach
+- Przerywane linie na jezdni w stylu Miami są teraz białe (wcześniej wieczorem żółte)
+
 ## 1.124 · 2026-11-19
 Motyw Miami i różnorodne budynki
 - Nowy motyw systemu „Miami”: zachód słońca nad oceanem, panorama miasta i palmy w tle; wieczorem neon, w dzień pastele
