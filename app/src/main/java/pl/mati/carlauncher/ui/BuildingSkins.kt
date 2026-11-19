@@ -24,11 +24,11 @@ import org.maplibre.android.style.layers.PropertyFactory
 object BuildingSkins {
 
     /** Wysokość, dla której rysujemy (rzeczywista albo 6 m). */
-    private val H: Expression = Expression.toNumber(Expression.get("render_height"), Expression.literal(6))
-    private val MINH: Expression = Expression.toNumber(Expression.get("render_min_height"), Expression.literal(0))
+    private val H: Expression = Expression.toNumber(Expression.coalesce(Expression.get("render_height"), Expression.literal(6)))
+    private val MINH: Expression = Expression.toNumber(Expression.coalesce(Expression.get("render_min_height"), Expression.literal(0)))
     /** Stały „los” budynku: z identyfikatora i wysokości. */
     private val HASH: Expression = Expression.mod(
-        Expression.round(Expression.sum(Expression.toNumber(Expression.id(), Expression.literal(0)), Expression.product(H, Expression.literal(13)))),
+        Expression.round(Expression.sum(Expression.toNumber(Expression.coalesce(Expression.id(), Expression.literal(0))), Expression.product(H, Expression.literal(13)))),
         Expression.literal(12),
     )
     /** Parter ze sklepami: bloki i wieżowce stojące na ziemi. */
