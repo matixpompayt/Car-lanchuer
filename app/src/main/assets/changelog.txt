@@ -2,7 +2,7 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
-## next
+## 1.120 · 2026-11-19
 Styl mapy Miami
 - Nowy styl mapy „Miami”: Ustawienia → Wygląd → Mapa → Styl mapy
 - Dzień: piaskowe tło, turkusowa woda, pastelowe budynki, różowe autostrady i pomarańczowe drogi główne
