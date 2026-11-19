@@ -2,7 +2,7 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
-## next
+## 1.124 · 2026-11-19
 Motyw Miami i różnorodne budynki
 - Nowy motyw systemu „Miami”: zachód słońca nad oceanem, panorama miasta i palmy w tle; wieczorem neon, w dzień pastele
 - Ekran główny Miami: mapa w ramce w kolorach zachodu, duża prędkość z gradientem, odtwarzacz z pulsującą poświatą, menu w kapsule
