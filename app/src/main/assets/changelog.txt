@@ -2,7 +2,7 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
-## next
+## 1.121 · 2026-11-19
 Miami: palmy i zachód słońca
 - Styl mapy Miami w widoku 3D: palmy wzdłuż ulic (po obu stronach, bliższe większe)
 - Różowo-fioletowa poświata zachodu słońca nad horyzontem
