@@ -2,7 +2,7 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
-## next
+## 1.123 · 2026-11-19
 Realistyczne budynki 3D
 - Bryły zamienione na budynki: domy (tynk, okna, okiennice, dachówka), bloki (płyta, okna, balkony z kolorowymi barierkami), hale i fabryki (blacha, pas okien), wieżowce (szkło)
 - Bloki i wieżowce mają sklepy na parterze (witryny i szyldy)
