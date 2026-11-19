@@ -2,6 +2,14 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
+## next
+Miami: palmy i zachód słońca
+- Styl mapy Miami w widoku 3D: palmy wzdłuż ulic (po obu stronach, bliższe większe)
+- Różowo-fioletowa poświata zachodu słońca nad horyzontem
+- Budynki w ciepłym świetle zachodu (różowe, brzoskwiniowe), wieczorem neonowe obrysy przy ziemi
+- Żółte przerywane linie środkowe na głównych drogach, mocniejsze neonowe drogi
+- Palmy nie zasłaniają auta
+
 ## 1.120 · 2026-11-19
 Styl mapy Miami
 - Nowy styl mapy „Miami”: Ustawienia → Wygląd → Mapa → Styl mapy

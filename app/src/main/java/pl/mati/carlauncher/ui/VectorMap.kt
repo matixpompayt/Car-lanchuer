@@ -776,6 +776,12 @@ fun VectorMap(modifier: Modifier, full: Boolean = false) {
 
     Box(modifier) {
         AndroidView(factory = { h.view }, modifier = Modifier.fillMaxSize())
+        // styl Miami w 3D: palmy wzdłuż ulic i poświata zachodu słońca
+        MiamiOverlay(
+            if (ready) h.map else null, if (ready) h.style else null, mapTheme == CarMapStyle.THEME_MIAMI && is3d, CarColors.isLight,
+            { try { h.map?.locationComponent?.lastKnownLocation?.let { org.maplibre.android.geometry.LatLng(it.latitude, it.longitude) } } catch (_: Exception) { null } },
+            Modifier.fillMaxSize(),
+        )
         HouseNumbersOverlay(if (ready) h.map else null, if (ready) h.style else null, houseNums && is3d, CarColors.isLight, Modifier.fillMaxSize())
         // na pełnym ekranie przyciski są w układzie licznika (ClusterMap)
         if (!full) Column(

@@ -308,7 +308,7 @@ private fun LazyListScope.lookPage() {
                 MapThemePreview("Standardowy", "Stonowany, jak cały CAR OS", false, light, theme == CarMapStyle.THEME_STD, Modifier.weight(1f)) {
                     Prefs.setMapTheme(CarMapStyle.THEME_STD)
                 }
-                MapThemePreview("Miami", if (light) "Dzień: piasek, turkus, pastele" else "Noc: neonowe drogi z poświatą", true, light, theme == CarMapStyle.THEME_MIAMI, Modifier.weight(1f)) {
+                MapThemePreview("Miami", if (light) "Dzień: piasek, turkus, palmy" else "Wieczór: neon, palmy, zachód słońca", true, light, theme == CarMapStyle.THEME_MIAMI, Modifier.weight(1f)) {
                     Prefs.setMapTheme(CarMapStyle.THEME_MIAMI)
                 }
             }
@@ -1159,8 +1159,8 @@ private fun MapThemePreview(name: String, sub: String, miami: Boolean, light: Bo
     val accent = LocalAccent.current
     // kolory z palet mapy (tło, woda, zieleń, autostrada, główna, boczna)
     val c = when {
-        miami && light -> listOf(0xFFF6E6D6, 0xFF4FCFDF, 0xFFB3E3C0, 0xFFFF5C9E, 0xFFFFAE55, 0xFFFFFFFF)
-        miami -> listOf(0xFF130B26, 0xFF0A1838, 0xFF0E2129, 0xFFFF3D9A, 0xFFFF8A3D, 0xFF22C3D6)
+        miami && light -> listOf(0xFFF7E2CF, 0xFF3FC6DA, 0xFFA9DDB4, 0xFFFF4F98, 0xFFFF9F45, 0xFFFFE2B8)
+        miami -> listOf(0xFF22143A, 0xFF0E3550, 0xFF163A3A, 0xFFFF3D9A, 0xFFFF9A3D, 0xFFFFC94A)
         light -> listOf(0xFFDADFE4, 0xFFA9C6DC, 0xFFC4D9C3, 0xFFF1D9A0, 0xFFF7F8FA, 0xFFF4F5F7)
         else -> listOf(0xFF0B0E12, 0xFF0C1A25, 0xFF0E1914, 0xFF677180, 0xFF535C69, 0xFF434B56)
     }.map { Color(it) }

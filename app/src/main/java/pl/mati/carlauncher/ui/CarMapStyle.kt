@@ -58,22 +58,22 @@ object CarMapStyle {
         "#C3C9D1", "#9DA6B2", "#4A5460", "#EEF1F4",
     )
 
-    /** Miami – dzień: piasek, turkusowa woda, pastelowe budynki, różowo-pomarańczowe drogi. */
+    /** Miami – dzień (złota godzina): piasek, turkusowa woda, pastelowe budynki w ciepłym świetle. */
     private val MIAMI_DAY = MapColors(
-        "#F6E6D6", "#4FCFDF", "#B3E3C0", "#F2CEC3", "#EED9CC", "#EAD4C6", "#F4E4D4",
-        "#36BACF", "#D59BBB", "#CDB4C6", "#E4A7BD", "#FF5C9E", "#FFAE55", "#FFF3E6", "#E6CBC1", "#E4C6D3", "#FFFFFF",
-        "#4A2140", "#7A4A6E", "#16788F", "#FFF6EE",
-        "#F7D2CA", "#F2B5C6", "#C7A2E0",
-        "#F2CEC3", "#E0A5B4", "#6E3A60", "#FFF6EE",
+        "#F7E2CF", "#3FC6DA", "#A9DDB4", "#F4C7BC", "#F0D6C6", "#EDD0C0", "#F5E0CC",
+        "#2BB3CC", "#D597BB", "#CFAFC4", "#E79BB6", "#FF4F98", "#FF9F45", "#FFE2B8", "#E9C6BC", "#E6C2D2", "#FFFFFF",
+        "#4A1F40", "#7E4372", "#11738A", "#FFF4EA",
+        "#F9D0C4", "#F5AFC3", "#D3A2EA",
+        "#F4C7BC", "#E596B0", "#6E3A60", "#FFF4EA",
     )
 
-    /** Miami – noc: granatowo-fioletowo, neonowe drogi z poświatą (róż, pomarańcz, turkus). */
+    /** Miami – wieczór: fioletowe miasto, neonowe drogi z poświatą, różowe budynki w świetle zachodu. */
     private val MIAMI_NIGHT = MapColors(
-        "#130B26", "#0A1838", "#0E2129", "#25163E", "#1D1234", "#1B1031", "#170E2C",
-        "#1F4F8E", "#5C3A88", "#3B2A5E", "#090410", "#FF3D9A", "#FF8A3D", "#22C3D6", "#3D2B60", "#4B3672", "#6A4CA0",
-        "#F4E8FF", "#C8A6F0", "#6ED0FF", "#0D0619",
-        "#2B1A4A", "#3D2266", "#5C2D8A",
-        "#2B1A4A", "#5B3E8C", "#D8B8FF", "#0D0619",
+        "#22143A", "#0E3550", "#163A3A", "#3A2150", "#2A1A44", "#2A1844", "#25163D",
+        "#2A7FB0", "#7A4AA8", "#4A3470", "#12081F", "#FF3D9A", "#FF9A3D", "#FFC94A", "#5A3C82", "#5E4590", "#C04FD0",
+        "#FFF0FA", "#FFC2E6", "#7FE3FF", "#1A0B2A",
+        "#7A4878", "#A2588A", "#C46FA8",
+        "#3A2150", "#FF4FB8", "#FFD1EC", "#1A0B2A",
         glow = true,
     )
 
@@ -81,6 +81,9 @@ object CarMapStyle {
     const val THEME_MIAMI = "miami"
     /** Poświata neonowych dróg (pod drogami). */
     private const val GLOW = "caros-road-glow"
+    /** Miami: przerywane linie środkowe na głównych drogach i neonowe obrysy budynków (wieczorem, w 3D). */
+    private const val MARKS = "caros-road-marks"
+    const val NEON = "caros-neon-outline"
 
     private fun pal(light: Boolean): MapColors = when (pl.mati.carlauncher.data.Prefs.mapTheme.value) {
         THEME_MIAMI -> if (light) MIAMI_DAY else MIAMI_NIGHT
@@ -149,6 +152,77 @@ object CarMapStyle {
         swapBuildings(style, light)
         recolorOwn(style, light)
         setGlow(style, p)
+        setExtras(style, p, pl.mati.carlauncher.data.Prefs.mapTheme.value == THEME_MIAMI, light, pl.mati.carlauncher.data.Prefs.map3d.value)
+    }
+
+    /** Światło brył (ciepły zachód słońca w Miami), linie środkowe dróg, neonowe obrysy budynków. */
+    private fun setExtras(style: Style, p: MapColors, miami: Boolean, light: Boolean, show3d: Boolean) {
+        try {
+            style.light?.let { l ->
+                if (miami) {
+                    l.setAnchor(Property.ANCHOR_MAP)
+                    l.setColor(Color.parseColor(if (light) "#FFE3C0" else "#FFB27E"))
+                    l.setIntensity(if (light) 0.42f else 0.62f)
+                    l.setPosition(org.maplibre.android.style.light.Position(1.2f, 250f, if (light) 35f else 55f))
+                } else {
+                    l.setAnchor(Property.ANCHOR_VIEWPORT)
+                    l.setColor(Color.WHITE)
+                    l.setIntensity(0.5f)
+                    l.setPosition(org.maplibre.android.style.light.Position(1.15f, 210f, 30f))
+                }
+            }
+        } catch (_: Exception) {
+        }
+        try {
+            val lastRoad = style.layers.lastOrNull { it is LineLayer && it.sourceLayer == "transportation" && !it.id.startsWith("caros-") } as? LineLayer
+            if (!miami || lastRoad == null) {
+                listOf(MARKS, NEON).forEach { id -> style.getLayer(id)?.let { style.removeLayer(it) } }
+                return
+            }
+            val src = lastRoad.sourceId
+            val markColor = Color.parseColor(if (light) "#FFFFFF" else "#FFD84D")
+            val marks = style.getLayer(MARKS) as? LineLayer
+            if (marks == null) {
+                val m = LineLayer(MARKS, src).withSourceLayer("transportation").withProperties(
+                    PropertyFactory.lineColor(markColor),
+                    PropertyFactory.lineWidth(
+                        Expression.interpolate(Expression.exponential(1.4f), Expression.zoom(), Expression.stop(14.5, 0.8f), Expression.stop(17, 2.2f), Expression.stop(19, 5f)),
+                    ),
+                    PropertyFactory.lineDasharray(arrayOf(2.2f, 2.6f)),
+                    PropertyFactory.lineOpacity(0.85f),
+                )
+                m.minZoom = 14.5f
+                m.setFilter(
+                    Expression.match(
+                        Expression.get("class"),
+                        Expression.literal("primary"), Expression.literal(true),
+                        Expression.literal("secondary"), Expression.literal(true),
+                        Expression.literal("tertiary"), Expression.literal(true),
+                        Expression.literal(false),
+                    ),
+                )
+                style.addLayerAbove(m, lastRoad.id)
+            } else {
+                marks.setProperties(PropertyFactory.lineColor(markColor))
+            }
+            val neon = style.getLayer(NEON)
+            if (light) {
+                neon?.let { style.removeLayer(it) }
+            } else if (neon == null) {
+                val n = LineLayer(NEON, src).withSourceLayer("building").withProperties(
+                    PropertyFactory.lineColor(Color.parseColor("#FF4FB8")),
+                    PropertyFactory.lineWidth(
+                        Expression.interpolate(Expression.linear(), Expression.zoom(), Expression.stop(15, 0.6f), Expression.stop(17, 1.6f), Expression.stop(19, 3f)),
+                    ),
+                    PropertyFactory.lineOpacity(0.8f),
+                    PropertyFactory.lineBlur(0.6f),
+                    PropertyFactory.visibility(if (show3d) Property.VISIBLE else Property.NONE),
+                )
+                n.minZoom = 15f
+                style.addLayerAbove(n, lastRoad.id)
+            }
+        } catch (_: Exception) {
+        }
     }
 
     /** Neonowa poświata: szeroka, rozmyta linia pod autostradami i głównymi drogami. */
@@ -367,5 +441,7 @@ object CarMapStyle {
         listOf(BUILDINGS_2D, BUILDINGS_2D_LINE).forEach { id ->
             try { style.getLayer(id)?.setProperties(PropertyFactory.visibility(if (on) Property.NONE else Property.VISIBLE)) } catch (_: Exception) {}
         }
+        // neonowe obrysy pod bryłami – tylko w 3D (w 2D są zwykłe obrysy domów)
+        try { style.getLayer(NEON)?.setProperties(PropertyFactory.visibility(if (on) Property.VISIBLE else Property.NONE)) } catch (_: Exception) {}
     }
 }
