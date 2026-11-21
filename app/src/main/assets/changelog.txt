@@ -2,7 +2,7 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
-## next
+## 1.128 · 2026-11-21
 Droga wybrana w telefonie
 - Gdy w telefonie wybrana jest droga, której zwykłe warianty nie mają, radio prowadzi tą drogą (przez ukryte punkty, bez zatrzymywania się na nich)
 - Po zjechaniu z trasy przeliczenie dalej idzie tą samą drogą
