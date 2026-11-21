@@ -264,6 +264,16 @@ object RouteRepository {
         recompute()
     }
 
+    fun insertStop(place: Place, index: Int) {
+        val p = plan.value ?: return
+        if (p.stops.size >= 3) return
+        clearResults()
+        val l = p.stops.toMutableList()
+        l.add(index.coerceIn(0, l.size), place)
+        plan.value = p.copy(stops = l, alternatives = emptyList(), selected = 0, computing = true)
+        recompute()
+    }
+
     fun removeStop(index: Int) {
         val p = plan.value ?: return
         plan.value = p.copy(stops = p.stops.filterIndexed { i, _ -> i != index }, alternatives = emptyList(), selected = 0, computing = true)

@@ -2,6 +2,14 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
+## next
+Poprawka: stacje i przerwy przy trasie
+- Naprawione „Nie znalazłem stacji…” przy każdej trasie – zapytania do mapy OSM były odrzucane przez serwer
+- Szuka w pasie wzdłuż trasy i mierzy odległość od samej drogi, więc znajduje też stacje i MOP-y przy autostradzie
+- Kilka serwerów po kolei, a gdy żaden nie odpowie – TomTom (jeśli jest klucz)
+- Gdy serwery nie odpowiadają: komunikat z przyczyną i przycisk „Ponów” zamiast „nic nie znalazłem”
+- „Dodaj” wstawia postój we właściwe miejsce między punkty trasy, a nie zawsze przed celem
+
 ## 1.129 · 2026-11-21
 Inteligentny plan trasy
 - W planowaniu trasy karta „Inteligentny plan”

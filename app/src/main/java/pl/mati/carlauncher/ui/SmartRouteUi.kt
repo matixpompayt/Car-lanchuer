@@ -78,9 +78,21 @@ fun SmartPlanCar(p: RouteRepository.Plan) {
     var slots by remember(r.id) { mutableStateOf<List<SmartRoute.Slot>?>(null) }
     var slotsBusy by remember(r.id) { mutableStateOf(false) }
     var stops by remember(r.id) { mutableStateOf<List<SmartRoute.Stop>?>(null) }
+    var stopsErr by remember(r.id) { mutableStateOf<String?>(null) }
+    var stopsTry by remember(r.id) { mutableStateOf(0) }
     val needStops = (range != null && range < r.distanceM / 1000 + 40) || travelS > 2 * 3600 + 20 * 60
-    LaunchedEffect(r.id, range) {
-        stops = if (needStops) try { SmartRoute.stops(r, travelS, range) } catch (_: Exception) { emptyList() } else emptyList()
+    LaunchedEffect(r.id, range, stopsTry) {
+        stopsErr = null
+        if (!needStops) { stops = emptyList(); return@LaunchedEffect }
+        stops = null
+        stops = try {
+            SmartRoute.stops(r, travelS, range)
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            stopsErr = e.message ?: "błąd"
+            emptyList()
+        }
     }
     Column(
         Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).carSurface(RoundedCornerShape(18.dp), CarColors.Card).padding(16.dp),
@@ -162,7 +174,14 @@ fun SmartPlanCar(p: RouteRepository.Plan) {
             st == null -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Spinner(20.dp); Text("Szukam stacji i miejsc na przerwę…", fontSize = 16.sp, color = CarColors.Muted)
             }
-            st.isEmpty() -> SmartLine(Icons.Rounded.LocalGasStation, CarColors.Orange, "Nie znalazłem stacji ani miejsc na przerwę przy trasie")
+            st.isEmpty() && stopsErr != null -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Icon(Icons.Rounded.LocalGasStation, null, tint = CarColors.Orange, modifier = Modifier.size(24.dp))
+                Text("Nie udało się pobrać stacji – serwery map nie odpowiadają ($stopsErr)", fontSize = 16.sp, color = CarColors.Text2, modifier = Modifier.weight(1f))
+                Box(
+                    Modifier.clip(RoundedCornerShape(12.dp)).background(accent.copy(alpha = 0.18f)).clickable { stopsTry++ }.padding(horizontal = 14.dp, vertical = 8.dp),
+                ) { Text("Ponów", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = accent) }
+            }
+            st.isEmpty() -> SmartLine(Icons.Rounded.LocalGasStation, CarColors.Muted, "Brak stacji i MOP-ów blisko trasy w miejscach, gdzie wypada postój")
             else -> st.forEach { s ->
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Icon(if (s.kind == "fuel") Icons.Rounded.LocalGasStation else Icons.Rounded.Coffee, null, tint = if (s.kind == "fuel") CarColors.Orange else accent, modifier = Modifier.size(26.dp))
@@ -173,7 +192,7 @@ fun SmartPlanCar(p: RouteRepository.Plan) {
                     val added = p.stops.any { kotlin.math.abs(it.lat - s.place.lat) < 1e-5 && kotlin.math.abs(it.lon - s.place.lon) < 1e-5 }
                     if (!added && p.stops.size < 3) Box(
                         Modifier.clip(RoundedCornerShape(12.dp)).background(accent.copy(alpha = 0.18f)).clickable {
-                            RouteRepository.addStop(s.place)
+                            SmartRoute.addStopInOrder(r, p.stops, s)
                             Toaster.show("Dodano przystanek: ${s.place.name}")
                         }.padding(horizontal = 14.dp, vertical = 8.dp),
                     ) { Text("Dodaj", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = accent) }

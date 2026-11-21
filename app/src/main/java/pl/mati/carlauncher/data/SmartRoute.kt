@@ -225,58 +225,59 @@ object SmartRoute {
 
     data class Stop(val kind: String, val place: RouteRepository.Place, val atKm: Double, val etaS: Double, val note: String)
 
+    /**
+     * Stacja, gdy zasięg nie wystarcza (zapas 40 km), i przerwa co ok. 2 h – miejsca przy samej trasie
+     * (OpenStreetMap, a gdy nie odpowiada – TomTom). Rzuca IOException, gdy nic nie udało się sprawdzić.
+     */
     suspend fun stops(r: RouteRepository.Route, travelS: Double, rangeKm: Double?): List<Stop> = withContext(Dispatchers.IO) {
         val out = ArrayList<Stop>()
-        val totalKm = r.distanceM / 1000
-        val speed = r.distanceM / travelS.coerceAtLeast(60.0)
-        fun idxAt(km: Double) = r.cumulative.indexOfFirst { it >= km * 1000 }.let { if (it < 0) r.points.lastIndex else it }
-        if (rangeKm != null && rangeKm < totalKm + 40) {
-            val i = idxAt((rangeKm - 40).coerceIn(5.0, totalKm))
-            findNear(r.points, i, "fuel")?.let { (p, at) -> out += Stop("fuel", p, r.cumulative[at] / 1000, r.cumulative[at] / speed, "Zasięg ok. ${rangeKm.roundToInt()} km") }
+        val n = r.points.size
+        if (n < 2) return@withContext out
+        val lats = DoubleArray(n) { r.points[it].latitude }
+        val lons = DoubleArray(n) { r.points[it].longitude }
+        val cum = r.cumulative
+        val total = cum.last()
+        val speed = total / travelS.coerceAtLeast(60.0)
+        val key = Prefs.tomtomKey.value.trim()
+        var ok = 0
+        var err: Exception? = null
+        fun look(target: Double, back: Double, fwd: Double, kind: String): AlongRoute.Hit? = try {
+            AlongRoute.find(lats, lons, cum, target, back, fwd, kind, key) { TrafficRepository.count() }.also { ok++ }
+        } catch (e: Exception) {
+            err = e
+            null
+        }
+        if (rangeKm != null && rangeKm < total / 1000 + 40) {
+            val target = ((rangeKm - 40) * 1000).coerceIn(5_000.0, total)
+            look(target, 60_000.0, 10_000.0, "fuel")?.let { h ->
+                out += Stop("fuel", RouteRepository.Place(h.name, "Stacja paliw", h.lat, h.lon), h.atM / 1000, h.atM / speed, "Zasięg ok. ${rangeKm.roundToInt()} km")
+            }
         }
         var t = 2 * 3600.0
-        var n = 0
-        while (t < travelS - 20 * 60 && n < 3) {
-            val i = idxAt(t * speed / 1000)
-            (findNear(r.points, i, "rest") ?: findNear(r.points, i, "fuel"))?.let { (p, at) ->
-                if (out.none { abs(it.atKm - r.cumulative[at] / 1000) < 15 }) out += Stop("break", p, r.cumulative[at] / 1000, r.cumulative[at] / speed, "Przerwa po ok. ${(t / 3600).roundToInt()} h jazdy")
+        var i = 0
+        while (t < travelS - 20 * 60 && i < 3) {
+            val target = t * speed
+            if (out.none { abs(it.atKm * 1000 - target) < 25_000 }) {
+                look(target, 30_000.0, 20_000.0, "rest")?.let { h ->
+                    if (out.none { abs(it.atKm - h.atM / 1000) < 15 }) {
+                        out += Stop("break", RouteRepository.Place(h.name, if (h.rest) "Miejsce na przerwę" else "Stacja paliw", h.lat, h.lon), h.atM / 1000, h.atM / speed,
+                            "Przerwa po ok. ${(t / 3600).roundToInt()} h jazdy")
+                    }
+                }
             }
             t += 2 * 3600.0
-            n++
+            i++
         }
+        if (ok == 0 && err != null) throw java.io.IOException(err?.message ?: "brak odpowiedzi")
         out.sortedBy { it.atKm }
     }
 
-    private fun findNear(pts: List<GeoPoint>, idx: Int, kind: String): Pair<RouteRepository.Place, Int>? {
-        val c = pts[idx]
-        val filter = if (kind == "fuel") "[amenity=fuel]" else "[highway~\"^(services|rest_area)$\"]"
-        val q = "[out:json][timeout:15];(node$filter(around:4000,${c.latitude},${c.longitude});way$filter(around:4000,${c.latitude},${c.longitude}););out center 25;"
-        val els = try {
-            JSONObject(get("https://overpass-api.de/api/interpreter?data=" + URLEncoder.encode(q, "UTF-8"))).optJSONArray("elements")
-        } catch (_: Exception) { null } ?: return null
-        var best: Pair<RouteRepository.Place, Int>? = null
-        var bestScore = Double.MAX_VALUE
-        val from = (idx - 400).coerceAtLeast(0)
-        val to = (idx + 400).coerceAtMost(pts.lastIndex)
-        for (i in 0 until els.length()) {
-            val e = els.getJSONObject(i)
-            val lat = e.optDouble("lat", e.optJSONObject("center")?.optDouble("lat") ?: Double.NaN)
-            val lon = e.optDouble("lon", e.optJSONObject("center")?.optDouble("lon") ?: Double.NaN)
-            if (lat.isNaN() || lon.isNaN()) continue
-            val g = GeoPoint(lat, lon)
-            var dmin = Double.MAX_VALUE
-            var at = idx
-            var k = from
-            while (k <= to) { val x = d(g, pts[k]); if (x < dmin) { dmin = x; at = k }; k += 2 }
-            if (dmin > 1500) continue
-            val tags = e.optJSONObject("tags")
-            val name = listOfNotNull(tags?.optString("brand")?.ifBlank { null }, tags?.optString("name")?.ifBlank { null }).distinct().joinToString(" ")
-            val score = dmin * 3 + abs(at - idx) * 2.0
-            if (score < bestScore) {
-                bestScore = score
-                best = RouteRepository.Place(name.ifBlank { if (kind == "fuel") "Stacja paliw" else "Miejsce odpoczynku" }, if (kind == "fuel") "Stacja paliw" else "Przerwa", lat, lon) to at
-            }
-        }
-        return best
+    /** Dodaje postój między przystanki tak, żeby kolejność zgadzała się z trasą. */
+    fun addStopInOrder(r: RouteRepository.Route, stops: List<RouteRepository.Place>, s: Stop) {
+        val n = r.points.size
+        val lats = DoubleArray(n) { r.points[it].latitude }
+        val lons = DoubleArray(n) { r.points[it].longitude }
+        val idx = stops.indexOfFirst { AlongRoute.positionOf(it.lat, it.lon, lats, lons, r.cumulative) > s.atKm * 1000 }
+        RouteRepository.insertStop(s.place, if (idx < 0) stops.size else idx)
     }
 }
