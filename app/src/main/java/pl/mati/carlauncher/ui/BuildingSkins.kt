@@ -56,14 +56,15 @@ object BuildingSkins {
     fun layers(style: Style, prefix: String, src: String, miami: Boolean, light: Boolean): List<FillExtrusionLayer> {
         val key = (if (miami) "m" else "s") + (if (light) "l" else "d")
         ensureImages(style, key, miami, light)
-        fun n(k: String) = "bld_${key}_$k"
+        fun patternAt(z: Int): Expression {
+        fun n(k: String) = "bld_${key}_${k}_z${imgZoom(z)}"
         val houses = (0 until 8).map { n("house$it") }
         val inds = (0 until 3).map { n("ind$it") }
         val tens = (0 until 2).map { n("ten$it") }
         val lows = listOf(n("office0"), n("low0"), n("brick0"), n("low1"))
         val blocks = (0 until 6).map { n("block$it") }
         val towers = (0 until 5).map { n("tower$it") }
-        val pattern = Expression.switchCase(
+        return Expression.switchCase(
             Expression.lte(H, Expression.literal(7)), pick(hm(8), houses),
             Expression.lte(H, Expression.literal(12)), Expression.match(
                 hm(8), pick(hm2(4), lows),
@@ -80,6 +81,12 @@ object BuildingSkins {
             ),
             pick(hm(5), towers),
         )
+        }
+        fun shopAt(z: Int): Expression = pick(hm2(3), (0 until 3).map { "bld_${key}_shop${it}_z${imgZoom(z)}" })
+        // MapLibre rysuje wzór w stałej wielkości na ekranie dla każdego pełnego zoomu, więc przy przybliżaniu
+        // okna robiły się coraz mniejsze. Dla każdego zoomu osobny obrazek w innej skali → piętro ma zawsze ok. 2,6 m.
+        val pattern = Expression.step(Expression.zoom(), patternAt(ZOOMS.first), *ZOOMS.drop(1).map { Expression.stop(it, patternAt(it)) }.toTypedArray())
+        val shopPattern = Expression.step(Expression.zoom(), shopAt(ZOOMS.first), *ZOOMS.drop(1).map { Expression.stop(it, shopAt(it)) }.toTypedArray())
         val wallBase = Expression.switchCase(HAS_SHOP, Expression.literal(SHOP_H), MINH)
         val walls = FillExtrusionLayer("$prefix-walls", src).withSourceLayer("building").withProperties(
             PropertyFactory.fillExtrusionPattern(pattern),
@@ -90,7 +97,7 @@ object BuildingSkins {
         )
         walls.minZoom = 14f
         val shops = FillExtrusionLayer("$prefix-shops", src).withSourceLayer("building").withProperties(
-            PropertyFactory.fillExtrusionPattern(pick(hm2(3), (0 until 3).map { n("shop$it") })),
+            PropertyFactory.fillExtrusionPattern(shopPattern),
             PropertyFactory.fillExtrusionHeight(grow(Expression.literal(SHOP_H))),
             PropertyFactory.fillExtrusionBase(Expression.literal(0)),
             PropertyFactory.fillExtrusionOpacity(1f),
@@ -146,9 +153,18 @@ object BuildingSkins {
 
     // ======================= wzory ścian =======================
 
-    /** 16×16 punktów mapy (≈ 2 piętra × 2 okna przy przybliżeniu nawigacji), rysowane 4× gęściej. */
+    /** Wzór: 2 piętra × 2 osie okien, rysowany na 64 jednostkach (przy dużym przybliżeniu 2× ostrzej). */
     private const val PX = 64
-    private const val RATIO = 4
+    /** Jeden wzór na elewacji = 5,2 m (piętro ok. 2,6 m) – niezależnie od przybliżenia. */
+    private const val TILE_M = 5.2
+    /** Metry na piksel mapy przy zoomie 0 na szer. ok. 52,5° (Polska): 40 075 016 m · cos φ / 512. */
+    private const val MPP0 = 47_651.0
+    /** Zoomy, dla których są osobne obrazki (powyżej 20 – jak przy 20). */
+    private val ZOOMS = 14..21
+    private fun imgZoom(z: Int) = minOf(z, 20)
+    /** Rozdzielczość obrazka: dalej 64 px, z bliska 128 px. */
+    private fun bmpScale(z: Int) = if (z <= 17) 1 else 2
+    private var drawScale = 1
 
     private enum class Mat { PLASTER, BRICK, SIDING, CLADDING, PANEL, STONE }
     private enum class Win { SQUARE, CROSS, ARCH, TALL, WIDE, SMALL }
@@ -195,51 +211,65 @@ object BuildingSkins {
     }
 
     private fun ensureImages(style: Style, key: String, miami: Boolean, light: Boolean) {
-        if (style.getImage("bld_${key}_shop2") != null) return
+        if (style.getImage("bld_${key}_shop2_z20") != null) return
         val p = Pal.of(miami, light)
-        val img = HashMap<String, Bitmap>()
+        val img = LinkedHashMap<String, () -> Bitmap>()
         // domy: materiał × okna × dodatki
-        img["house0"] = facade(p, p.house[0], Mat.PLASTER, Win.CROSS, 1)
-        img["house1"] = facade(p, p.house[1], Mat.PLASTER, Win.SQUARE, 2, shutters = 0xFF5E7F5A.toInt())
-        img["house2"] = facade(p, p.brick, Mat.BRICK, Win.CROSS, 3)
-        img["house3"] = facade(p, p.house[2], Mat.SIDING, Win.SQUARE, 4, shutters = 0xFF4A6A8A.toInt())
-        img["house4"] = facade(p, p.house[3], Mat.CLADDING, Win.WIDE, 5)
-        img["house5"] = facade(p, p.house[4], Mat.STONE, Win.ARCH, 6)
-        img["house6"] = facade(p, p.house[5], Mat.PLASTER, Win.ARCH, 7, shutters = 0xFF7A4E3A.toInt())
-        img["house7"] = facade(p, p.house[6], Mat.PLASTER, Win.SMALL, 8, band = p.house[7])
+        img["house0"] = { facade(p, p.house[0], Mat.PLASTER, Win.CROSS, 1) }
+        img["house1"] = { facade(p, p.house[1], Mat.PLASTER, Win.SQUARE, 2, shutters = 0xFF5E7F5A.toInt()) }
+        img["house2"] = { facade(p, p.brick, Mat.BRICK, Win.CROSS, 3) }
+        img["house3"] = { facade(p, p.house[2], Mat.SIDING, Win.SQUARE, 4, shutters = 0xFF4A6A8A.toInt()) }
+        img["house4"] = { facade(p, p.house[3], Mat.CLADDING, Win.WIDE, 5) }
+        img["house5"] = { facade(p, p.house[4], Mat.STONE, Win.ARCH, 6) }
+        img["house6"] = { facade(p, p.house[5], Mat.PLASTER, Win.ARCH, 7, shutters = 0xFF7A4E3A.toInt()) }
+        img["house7"] = { facade(p, p.house[6], Mat.PLASTER, Win.SMALL, 8, band = p.house[7]) }
         // hale i fabryki
-        img["ind0"] = industrial(p, p.ind[0], 0)
-        img["ind1"] = industrial(p, p.ind[1], 1)
-        img["ind2"] = facade(p, p.brick, Mat.BRICK, Win.ARCH, 21)
+        img["ind0"] = { industrial(p, p.ind[0], 0) }
+        img["ind1"] = { industrial(p, p.ind[1], 1) }
+        img["ind2"] = { facade(p, p.brick, Mat.BRICK, Win.ARCH, 21) }
         // kamienice: wysokie okna z gzymsami
-        img["ten0"] = facade(p, p.tenement[0], Mat.PLASTER, Win.TALL, 31, cornice = true)
-        img["ten1"] = facade(p, p.tenement[1], Mat.STONE, Win.TALL, 32, cornice = true, balcony = 0xFF2A2A2A.toInt())
+        img["ten0"] = { facade(p, p.tenement[0], Mat.PLASTER, Win.TALL, 31, cornice = true) }
+        img["ten1"] = { facade(p, p.tenement[1], Mat.STONE, Win.TALL, 32, cornice = true, balcony = 0xFF2A2A2A.toInt()) }
         // niższe: biurowiec, mały blok, ceglany
-        img["office0"] = office(p, p.concrete, 41, ribbon = true)
-        img["office1"] = office(p, p.concrete, 42, ribbon = false)
-        img["low0"] = facade(p, p.block[0], Mat.PANEL, Win.WIDE, 43)
-        img["low1"] = facade(p, p.block[2], Mat.PLASTER, Win.SQUARE, 44, band = p.accent[1])
-        img["brick0"] = facade(p, p.brick, Mat.BRICK, Win.WIDE, 45)
+        img["office0"] = { office(p, p.concrete, 41, ribbon = true) }
+        img["office1"] = { office(p, p.concrete, 42, ribbon = false) }
+        img["low0"] = { facade(p, p.block[0], Mat.PANEL, Win.WIDE, 43) }
+        img["low1"] = { facade(p, p.block[2], Mat.PLASTER, Win.SQUARE, 44, band = p.accent[1]) }
+        img["brick0"] = { facade(p, p.brick, Mat.BRICK, Win.WIDE, 45) }
         // bloki z wielkiej płyty
-        img["block0"] = facade(p, p.block[0], Mat.PANEL, Win.WIDE, 51, balcony = p.accent[0])
-        img["block1"] = facade(p, p.block[1], Mat.PANEL, Win.WIDE, 52, balcony = p.accent[1])
-        img["block2"] = facade(p, p.block[2], Mat.PANEL, Win.WIDE, 53, stripe = p.accent[2])
-        img["block3"] = facade(p, p.block[3], Mat.PANEL, Win.SQUARE, 54, stripe = p.accent[3], balcony = p.accent[3])
-        img["block4"] = facade(p, p.block[4], Mat.PANEL, Win.WIDE, 55, band = p.accent[0])
-        img["block5"] = loggia(p, p.block[5], 56)
+        img["block0"] = { facade(p, p.block[0], Mat.PANEL, Win.WIDE, 51, balcony = p.accent[0]) }
+        img["block1"] = { facade(p, p.block[1], Mat.PANEL, Win.WIDE, 52, balcony = p.accent[1]) }
+        img["block2"] = { facade(p, p.block[2], Mat.PANEL, Win.WIDE, 53, stripe = p.accent[2]) }
+        img["block3"] = { facade(p, p.block[3], Mat.PANEL, Win.SQUARE, 54, stripe = p.accent[3], balcony = p.accent[3]) }
+        img["block4"] = { facade(p, p.block[4], Mat.PANEL, Win.WIDE, 55, band = p.accent[0]) }
+        img["block5"] = { loggia(p, p.block[5], 56) }
         // wieżowce
-        img["tower0"] = tower(p, p.glass[0], 61, 4)
-        img["tower1"] = tower(p, p.glass[1], 62, 4)
-        img["tower2"] = tower(p, p.glass[2], 63, 8)
-        img["tower3"] = tower(p, p.glass[3], 64, 4)
-        img["tower4"] = office(p, p.concrete, 65, ribbon = false, grid = true)
+        img["tower0"] = { tower(p, p.glass[0], 61, 4) }
+        img["tower1"] = { tower(p, p.glass[1], 62, 4) }
+        img["tower2"] = { tower(p, p.glass[2], 63, 8) }
+        img["tower3"] = { tower(p, p.glass[3], 64, 4) }
+        img["tower4"] = { office(p, p.concrete, 65, ribbon = false, grid = true) }
         // parter
-        img["shop0"] = shop(p, 0)
-        img["shop1"] = shop(p, 1)
-        img["shop2"] = shop(p, 2)
-        img.forEach { (k, b) ->
-            b.density = 160 * RATIO
-            try { style.addImage("bld_${key}_$k", b) } catch (_: Exception) {}
+        img["shop0"] = { shop(p, 0) }
+        img["shop1"] = { shop(p, 1) }
+        img["shop2"] = { shop(p, 2) }
+        for (sc in listOf(1, 2)) {
+            val zs = (ZOOMS.first..20).filter { bmpScale(it) == sc }
+            if (zs.isEmpty()) continue
+            drawScale = sc
+            try {
+                img.forEach { (k, draw) ->
+                    val b = draw()
+                    for (z in zs) {
+                        // ile pikseli ekranu (przy tym zoomie) ma mieć 5,2 m elewacji
+                        val css = TILE_M * Math.pow(2.0, z.toDouble()) / MPP0
+                        b.density = (160.0 * PX * sc / css).toInt().coerceAtLeast(1)
+                        try { style.addImage("bld_${key}_${k}_z$z", b) } catch (_: Exception) {}
+                    }
+                }
+            } finally {
+                drawScale = 1
+            }
         }
     }
 
@@ -257,8 +287,10 @@ object BuildingSkins {
     private fun rnd(seed: Int): Int = ((seed * 1103515245 + 12345) ushr 8) and 0x7FFFFF
 
     private fun newBmp(): Pair<Bitmap, Canvas> {
-        val b = Bitmap.createBitmap(PX, PX, Bitmap.Config.ARGB_8888)
-        return b to Canvas(b)
+        val b = Bitmap.createBitmap(PX * drawScale, PX * drawScale, Bitmap.Config.ARGB_8888)
+        val c = Canvas(b)
+        if (drawScale != 1) c.scale(drawScale.toFloat(), drawScale.toFloat())
+        return b to c
     }
 
     /** Szyba: wieczorem część świeci, w dzień odbija niebo (gradient). */
