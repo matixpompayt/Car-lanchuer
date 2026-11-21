@@ -2,7 +2,7 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
-## next
+## 1.134 · 2026-11-21
 Gęstsze okna na budynkach
 - Okna jak przy dużym przybliżeniu – takie same przy każdym zoomie (też po oddaleniu)
 - Ostrzejsze elewacje także przy największym przybliżeniu
