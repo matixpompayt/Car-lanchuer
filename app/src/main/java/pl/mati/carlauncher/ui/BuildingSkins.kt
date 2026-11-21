@@ -155,13 +155,13 @@ object BuildingSkins {
 
     /** Wzór: 2 piętra × 2 osie okien, rysowany na 64 jednostkach (przy dużym przybliżeniu 2× ostrzej). */
     private const val PX = 64
-    /** Jeden wzór na elewacji = 5,2 m (piętro ok. 2,6 m) – niezależnie od przybliżenia. */
-    private const val TILE_M = 5.2
+    /** Jeden wzór na elewacji = 2,8 m (2 rzędy okien) – gęstość jak przy dużym przybliżeniu, przy każdym zoomie. */
+    private const val TILE_M = 2.8
     /** Metry na piksel mapy przy zoomie 0 na szer. ok. 52,5° (Polska): 40 075 016 m · cos φ / 512. */
     private const val MPP0 = 47_651.0
-    /** Zoomy, dla których są osobne obrazki (powyżej 20 – jak przy 20). */
+    /** Zoomy, dla których są osobne obrazki. */
     private val ZOOMS = 14..21
-    private fun imgZoom(z: Int) = minOf(z, 20)
+    private fun imgZoom(z: Int) = z.coerceIn(ZOOMS.first, ZOOMS.last)
     /** Rozdzielczość obrazka: dalej 64 px, z bliska 128 px. */
     private fun bmpScale(z: Int) = if (z <= 17) 1 else 2
     private var drawScale = 1
@@ -211,7 +211,7 @@ object BuildingSkins {
     }
 
     private fun ensureImages(style: Style, key: String, miami: Boolean, light: Boolean) {
-        if (style.getImage("bld_${key}_shop2_z20") != null) return
+        if (style.getImage("bld_${key}_shop2_z${ZOOMS.last}") != null) return
         val p = Pal.of(miami, light)
         val img = LinkedHashMap<String, () -> Bitmap>()
         // domy: materiał × okna × dodatki
@@ -254,14 +254,14 @@ object BuildingSkins {
         img["shop1"] = { shop(p, 1) }
         img["shop2"] = { shop(p, 2) }
         for (sc in listOf(1, 2)) {
-            val zs = (ZOOMS.first..20).filter { bmpScale(it) == sc }
+            val zs = ZOOMS.filter { bmpScale(it) == sc }
             if (zs.isEmpty()) continue
             drawScale = sc
             try {
                 img.forEach { (k, draw) ->
                     val b = draw()
                     for (z in zs) {
-                        // ile pikseli ekranu (przy tym zoomie) ma mieć 5,2 m elewacji
+                        // ile pikseli ekranu (przy tym zoomie) ma mieć wzór (TILE_M metrów elewacji)
                         val css = TILE_M * Math.pow(2.0, z.toDouble()) / MPP0
                         b.density = (160.0 * PX * sc / css).toInt().coerceAtLeast(1)
                         try { style.addImage("bld_${key}_${k}_z$z", b) } catch (_: Exception) {}
