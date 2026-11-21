@@ -148,9 +148,9 @@ object RouteRepository {
     // ---------- planowanie ----------
 
     /** Zaczyna planowanie trasy do celu (warianty pojawią się na mapie). */
-    fun planTo(place: Place) {
+    fun planTo(place: Place, stops: List<Place> = emptyList()) {
         clearResults()
-        plan.value = Plan(dest = place)
+        plan.value = Plan(dest = place, stops = stops.take(3))
         recompute()
     }
 

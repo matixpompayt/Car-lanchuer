@@ -450,9 +450,11 @@ object ConnectRepository {
         when (o.optString("type")) {
             "route" -> {
                 val p = place(o)
-                RouteRepository.planTo(p)
+                // punkty po drodze ustawione w telefonie (kolejność jak w telefonie)
+                val via = o.optJSONArray("via")?.let { a -> (0 until a.length()).mapNotNull { i -> a.optJSONObject(i)?.let { v -> try { place(v) } catch (_: Exception) { null } } } }.orEmpty()
+                RouteRepository.planTo(p, via)
                 UiState.go(Screen.NAV)
-                Toaster.show("Trasa z telefonu: ${p.name}")
+                Toaster.show("Trasa z telefonu: ${p.name}" + if (via.isNotEmpty()) " przez ${via.size} ${if (via.size == 1) "punkt" else "punkty"}" else "")
             }
             "fav_add" -> {
                 val p = place(o)
