@@ -2,7 +2,7 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
-## next
+## 1.132 · 2026-11-21
 Lepsze budynki 3D
 - Domy mają prawdziwe dachy: dwuspadowe albo czterospadowe, z okapem i kominem (w kolorach dachówki / blachy)
 - Bloki i biurowce: attyka (murek dookoła dachu) i nadbudówki na dachu (klatki, maszynownie); wieżowce – większa nadbudowa
