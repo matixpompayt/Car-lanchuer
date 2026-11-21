@@ -2,7 +2,7 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
-## next
+## 1.126 · 2026-11-21
 Trasa z telefonu przez punkty
 - Trasa wysłana z CAR OS Connect z punktami po drodze jedzie przez te punkty (w kolejności z telefonu)
 
