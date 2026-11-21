@@ -155,16 +155,17 @@ object BuildingSkins {
 
     /** Wzór: 2 piętra × 2 osie okien, rysowany na 64 jednostkach (przy dużym przybliżeniu 2× ostrzej). */
     private const val PX = 64
-    /** Jeden wzór na elewacji = 2,8 m (2 rzędy okien) – gęstość jak przy dużym przybliżeniu, przy każdym zoomie. */
-    private const val TILE_M = 2.8
+    /** Jeden wzór na elewacji = 2,2 m (2 rzędy okien) – gęstość jak przy dużym przybliżeniu, przy każdym zoomie. */
+    private const val TILE_M = 2.2
     /** Metry na piksel mapy przy zoomie 0 na szer. ok. 52,5° (Polska): 40 075 016 m · cos φ / 512. */
     private const val MPP0 = 47_651.0
     /** Zoomy, dla których są osobne obrazki. */
     private val ZOOMS = 14..21
     private fun imgZoom(z: Int) = z.coerceIn(ZOOMS.first, ZOOMS.last)
-    /** Rozdzielczość obrazka: dalej 64 px, z bliska 128 px. */
-    private fun bmpScale(z: Int) = if (z <= 17) 1 else 2
-    private var drawScale = 1
+    /** Największy obrazek wzoru (px) – przy maksymalnym przybliżeniu na gęstych ekranach. */
+    private const val MAX_PX = 288
+    private var drawScale = 1f
+    private var drawPx = PX
 
     private enum class Mat { PLASTER, BRICK, SIDING, CLADDING, PANEL, STONE }
     private enum class Win { SQUARE, CROSS, ARCH, TALL, WIDE, SMALL }
@@ -253,22 +254,24 @@ object BuildingSkins {
         img["shop0"] = { shop(p, 0) }
         img["shop1"] = { shop(p, 1) }
         img["shop2"] = { shop(p, 2) }
-        for (sc in listOf(1, 2)) {
-            val zs = ZOOMS.filter { bmpScale(it) == sc }
-            if (zs.isEmpty()) continue
-            drawScale = sc
+        // MapLibre Native rysuje wzór w rozmiarze „piksele obrazka / gęstość ekranu” (gęstość obrazka pomija),
+        // a w świecie wzór maleje 2× z każdym poziomem przybliżenia. Dlatego dla każdego zoomu rysujemy obrazek
+        // dokładnie w takiej liczbie pikseli, żeby na ścianie miał zawsze TILE_M metrów.
+        val dpr = android.content.res.Resources.getSystem().displayMetrics.density.toDouble().coerceIn(0.75, 4.0)
+        for (z in ZOOMS) {
+            val css = TILE_M * Math.pow(2.0, z.toDouble()) / MPP0     // punkty ekranu na wzór przy tym zoomie
+            val px = Math.round(css * dpr).toInt().coerceIn(2, MAX_PX)
+            drawScale = px / PX.toFloat()
+            drawPx = px
             try {
                 img.forEach { (k, draw) ->
                     val b = draw()
-                    for (z in zs) {
-                        // ile pikseli ekranu (przy tym zoomie) ma mieć wzór (TILE_M metrów elewacji)
-                        val css = TILE_M * Math.pow(2.0, z.toDouble()) / MPP0
-                        b.density = (160.0 * PX * sc / css).toInt().coerceAtLeast(1)
-                        try { style.addImage("bld_${key}_${k}_z$z", b) } catch (_: Exception) {}
-                    }
+                    b.density = Math.round(160.0 * px / css).toInt().coerceAtLeast(1)
+                    try { style.addImage("bld_${key}_${k}_z$z", b) } catch (_: Exception) {}
                 }
             } finally {
-                drawScale = 1
+                drawScale = 1f
+                drawPx = PX
             }
         }
     }
@@ -287,9 +290,9 @@ object BuildingSkins {
     private fun rnd(seed: Int): Int = ((seed * 1103515245 + 12345) ushr 8) and 0x7FFFFF
 
     private fun newBmp(): Pair<Bitmap, Canvas> {
-        val b = Bitmap.createBitmap(PX * drawScale, PX * drawScale, Bitmap.Config.ARGB_8888)
+        val b = Bitmap.createBitmap(drawPx, drawPx, Bitmap.Config.ARGB_8888)
         val c = Canvas(b)
-        if (drawScale != 1) c.scale(drawScale.toFloat(), drawScale.toFloat())
+        if (drawScale != 1f) c.scale(drawScale, drawScale)
         return b to c
     }
 

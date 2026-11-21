@@ -2,6 +2,11 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
+## next
+Okna budynków naprawdę w stałej skali
+- Poprzednia poprawka nie działała – mapa pomijała ustawioną skalę obrazka. Teraz obrazek ściany jest rysowany osobno dla każdego przybliżenia w dokładnie potrzebnej wielkości, więc okna nie rosną po oddaleniu
+- Gęstość okien jak przy dużym przybliżeniu
+
 ## 1.134 · 2026-11-21
 Gęstsze okna na budynkach
 - Okna jak przy dużym przybliżeniu – takie same przy każdym zoomie (też po oddaleniu)
