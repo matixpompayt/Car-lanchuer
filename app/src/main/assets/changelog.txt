@@ -2,7 +2,7 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
-## next
+## 1.129 · 2026-11-21
 Inteligentny plan trasy
 - W planowaniu trasy karta „Inteligentny plan”
 - Omijanie korków i zamkniętych dróg: trasa TomTom (ruch na żywo) jako dodatkowy wariant, sam wybiera najszybszy bez zamknięć (chyba że wybierzesz palcem)
