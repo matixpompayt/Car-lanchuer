@@ -452,7 +452,11 @@ object ConnectRepository {
                 val p = place(o)
                 // punkty po drodze ustawione w telefonie (kolejność jak w telefonie)
                 val via = o.optJSONArray("via")?.let { a -> (0 until a.length()).mapNotNull { i -> a.optJSONObject(i)?.let { v -> try { place(v) } catch (_: Exception) { null } } } }.orEmpty()
-                RouteRepository.planTo(p, via)
+                // kształt trasy wybranej w telefonie (żeby radio wybrało ten sam wariant)
+                val shape = o.optJSONArray("shape")?.let { a ->
+                    (0 until a.length()).mapNotNull { i -> a.optJSONArray(i)?.let { q -> org.osmdroid.util.GeoPoint(q.getDouble(0), q.getDouble(1)) } }
+                }.orEmpty()
+                RouteRepository.planTo(p, via, shape)
                 UiState.go(Screen.NAV)
                 Toaster.show("Trasa z telefonu: ${p.name}" + if (via.isNotEmpty()) " przez ${via.size} ${if (via.size == 1) "punkt" else "punkty"}" else "")
             }

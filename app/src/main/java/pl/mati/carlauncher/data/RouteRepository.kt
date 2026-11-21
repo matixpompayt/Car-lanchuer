@@ -57,6 +57,8 @@ object RouteRepository {
         val selected: Int = 0,
         val computing: Boolean = true,
         val error: String? = null,
+        /** Kilka punktów trasy wybranej w telefonie – z wariantów wybierany ten, który po nich jedzie. */
+        val shape: List<GeoPoint> = emptyList(),
     ) {
         val chosen: Route? get() = alternatives.getOrNull(selected)
     }
@@ -148,10 +150,34 @@ object RouteRepository {
     // ---------- planowanie ----------
 
     /** Zaczyna planowanie trasy do celu (warianty pojawią się na mapie). */
-    fun planTo(place: Place, stops: List<Place> = emptyList()) {
+    fun planTo(place: Place, stops: List<Place> = emptyList(), shape: List<GeoPoint> = emptyList()) {
         clearResults()
-        plan.value = Plan(dest = place, stops = stops.take(3))
+        plan.value = Plan(dest = place, stops = stops.take(3), shape = shape)
         recompute()
+    }
+
+    /** Wariant najbliższy punktom trasy z telefonu (średnia odległość punktów od trasy), inaczej pierwszy. */
+    private fun matchShape(alts: List<Route>, shape: List<GeoPoint>): Int {
+        if (shape.isEmpty() || alts.size < 2) return 0
+        var best = 0
+        var bestD = Double.MAX_VALUE
+        alts.forEachIndexed { i, r ->
+            val step = maxOf(1, r.points.size / 600)
+            var sum = 0.0
+            for (s in shape) {
+                var m = Double.MAX_VALUE
+                var k = 0
+                while (k < r.points.size) {
+                    val p = r.points[k]
+                    val d = dist(s.latitude, s.longitude, p.latitude, p.longitude)
+                    if (d < m) m = d
+                    k += step
+                }
+                sum += m
+            }
+            if (sum < bestD) { bestD = sum; best = i }
+        }
+        return best
     }
 
     /** Dom / Praca: adres → współrzędne → planowanie. */
@@ -251,7 +277,9 @@ object RouteRepository {
             }
             try {
                 val alts = fetchRoutes(from, p.stops, p.dest)
-                plan.value = plan.value?.copy(alternatives = alts, selected = 0, computing = false, error = if (alts.isEmpty()) "Nie znaleziono trasy" else null)
+                // trasa wybrana w telefonie – ten sam wariant w radiu
+                val sel = matchShape(alts, p.shape)
+                plan.value = plan.value?.copy(alternatives = alts, selected = sel, computing = false, error = if (alts.isEmpty()) "Nie znaleziono trasy" else null)
             } catch (e: Exception) {
                 plan.value = plan.value?.copy(computing = false, error = "Nie udało się wyznaczyć trasy – sprawdź internet")
             }
