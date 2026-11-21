@@ -2,6 +2,13 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
+## next
+Lepsze budynki 3D
+- Domy mają prawdziwe dachy: dwuspadowe albo czterospadowe, z okapem i kominem (w kolorach dachówki / blachy)
+- Bloki i biurowce: attyka (murek dookoła dachu) i nadbudówki na dachu (klatki, maszynownie); wieżowce – większa nadbudowa
+- Kształt dachu liczony z obrysu budynku z mapy; dla nietypowych obrysów (np. w kształcie L) zostaje dach płaski
+- Działa przy „Budynki jak prawdziwe” w widoku 3D, dla budynków w pobliżu (od przybliżenia ok. 15,5)
+
 ## 1.131 · 2026-11-21
 Poprawka: stacje i przerwy przy trasie
 - Naprawione „Nie znalazłem stacji…” przy każdej trasie – zapytania do mapy OSM były odrzucane przez serwer

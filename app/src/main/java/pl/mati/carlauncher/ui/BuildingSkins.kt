@@ -21,7 +21,8 @@ import org.maplibre.android.style.layers.PropertyFactory
  *  – 7–12 m: hale i fabryki (3), kamienice (2), biurowce, małe bloki, ceglane,
  *  – 12–45 m: kamienice, bloki z wielkiej płyty (6: białe, szare, kolorowe pasy, loggie…), biurowce,
  *  – ponad 45 m: wieżowce (5: niebieskie, zielone, ciemne, złote szkło, betonowa siatka).
- * Dachy w kilku kolorach (niezależnie od ścian) i różnej grubości. Wieczorem część okien świeci.
+ * Dachy w kilku kolorach (niezależnie od ścian). Wieczorem część okien świeci.
+ * Skośne dachy domów, kominy, attyki i nadbudówki bloków – [BuildingRoofs].
  */
 object BuildingSkins {
 
@@ -108,7 +109,7 @@ object BuildingSkins {
         )
         val capH = Expression.switchCase(
             Expression.lte(H, Expression.literal(7)),
-            Expression.match(hm2(3), Expression.literal(1.4), Expression.stop(1, 2.0), Expression.stop(2, 2.6)),
+            Expression.literal(0.25), // okap – sam dach (dwu- / czterospadowy) dokłada BuildingRoofs
             Expression.gt(H, Expression.literal(45)), Expression.literal(1.2),
             Expression.literal(0.6),
         )
@@ -120,11 +121,11 @@ object BuildingSkins {
             PropertyFactory.fillExtrusionVerticalGradient(false),
         )
         roofs.minZoom = 14f
-        return listOf(walls, shops, roofs)
+        return listOf(walls, shops, roofs, BuildingRoofs.layer(prefix, style, miami, light))
     }
 
     /** Dachy: 6 dla domów, 3 płaskie, 2 wieżowce. */
-    private fun roofColors(miami: Boolean, light: Boolean): IntArray = when {
+    internal fun roofColors(miami: Boolean, light: Boolean): IntArray = when {
         miami && light -> longArrayOf(
             0xFFD9785F, 0xFFE58A7A, 0xFF3E9C9C, 0xFFC96A8A, 0xFFE0A050, 0xFF8A6AB0,
             0xFFF3E6EE, 0xFFE3D6E8, 0xFFC8B8D8, 0xFF8FA6C8, 0xFFB7C9E0,

@@ -784,6 +784,8 @@ fun VectorMap(modifier: Modifier, full: Boolean = false) {
             Modifier.fillMaxSize(),
         )
         HouseNumbersOverlay(if (ready) h.map else null, if (ready) h.style else null, houseNums && is3d, CarColors.isLight, Modifier.fillMaxSize())
+        // skośne dachy, kominy, attyki (dla „budynków jak prawdziwe”; na radiu mniej budynków naraz)
+        BuildingRoofsOverlay(if (ready) h.map else null, if (ready) h.style else null, realBld && is3d, 350)
         // na pełnym ekranie przyciski są w układzie licznika (ClusterMap)
         if (!full) Column(
             Modifier.align(Alignment.CenterEnd).padding(end = 16.dp),
