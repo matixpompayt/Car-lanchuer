@@ -2,7 +2,7 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
-## next
+## 1.133 · 2026-11-21
 Okna budynków w stałej skali
 - Przy przybliżaniu okna na ścianach już się nie zmniejszają – piętro ma zawsze ok. 2,6 m, więc blok 5-piętrowy ma 5 rzędów okien przy każdym przybliżeniu
 - Z bliska ostrzejsze elewacje (obrazki w wyższej rozdzielczości)
