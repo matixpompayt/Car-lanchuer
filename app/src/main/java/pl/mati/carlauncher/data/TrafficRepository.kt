@@ -91,12 +91,22 @@ object TrafficRepository {
                 if (!enabled || !Prefs.trafficEta.value) return@collect
                 val alts = RouteRepository.plan.value?.alternatives ?: return@collect
                 planJob = launch {
-                    val out = HashMap<Long, Info>()
+                    val out = HashMap<Long, Info>(plan.value.filterKeys { k -> alts.any { it.id == k } })
                     for (r in alts.take(4)) {
+                        if (out.containsKey(r.id)) continue
                         val i = try { query(r, 0.0, null) } catch (_: Exception) { null } ?: continue
                         out[r.id] = i
                         plan.value = HashMap(out)
                     }
+                    // inteligentny wybór: najszybszy z korkami, bez zamkniętych dróg
+                    val best = alts.indices.minWithOrNull(
+                        compareBy<Int>(
+                            { i -> if (out[alts[i].id]?.jams?.any { it.kind == "ROAD_CLOSURE" } == true) 1 else 0 },
+                            { i -> ((out[alts[i].id]?.travelS?.toDouble() ?: alts[i].durationS) / 60).roundToInt() },
+                            { i -> alts[i].distanceM },
+                        ),
+                    )
+                    if (best != null) RouteRepository.autoSelect(best)
                 }
             }
         }
@@ -111,6 +121,7 @@ object TrafficRepository {
                 if (info.value?.routeId != r.id) info.value = null
                 routeJob = launch {
                     var first = true
+                    var n = 0
                     while (isActive) {
                         if (enabled && Prefs.trafficEta.value) {
                             val fresh = info.value?.let { it.routeId == r.id && System.currentTimeMillis() - it.at < REFRESH_MS - 10_000 } == true
@@ -121,11 +132,18 @@ object TrafficRepository {
                                         info.value = it
                                         announce(it, along)
                                     }
+                                    // co ok. 6 min: czy jest wyraźnie szybsza droga (omija korki / zamknięcie)
+                                    if (n % 2 == 1 && Prefs.smartReroute.value) {
+                                        val remM = (r.distanceM - along).coerceAtLeast(0.0)
+                                        val closure = info.value?.jams?.any { it.kind == "ROAD_CLOSURE" && it.startAlongM + it.lengthM > along } == true
+                                        SmartRoute.checkFaster(r, remainingS(r, remM), here, closure)
+                                    }
                                 } catch (_: Exception) {
                                 }
                             }
                         }
                         first = false
+                        n++
                         delay(REFRESH_MS)
                     }
                 }
@@ -289,6 +307,9 @@ object TrafficRepository {
         val p = appCtx?.getSharedPreferences("traffic", Context.MODE_PRIVATE) ?: return
         usedToday.value = if (p.getInt("day", 0) == day()) p.getInt("n", 0) else 0
     }
+
+    /** Licznik zapytań TomTom dla innych modułów (inteligentny plan). */
+    fun count(): Boolean = countRequest()
 
     @Synchronized
     private fun countRequest(): Boolean {

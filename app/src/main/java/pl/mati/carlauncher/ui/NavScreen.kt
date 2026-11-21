@@ -275,6 +275,9 @@ private fun ColumnScope.PlannerPanel(p: RouteRepository.Plan, onAddStop: () -> U
             }
         }
 
+        // inteligentny plan: korki, kolejność przystanków, godzina wyjazdu, tankowanie i przerwy
+        if (!p.computing && p.error == null && p.chosen != null) SmartPlanCar(p)
+
         val engine by Prefs.navEngine.collectAsState()
         SettingRow(
             if (engine == "caros") "Prowadzi CAR OS" else "Prowadzą Mapy Google",

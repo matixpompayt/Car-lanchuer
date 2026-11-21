@@ -61,6 +61,8 @@ object RouteRepository {
         val error: String? = null,
         /** Kilka punktów trasy wybranej w telefonie – z wariantów wybierany ten, który po nich jedzie. */
         val shape: List<GeoPoint> = emptyList(),
+        /** Wariant wybrany palcem – bez automatycznego przełączania na najszybszy. */
+        val userPicked: Boolean = false,
     ) {
         val chosen: Route? get() = alternatives.getOrNull(selected)
     }
@@ -270,7 +272,48 @@ object RouteRepository {
 
     fun select(index: Int) {
         val p = plan.value ?: return
-        if (index in p.alternatives.indices) plan.value = p.copy(selected = index)
+        if (index in p.alternatives.indices) plan.value = p.copy(selected = index, userPicked = true)
+    }
+
+    /** Inteligentny wybór: najszybszy z korkami bez zamkniętych dróg (gdy nie wybrano palcem ani z telefonu). */
+    fun autoSelect(index: Int) {
+        val p = plan.value ?: return
+        if (p.userPicked || p.shape.isNotEmpty() || index !in p.alternatives.indices) return
+        plan.value = p.copy(selected = index)
+    }
+
+    /** Dodatkowy wariant (droga TomTom omijająca korki) – trasa OSRM przez ukryte punkty tej drogi. */
+    fun addShapedAlternative(dest: Place, shaping: List<Place>) {
+        scope.launch {
+            val from = LocationRepository.location.value ?: return@launch
+            val nr = try { fetchRoutes(from, emptyList(), dest, shaping).firstOrNull() } catch (_: Exception) { null } ?: return@launch
+            val p = plan.value ?: return@launch
+            if (p.dest != dest || p.computing || p.alternatives.size >= 4) return@launch
+            plan.value = p.copy(alternatives = p.alternatives + nr)
+        }
+    }
+
+    /** Ułożenie przystanków w nowej kolejności (inteligentny plan). */
+    fun setStops(stops: List<Place>) {
+        val p = plan.value ?: return
+        plan.value = p.copy(stops = stops.take(3), alternatives = emptyList(), selected = 0, computing = true, userPicked = false)
+        recompute()
+    }
+
+    /** W czasie jazdy: przejście na szybszą drogę (przez ukryte punkty). */
+    fun switchToShaped(shaping: List<Place>) {
+        val r = route.value ?: return
+        scope.launch {
+            val from = LocationRepository.location.value ?: return@launch
+            try {
+                val nr = fetchRoutes(from, emptyList(), r.dest, shaping).firstOrNull()?.copy(rerouted = true) ?: return@launch
+                route.value = nr
+                offRouteCount = 0
+                if (ownGuidance) appCtx?.let { Guidance.begin(it, nr, rerouted = true) }
+                startMonitor()
+            } catch (_: Exception) {
+            }
+        }
     }
 
     fun cancelPlan() {
@@ -306,6 +349,10 @@ object RouteRepository {
                         alts = listOf(shaped) + alts
                         sel = 0
                     }
+                }
+                // omijanie korków: trasa TomTom jako dodatkowy wariant (gdy jedzie inną drogą)
+                if (p.shape.isEmpty() && p.stops.isEmpty() && alts.isNotEmpty()) {
+                    SmartRoute.addTomTomCandidate(GeoPoint(from.latitude, from.longitude))
                 }
                 plan.value = plan.value?.copy(alternatives = alts, selected = sel, computing = false, error = if (alts.isEmpty()) "Nie znaleziono trasy" else null)
             } catch (e: Exception) {

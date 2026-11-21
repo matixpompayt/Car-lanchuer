@@ -2,6 +2,15 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
+## next
+Inteligentny plan trasy
+- W planowaniu trasy karta „Inteligentny plan”
+- Omijanie korków i zamkniętych dróg: trasa TomTom (ruch na żywo) jako dodatkowy wariant, sam wybiera najszybszy bez zamknięć (chyba że wybierzesz palcem)
+- W czasie jazdy: gdy zrobi się korek albo zamknięcie, baner „Szybsza trasa: −X min” z przyciskami Zmień / Nie (Ustawienia → Korki → Szybsza trasa w czasie jazdy)
+- „Ułóż przystanki w najlepszej kolejności” – najszybsza kolejność przystanków, cel na końcu
+- „Kiedy najlepiej wyjechać?” – czas przejazdu przy wyjeździe co 15 min przez 3 godziny
+- Tankowanie i przerwy: stacja przy trasie, gdy zasięg nie wystarczy, i przerwa co ok. 2 h – „Dodaj” robi z nich przystanek
+
 ## 1.128 · 2026-11-21
 Droga wybrana w telefonie
 - Gdy w telefonie wybrana jest droga, której zwykłe warianty nie mają, radio prowadzi tą drogą (przez ukryte punkty, bez zatrzymywania się na nich)

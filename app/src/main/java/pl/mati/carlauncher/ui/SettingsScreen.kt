@@ -523,6 +523,10 @@ private fun LazyListScope.trafficSection() {
         SettingRow("Czas przyjazdu z korkami", "Trasa sprawdzana w TomTom co 3 min: czas, opóźnienie i korki zaznaczone na trasie, także przy wyborze wariantu", onClick = { Prefs.setTrafficEta(!v) }) { CarSwitch(v) }
     }
     item {
+        val v by Prefs.smartReroute.collectAsState()
+        SettingRow("Szybsza trasa w czasie jazdy", "Gdy na trasie zrobi się korek albo zamknięcie, CAR OS zaproponuje szybszą drogę (co ok. 6 min, gdy oszczędza co najmniej 5 min)", onClick = { Prefs.setSmartReroute(!v) }) { CarSwitch(v) }
+    }
+    item {
         val v by Prefs.trafficVoice.collectAsState()
         SettingRow("Komunikat o korku", "Głosem: „Korek za 3 kilometry, około 6 minut opóźnienia” (tylko większe, raz na korek)", onClick = { Prefs.setTrafficVoice(!v) }) { CarSwitch(v) }
     }

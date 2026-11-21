@@ -198,6 +198,7 @@ private fun Shell() {
         }
         FullMapOverlay()
         RoadAlertBanner()
+        FasterRouteBanner()
         RoadWatchBanner()
         HomeSuggestionBanner()
         DestinationBanner()
