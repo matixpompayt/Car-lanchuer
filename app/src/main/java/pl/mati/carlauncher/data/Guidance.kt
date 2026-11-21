@@ -58,7 +58,8 @@ object Guidance {
 
     // ---------- kroki z OSRM ----------
 
-    fun parseSteps(route: JSONObject, pts: List<org.osmdroid.util.GeoPoint>, cum: DoubleArray): List<Step> {
+    /** [hideVias] – punkty pośrednie tylko kształtują trasę (bez „Dotarłeś…”/„Ruszaj” po drodze). */
+    fun parseSteps(route: JSONObject, pts: List<org.osmdroid.util.GeoPoint>, cum: DoubleArray, hideVias: Boolean = false): List<Step> {
         val out = ArrayList<Step>()
         val legs = route.optJSONArray("legs") ?: return out
         var from = 0
@@ -67,6 +68,11 @@ object Guidance {
             for (si in 0 until steps.length()) {
                 val s = steps.getJSONObject(si)
                 val m = s.optJSONObject("maneuver") ?: continue
+                if (hideVias) {
+                    val t = m.optString("type")
+                    if (t == "arrive" && li < legs.length() - 1) continue
+                    if (t == "depart" && li > 0) continue
+                }
                 val loc = m.optJSONArray("location") ?: continue
                 val lon = loc.getDouble(0)
                 val lat = loc.getDouble(1)

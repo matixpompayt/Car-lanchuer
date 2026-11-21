@@ -2,6 +2,11 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
+## next
+Droga wybrana w telefonie
+- Gdy w telefonie wybrana jest droga, której zwykłe warianty nie mają, radio prowadzi tą drogą (przez ukryte punkty, bez zatrzymywania się na nich)
+- Po zjechaniu z trasy przeliczenie dalej idzie tą samą drogą
+
 ## 1.127 · 2026-11-21
 Ta sama trasa co w telefonie
 - Trasa wysłana z CAR OS Connect: radio wybiera ten sam wariant drogi, który był wybrany w telefonie

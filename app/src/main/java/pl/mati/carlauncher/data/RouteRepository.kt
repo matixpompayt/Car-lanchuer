@@ -47,6 +47,8 @@ object RouteRepository {
         val id: Long = System.nanoTime(),
         /** Trasa przeliczona w czasie jazdy (bez podglądu całej trasy na mapie). */
         val rerouted: Boolean = false,
+        /** Ukryte punkty kształtujące trasę (droga wybrana w telefonie) – zostają przy przeliczaniu. */
+        val shaping: List<Place> = emptyList(),
     )
 
     /** Planowana trasa: cel, przystanki, warianty do wyboru. */
@@ -156,28 +158,44 @@ object RouteRepository {
         recompute()
     }
 
-    /** Wariant najbliższy punktom trasy z telefonu (średnia odległość punktów od trasy), inaczej pierwszy. */
+    /** Średnia odległość punktów trasy z telefonu od wariantu (m). */
+    private fun shapeScore(r: Route, shape: List<GeoPoint>): Double {
+        if (shape.isEmpty()) return 0.0
+        val step = maxOf(1, r.points.size / 800)
+        var sum = 0.0
+        for (s in shape) {
+            var m = Double.MAX_VALUE
+            var k = 0
+            while (k < r.points.size) {
+                val p = r.points[k]
+                val d = dist(s.latitude, s.longitude, p.latitude, p.longitude)
+                if (d < m) m = d
+                k += step
+            }
+            sum += m
+        }
+        return sum / shape.size
+    }
+
+    /** Wariant najbliższy punktom trasy z telefonu, inaczej pierwszy. */
     private fun matchShape(alts: List<Route>, shape: List<GeoPoint>): Int {
         if (shape.isEmpty() || alts.size < 2) return 0
-        var best = 0
-        var bestD = Double.MAX_VALUE
-        alts.forEachIndexed { i, r ->
-            val step = maxOf(1, r.points.size / 600)
-            var sum = 0.0
-            for (s in shape) {
-                var m = Double.MAX_VALUE
-                var k = 0
-                while (k < r.points.size) {
-                    val p = r.points[k]
-                    val d = dist(s.latitude, s.longitude, p.latitude, p.longitude)
-                    if (d < m) m = d
-                    k += step
-                }
-                sum += m
+        return alts.indices.minByOrNull { shapeScore(alts[it], shape) } ?: 0
+    }
+
+    /** Punkty kształtujące, których jeszcze nie minęliśmy (przy przeliczaniu w czasie jazdy). */
+    private fun remainingShaping(r: Route): List<Place> {
+        if (r.shaping.isEmpty()) return emptyList()
+        val along = alongNow.value
+        return r.shaping.filter { s ->
+            var best = Double.MAX_VALUE
+            var idx = 0
+            r.points.forEachIndexed { i, p ->
+                val d = dist(s.lat, s.lon, p.latitude, p.longitude)
+                if (d < best) { best = d; idx = i }
             }
-            if (sum < bestD) { bestD = sum; best = i }
+            r.cumulative[idx] > along + 40
         }
-        return best
     }
 
     /** Dom / Praca: adres → współrzędne → planowanie. */
@@ -276,9 +294,19 @@ object RouteRepository {
                 return@launch
             }
             try {
-                val alts = fetchRoutes(from, p.stops, p.dest)
+                var alts = fetchRoutes(from, p.stops, p.dest)
                 // trasa wybrana w telefonie – ten sam wariant w radiu
-                val sel = matchShape(alts, p.shape)
+                var sel = matchShape(alts, p.shape)
+                // żaden wariant nie jedzie drogą z telefonu (np. trasa TomTom) – trasa przez ukryte punkty tej drogi
+                if (p.shape.size >= 3 && p.stops.isEmpty() && (alts.isEmpty() || shapeScore(alts[sel], p.shape) > 200)) {
+                    val n = p.shape.size
+                    val shaping = listOf(n / 4, n / 2, (3 * n) / 4).distinct().map { i -> Place("", "", p.shape[i].latitude, p.shape[i].longitude) }
+                    val shaped = try { fetchRoutes(from, emptyList(), p.dest, shaping).firstOrNull() } catch (_: Exception) { null }
+                    if (shaped != null) {
+                        alts = listOf(shaped) + alts
+                        sel = 0
+                    }
+                }
                 plan.value = plan.value?.copy(alternatives = alts, selected = sel, computing = false, error = if (alts.isEmpty()) "Nie znaleziono trasy" else null)
             } catch (e: Exception) {
                 plan.value = plan.value?.copy(computing = false, error = "Nie udało się wyznaczyć trasy – sprawdź internet")
@@ -393,13 +421,14 @@ object RouteRepository {
 
     // ---------- trasy (OSRM) ----------
 
-    private fun fetchRoutes(from: Location, stops: List<Place>, dest: Place): List<Route> {
+    private fun fetchRoutes(from: Location, stops: List<Place>, dest: Place, shaping: List<Place> = emptyList()): List<Route> {
         val coords = buildList {
             add(String.format(Locale.US, "%.6f,%.6f", from.longitude, from.latitude))
             stops.forEach { add(String.format(Locale.US, "%.6f,%.6f", it.lon, it.lat)) }
+            shaping.forEach { add(String.format(Locale.US, "%.6f,%.6f", it.lon, it.lat)) }
             add(String.format(Locale.US, "%.6f,%.6f", dest.lon, dest.lat))
         }.joinToString(";")
-        val alt = if (stops.isEmpty()) "&alternatives=3" else ""
+        val alt = if (stops.isEmpty() && shaping.isEmpty()) "&alternatives=3" else ""
         val json = JSONObject(get("https://router.project-osrm.org/route/v1/driving/$coords?overview=full&geometries=polyline6&steps=true$alt"))
         if (json.optString("code") != "Ok") throw IOException(json.optString("code"))
         val arr = json.getJSONArray("routes")
@@ -410,8 +439,8 @@ object RouteRepository {
             if (pts.size < 2) continue
             val cum = DoubleArray(pts.size)
             for (k in 1 until pts.size) cum[k] = cum[k - 1] + dist(pts[k - 1].latitude, pts[k - 1].longitude, pts[k].latitude, pts[k].longitude)
-            val steps = try { Guidance.parseSteps(r, pts, cum) } catch (_: Exception) { emptyList() }
-            out += Route(dest, stops, pts, cum, r.getDouble("distance"), r.getDouble("duration"), steps)
+            val steps = try { Guidance.parseSteps(r, pts, cum, hideVias = shaping.isNotEmpty() && stops.isEmpty()) } catch (_: Exception) { emptyList() }
+            out += Route(dest, stops, pts, cum, r.getDouble("distance"), r.getDouble("duration"), steps, shaping = shaping)
         }
         return out
     }
@@ -419,7 +448,8 @@ object RouteRepository {
     private suspend fun reroute(r: Route) {
         val from = LocationRepository.location.value ?: return
         try {
-            val nr = fetchRoutes(from, r.stops, r.dest).firstOrNull()?.copy(rerouted = true) ?: return
+            // droga z telefonu: przeliczenie dalej przez punkty kształtujące, których jeszcze nie minęliśmy
+            val nr = fetchRoutes(from, r.stops, r.dest, if (r.stops.isEmpty()) remainingShaping(r) else emptyList()).firstOrNull()?.copy(rerouted = true) ?: return
             route.value = nr
             offRouteCount = 0
             if (ownGuidance) appCtx?.let { Guidance.begin(it, nr, rerouted = true) }
