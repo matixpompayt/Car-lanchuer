@@ -171,7 +171,7 @@ object AlongRoute {
 
     // ---------- geometria ----------
 
-    /** Odległość punktu od trasy (m) i miejsce na trasie (m od startu) – rzut na odcinki [from..to]. */
+    /** Odległość punktu od trasy (m) i miejsce na trasie (m od startu) – rzut na odcinki od from do to. */
     private fun project(lat: Double, lon: Double, lats: DoubleArray, lons: DoubleArray, cum: DoubleArray, from: Int, to: Int): Pair<Double, Double> {
         val ky = 111_320.0
         val kx = ky * cos(Math.toRadians(lat))
