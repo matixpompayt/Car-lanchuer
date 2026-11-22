@@ -23,7 +23,7 @@ import kotlin.math.sqrt
 object AlongRoute {
 
     /** [atM] – w którym miejscu trasy (m od startu), [offM] – jak daleko od trasy. */
-    class Hit(val name: String, val lat: Double, val lon: Double, val atM: Double, val offM: Double, val rest: Boolean)
+    class Hit(val name: String, val lat: Double, val lon: Double, val atM: Double, val offM: Double, val rest: Boolean, val brand: String = "")
 
     private const val UA = "CarOS/1.1 (Android head unit launcher; pl.mati.carlauncher)"
     private val mirrors = listOf(
@@ -56,6 +56,8 @@ object AlongRoute {
         lats: DoubleArray, lons: DoubleArray, cum: DoubleArray,
         windows: List<Window>, perWindow: Int,
         tomtomKey: String?, allowTomTom: () -> Boolean = { true },
+        /** Tylko stacje z tym paliwem (tag OSM fuel:…): "diesel", "octane_95", "octane_98", "lpg"; null – wszystkie. */
+        fuelTag: String? = null,
     ): List<List<Hit>> {
         val n = lats.size
         if (n < 2 || windows.isEmpty()) return windows.map { emptyList() }
@@ -77,7 +79,7 @@ object AlongRoute {
                 parts.append(FUEL_Q.replace("#", line))
                 if (w.w.kind == "rest") parts.append(REST_Q.replace("#", line))
             }
-            overpass("[out:json][timeout:20];(" + parts + ");out center tags qt;")
+            overpass("[out:json][timeout:20];(" + parts + ");out center tags qt;", fuelTag)
         } catch (e: IOException) {
             val key = tomtomKey?.trim().orEmpty()
             if (key.isBlank()) throw e
@@ -94,14 +96,14 @@ object AlongRoute {
             val maxOff = if (w.w.kind == "fuel") 1200.0 else 1600.0
             val scored = ArrayList<Pair<Double, Hit>>()
             for (c in cands) {
-                if (w.w.kind == "fuel" && c.rest) continue
+                if (w.w.kind == "fuel" && (c.rest || !c.fuelOk)) continue
                 val (off, at) = project(c.lat, c.lon, lats, lons, cum, w.from, w.to)
                 if (off > maxOff || at < w.lo - 500 || at > w.hi + 500) continue
                 var score = off * 3 + abs(at - w.w.targetM) * 0.25
                 if (w.w.kind == "fuel" && at > w.w.targetM) score += (at - w.w.targetM) * 1.5 // po końcu zasięgu – gorzej
                 if (w.w.kind == "rest" && !c.rest) score += 2500                           // MOP lepszy niż sama stacja
                 if (c.named) score -= 300
-                scored += score to Hit(c.name, c.lat, c.lon, at, off, c.rest)
+                scored += score to Hit(c.name, c.lat, c.lon, at, off, c.rest, c.brand)
             }
             // najlepsze, bez duplikatów (ten sam obiekt jako punkt i obszar, dwa wpisy tej samej stacji)
             val out = ArrayList<Hit>()
@@ -119,7 +121,7 @@ object AlongRoute {
     private const val FUEL_Q = "nwr[\"amenity\"=\"fuel\"][\"access\"!~\"^(private|no)$\"](around:1200,#);"
     private const val REST_Q = "nwr[\"highway\"~\"^(services|rest_area)$\"](around:1600,#);"
 
-    private class Cand(val name: String, val lat: Double, val lon: Double, val rest: Boolean, val named: Boolean)
+    private class Cand(val name: String, val lat: Double, val lon: Double, val rest: Boolean, val named: Boolean, val brand: String = "", val fuelOk: Boolean = true)
 
     /** Linia wzdłuż fragmentu trasy (punkt co ~800 m, najwyżej ~120 punktów). */
     private fun lineOf(lats: DoubleArray, lons: DoubleArray, cum: DoubleArray, from: Int, to: Int): String {
@@ -140,7 +142,7 @@ object AlongRoute {
     private val racer = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO)
 
     /** Zapytanie Overpass „na wyścigi” do kilku serwerów; pierwsza poprawna odpowiedź wygrywa. */
-    private suspend fun overpass(q: String): List<Cand> {
+    private suspend fun overpass(q: String, fuelTag: String? = null): List<Cand> {
         val body = "data=" + URLEncoder.encode(q, "UTF-8")
         val res = kotlinx.coroutines.CompletableDeferred<JSONObject>()
         val started = java.util.concurrent.atomic.AtomicInteger(0)
@@ -198,7 +200,14 @@ object AlongRoute {
                 hw == "rest_area" -> "Parking (MOP)"
                 else -> "Stacja paliw"
             }
-            out += Cand(label, lat, lon, isRest, name.isNotEmpty() || brand.isNotEmpty())
+            // paliwo: stacja oznaczona „nie ma” – odpada; LPG tylko tam, gdzie jest oznaczone
+            val tag = if (fuelTag == null) "" else t?.optString("fuel:$fuelTag").orEmpty()
+            val fuelOk = when {
+                fuelTag == null || isRest -> true
+                fuelTag == "lpg" -> tag == "yes" || name.contains("LPG", true)
+                else -> tag != "no"
+            }
+            out += Cand(label, lat, lon, isRest, name.isNotEmpty() || brand.isNotEmpty(), brand.ifEmpty { name }, fuelOk)
         }
         return out
     }
@@ -261,6 +270,15 @@ object AlongRoute {
     }
 
     /** Miejsce punktu na trasie (m od startu) – do wstawienia postoju we właściwej kolejności. */
+    /** Odległość od trasy (m) i miejsce na trasie (m od startu) dla punktu, szukając tylko na odcinku [loM, hiM]. */
+    fun nearRoute(lat: Double, lon: Double, lats: DoubleArray, lons: DoubleArray, cum: DoubleArray, loM: Double, hiM: Double): Pair<Double, Double> {
+        val n = lats.size
+        if (n < 2) return Double.MAX_VALUE to 0.0
+        val from = (cum.indexOfFirst { it >= loM }.coerceAtLeast(0) - 1).coerceAtLeast(0)
+        val to = (cum.indexOfFirst { it >= hiM }.let { if (it < 0) n - 1 else it } + 1).coerceAtMost(n - 1)
+        return project(lat, lon, lats, lons, cum, from, maxOf(to, from + 1).coerceAtMost(n - 1))
+    }
+
     fun positionOf(lat: Double, lon: Double, lats: DoubleArray, lons: DoubleArray, cum: DoubleArray): Double =
         if (lats.size < 2) 0.0 else project(lat, lon, lats, lons, cum, 0, lats.size - 1).second
 
