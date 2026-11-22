@@ -2,6 +2,11 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
+## next
+Długie trasy: kilka tankowań i do 8 przystanków
+- Plan trasy na długie trasy (np. 1000 km) proponuje tyle tankowań, ile trzeba (po każdym pełny bak), i przerwy co ok. 2 h
+- Do 8 przystanków na trasie (było 3) – także z CAR OS Connect
+
 ## 1.137 · 2026-11-22
 Minimalny zasięg paliwa
 - Nowe ustawienie „Minimalny zasięg paliwa” (Ustawienia → Korki), domyślnie 100 km, zmiana co 10 km (20–300 km)

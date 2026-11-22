@@ -248,15 +248,30 @@ object SmartRoute {
             null
         }
         val reserve = Prefs.minFuelRange.value
+        // tankowania – tyle razy, ile trzeba (np. 1000 km), po każdym pełny bak (pojemność / średnie spalanie)
         if (rangeKm != null && rangeKm < total / 1000 + reserve) {
-            val target = ((rangeKm - reserve) * 1000).coerceIn(5_000.0, total)
-            look(target, 60_000.0, 10_000.0, "fuel")?.let { h ->
-                out += Stop("fuel", RouteRepository.Place(h.name, "Stacja paliw", h.lat, h.lon), h.atM / 1000, h.atM / speed, "Zasięg ok. ${rangeKm.roundToInt()} km")
+            val st = FuelRepository.stats.value
+            val fullKm = st.avgL100?.takeIf { it > 2 }?.let { FuelRepository.tankL.value / it * 100 } ?: maxOf(rangeKm, 650.0)
+            var pos = 0.0
+            var left = rangeKm * 1000
+            var k = 0
+            while (left - (total - pos) < reserve * 1000 && k < 6) {
+                val target = (pos + left - reserve * 1000).coerceIn(pos + 5_000, total)
+                val back = minOf(60_000.0, target - pos - 5_000).coerceAtLeast(5_000.0)
+                val h = look(target, back, 10_000.0, "fuel")
+                k++
+                if (h != null) out += Stop(
+                    "fuel", RouteRepository.Place(h.name, "Stacja paliw", h.lat, h.lon), h.atM / 1000, h.atM / speed,
+                    if (k == 1) "Zasięg ok. ${rangeKm.roundToInt()} km" else "Tankowanie $k – do pełna",
+                )
+                pos = h?.atM ?: (target - 20_000).coerceAtLeast(pos + 1_000)
+                left = fullKm * 1000
+                if (fullKm <= reserve + 30) break
             }
         }
         var t = 2 * 3600.0
         var i = 0
-        while (t < travelS - 20 * 60 && i < 3) {
+        while (t < travelS - 20 * 60 && i < 6) {
             val target = t * speed
             if (out.none { abs(it.atKm * 1000 - target) < 25_000 }) {
                 look(target, 30_000.0, 20_000.0, "rest")?.let { h ->

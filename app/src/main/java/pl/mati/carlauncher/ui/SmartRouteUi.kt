@@ -192,7 +192,7 @@ fun SmartPlanCar(p: RouteRepository.Plan) {
                         Text("${s.atKm.roundToInt()} km · ok. ${hhmm(System.currentTimeMillis() + (s.etaS * 1000).toLong())} · ${s.note}", fontSize = 14.sp, color = CarColors.Muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                     val added = p.stops.any { kotlin.math.abs(it.lat - s.place.lat) < 1e-5 && kotlin.math.abs(it.lon - s.place.lon) < 1e-5 }
-                    if (!added && p.stops.size < 3) Box(
+                    if (!added && p.stops.size < 8) Box(
                         Modifier.clip(RoundedCornerShape(12.dp)).background(accent.copy(alpha = 0.18f)).clickable {
                             SmartRoute.addStopInOrder(r, p.stops, s)
                             Toaster.show("Dodano przystanek: ${s.place.name}")

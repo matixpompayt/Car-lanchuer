@@ -156,7 +156,7 @@ object RouteRepository {
     /** Zaczyna planowanie trasy do celu (warianty pojawią się na mapie). */
     fun planTo(place: Place, stops: List<Place> = emptyList(), shape: List<GeoPoint> = emptyList()) {
         clearResults()
-        plan.value = Plan(dest = place, stops = stops.take(3), shape = shape)
+        plan.value = Plan(dest = place, stops = stops.take(8), shape = shape)
         recompute()
     }
 
@@ -266,7 +266,7 @@ object RouteRepository {
 
     fun insertStop(place: Place, index: Int) {
         val p = plan.value ?: return
-        if (p.stops.size >= 3) return
+        if (p.stops.size >= 8) return
         clearResults()
         val l = p.stops.toMutableList()
         l.add(index.coerceIn(0, l.size), place)
@@ -306,7 +306,7 @@ object RouteRepository {
     /** Ułożenie przystanków w nowej kolejności (inteligentny plan). */
     fun setStops(stops: List<Place>) {
         val p = plan.value ?: return
-        plan.value = p.copy(stops = stops.take(3), alternatives = emptyList(), selected = 0, computing = true, userPicked = false)
+        plan.value = p.copy(stops = stops.take(8), alternatives = emptyList(), selected = 0, computing = true, userPicked = false)
         recompute()
     }
 
