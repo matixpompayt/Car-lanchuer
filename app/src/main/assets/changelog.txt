@@ -2,6 +2,10 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
+## next
+Szybsze szukanie stacji i przerw
+- Zapytania o stacje i MOP-y idą do kilku serwerów naraz – wygrywa najszybszy
+
 ## 1.135 · 2026-11-21
 Okna budynków naprawdę w stałej skali
 - Poprzednia poprawka nie działała – mapa pomijała ustawioną skalę obrazka. Teraz obrazek ściany jest rysowany osobno dla każdego przybliżenia w dokładnie potrzebnej wielkości, więc okna nie rosną po oddaleniu
