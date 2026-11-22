@@ -175,5 +175,6 @@ object FuelRepository {
             .put("avg", s.avgL100 ?: JSONObject.NULL).put("range", s.rangeKm ?: JSONObject.NULL)
             .put("ckm", s.costPerKm ?: JSONObject.NULL).put("est", s.estimated)
             .put("use", s.avgL100 ?: (if (Prefs.profile.value.isDiesel) 6.5 else 8.0))
+            .put("left", s.fuelLeftL ?: JSONObject.NULL)
     }
 }

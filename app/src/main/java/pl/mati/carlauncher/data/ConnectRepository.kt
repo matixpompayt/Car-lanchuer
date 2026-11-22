@@ -514,6 +514,16 @@ object ConnectRepository {
                 FuelRepository.remove(o.optString("id"))
                 publishStatusSoon()
             }
+            // pojemność baku zmieniona w telefonie
+            "fuel_tank" -> {
+                val l = o.optInt("l", 0)
+                if (l in 20..150) {
+                    FuelRepository.setTank(l)
+                    try { FuelRepository.recompute() } catch (_: Exception) {}
+                    Toaster.show("Pojemność baku z telefonu: $l l")
+                    publishStatusSoon()
+                }
+            }
             "fav_del" -> {
                 PlacesRepository.load()
                 PlacesRepository.removeFavorite(place(o))
