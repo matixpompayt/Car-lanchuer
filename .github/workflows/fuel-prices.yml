@@ -27,14 +27,20 @@ jobs:
         run: sudo apt-get install -y -qq poppler-utils >/dev/null
       - name: Pobierz ceny
         run: python3 tools/fuelprices/fetch.py docs/fuel.json
+      - name: Ceny w krajach UE (Oil Bulletin)
+        continue-on-error: true
+        run: |
+          pip install -q openpyxl
+          python3 tools/fuelprices/eu.py docs/fuel_eu.json
       - name: Zapisz zmiany
         run: |
-          if git diff --quiet -- docs/fuel.json && git ls-files --error-unmatch docs/fuel.json >/dev/null 2>&1; then
+          if git diff --quiet -- docs/fuel.json docs/fuel_eu.json && git ls-files --error-unmatch docs/fuel.json >/dev/null 2>&1 && { [ ! -f docs/fuel_eu.json ] || git ls-files --error-unmatch docs/fuel_eu.json >/dev/null 2>&1; }; then
             echo "Bez zmian"; exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add docs/fuel.json
+          [ -f docs/fuel_eu.json ] && git add docs/fuel_eu.json
           git commit -m "Ceny paliw: aktualizacja"
           for i in 1 2 3; do
             git pull --rebase -q && git push -q && exit 0
