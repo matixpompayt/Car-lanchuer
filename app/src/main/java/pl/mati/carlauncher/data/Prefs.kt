@@ -55,6 +55,8 @@ object Prefs {
     val trafficEta = MutableStateFlow(true)
     /** W czasie jazdy proponuj szybszą trasę omijającą korki / zamknięte drogi. */
     val smartReroute = MutableStateFlow(true)
+    /** Minimalny zasięg paliwa (km) – zapas przy planowaniu tankowania na trasie. */
+    val minFuelRange = MutableStateFlow(100)
     val trafficVoice = MutableStateFlow(true)
     /** Pozycja na żywo do telefonu: co ile sekund (0 – na bieżąco) i adres bazy Firebase (pusty – tylko przekaźnik). */
     val liveInterval = MutableStateFlow(10)
@@ -157,6 +159,7 @@ object Prefs {
         trafficMap.value = p.getBoolean("traffic_map", true)
         trafficEta.value = p.getBoolean("traffic_eta", true)
         smartReroute.value = p.getBoolean("smart_reroute", true)
+        minFuelRange.value = p.getInt("min_fuel_range", 100)
         trafficVoice.value = p.getBoolean("traffic_voice", true)
         liveInterval.value = p.getInt("live_iv", 10)
         fbUrl.value = p.getString("fb_url", "") ?: ""
@@ -261,6 +264,7 @@ object Prefs {
     fun setTrafficMap(v: Boolean) { trafficMap.value = v; edit { putBoolean("traffic_map", v) } }
     fun setTrafficEta(v: Boolean) { trafficEta.value = v; edit { putBoolean("traffic_eta", v) } }
     fun setSmartReroute(v: Boolean) { smartReroute.value = v; edit { putBoolean("smart_reroute", v) } }
+    fun setMinFuelRange(v: Int) { val x = v.coerceIn(20, 300); minFuelRange.value = x; edit { putInt("min_fuel_range", x) } }
     fun setTrafficVoice(v: Boolean) { trafficVoice.value = v; edit { putBoolean("traffic_voice", v) } }
     fun setLiveInterval(v: Int) { liveInterval.value = v; edit { putInt("live_iv", v) } }
     fun setFbUrl(v: String) { fbUrl.value = v; edit { putString("fb_url", v) } }

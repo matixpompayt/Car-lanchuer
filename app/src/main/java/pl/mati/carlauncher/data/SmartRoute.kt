@@ -226,7 +226,7 @@ object SmartRoute {
     data class Stop(val kind: String, val place: RouteRepository.Place, val atKm: Double, val etaS: Double, val note: String)
 
     /**
-     * Stacja, gdy zasięg nie wystarcza (zapas 40 km), i przerwa co ok. 2 h – miejsca przy samej trasie
+     * Stacja, gdy zasięg nie wystarcza (zapas z ustawień, domyślnie 100 km), i przerwa co ok. 2 h – miejsca przy samej trasie
      * (OpenStreetMap, a gdy nie odpowiada – TomTom). Rzuca IOException, gdy nic nie udało się sprawdzić.
      */
     suspend fun stops(r: RouteRepository.Route, travelS: Double, rangeKm: Double?): List<Stop> = withContext(Dispatchers.IO) {
@@ -247,8 +247,9 @@ object SmartRoute {
             err = e
             null
         }
-        if (rangeKm != null && rangeKm < total / 1000 + 40) {
-            val target = ((rangeKm - 40) * 1000).coerceIn(5_000.0, total)
+        val reserve = Prefs.minFuelRange.value
+        if (rangeKm != null && rangeKm < total / 1000 + reserve) {
+            val target = ((rangeKm - reserve) * 1000).coerceIn(5_000.0, total)
             look(target, 60_000.0, 10_000.0, "fuel")?.let { h ->
                 out += Stop("fuel", RouteRepository.Place(h.name, "Stacja paliw", h.lat, h.lon), h.atM / 1000, h.atM / speed, "Zasięg ok. ${rangeKm.roundToInt()} km")
             }

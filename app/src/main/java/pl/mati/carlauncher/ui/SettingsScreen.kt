@@ -527,6 +527,16 @@ private fun LazyListScope.trafficSection() {
         SettingRow("Szybsza trasa w czasie jazdy", "Gdy na trasie zrobi się korek albo zamknięcie, CAR OS zaproponuje szybszą drogę (co ok. 6 min, gdy oszczędza co najmniej 5 min)", onClick = { Prefs.setSmartReroute(!v) }) { CarSwitch(v) }
     }
     item {
+        val v by Prefs.minFuelRange.collectAsState()
+        SettingRow("Minimalny zasięg paliwa", "Tyle km ma zostać w baku – stacja na trasie jest proponowana, zanim zasięg spadnie poniżej") {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                RoundIconButton(Icons.Rounded.Remove, "Mniej", 44.dp, { Prefs.setMinFuelRange(v - 10) })
+                Text("$v km", fontSize = 20.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(horizontal = 8.dp))
+                RoundIconButton(Icons.Rounded.Add, "Więcej", 44.dp, { Prefs.setMinFuelRange(v + 10) })
+            }
+        }
+    }
+    item {
         val v by Prefs.trafficVoice.collectAsState()
         SettingRow("Komunikat o korku", "Głosem: „Korek za 3 kilometry, około 6 minut opóźnienia” (tylko większe, raz na korek)", onClick = { Prefs.setTrafficVoice(!v) }) { CarSwitch(v) }
     }

@@ -49,6 +49,7 @@ import kotlinx.coroutines.launch
 import org.osmdroid.util.GeoPoint
 import pl.mati.carlauncher.data.FuelRepository
 import pl.mati.carlauncher.data.LocationRepository
+import pl.mati.carlauncher.data.Prefs
 import pl.mati.carlauncher.data.RouteRepository
 import pl.mati.carlauncher.data.SmartRoute
 import pl.mati.carlauncher.data.TrafficRepository
@@ -80,8 +81,9 @@ fun SmartPlanCar(p: RouteRepository.Plan) {
     var stops by remember(r.id) { mutableStateOf<List<SmartRoute.Stop>?>(null) }
     var stopsErr by remember(r.id) { mutableStateOf<String?>(null) }
     var stopsTry by remember(r.id) { mutableStateOf(0) }
-    val needStops = (range != null && range < r.distanceM / 1000 + 40) || travelS > 2 * 3600 + 20 * 60
-    LaunchedEffect(r.id, range, stopsTry) {
+    val reserve by Prefs.minFuelRange.collectAsState()
+    val needStops = (range != null && range < r.distanceM / 1000 + reserve) || travelS > 2 * 3600 + 20 * 60
+    LaunchedEffect(r.id, range, reserve, stopsTry) {
         stopsErr = null
         if (!needStops) { stops = emptyList(); return@LaunchedEffect }
         stops = null
