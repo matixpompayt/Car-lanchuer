@@ -2,7 +2,7 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
-## next
+## 1.136 · 2026-11-22
 Szybsze szukanie stacji i przerw
 - Zapytania o stacje i MOP-y idą do kilku serwerów naraz – wygrywa najszybszy
 
