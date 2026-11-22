@@ -1,8 +1,9 @@
 name: Build APK
 
+# Gałąź beta: wersja testowa 2.0 (wydania „prerelease” – stabilne /releases/latest się nie zmienia)
 on:
   push:
-    branches: [main]
+    branches: [beta]
     # strona (docs/) i README nie budują nowej wersji aplikacji
     paths-ignore: ["docs/**", "**.md", "tools/**", ".github/workflows/fuel-prices.yml", ".github/workflows/speed-data.yml", ".gitignore"]
   workflow_dispatch:
@@ -15,6 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       BUILD_NUMBER: ${{ github.run_number }}
+      BETA: "1"
     steps:
       - uses: actions/checkout@v4
         with:
@@ -30,8 +32,8 @@ jobs:
       # Lista zmian: sekcja „## next” dostaje numer tej wersji i datę (trafia do CAR OS i do opisu wydania)
       - name: Changelog
         run: |
-          CV=$(grep "^carosVersion=" gradle.properties | cut -d= -f2)
-          V="$CV.$BUILD_NUMBER"
+          BB=$(grep "^betaBase=" gradle.properties | cut -d= -f2)
+          V="2.0-beta.$((BUILD_NUMBER - BB))"
           CL=app/src/main/assets/changelog.txt
           if grep -q "^## next$" "$CL"; then
             sed -i "s/^## next$/## $V · $(date +%F)/" "$CL"
@@ -49,29 +51,34 @@ jobs:
         run: |
           chmod +x gradlew
           set -o pipefail
-          if ! ./gradlew assembleRelease --no-daemon 2>&1 | tee build.log; then
+          # testy wspólnego modułu (protokół, szyfrowanie, geometria tras) – błąd = brak wydania
+          if ! ./gradlew :core:testReleaseUnitTest assembleRelease --no-daemon 2>&1 | tee build.log; then
+            grep -E "Test.*FAILED|AssertionError|expected:" build.log | head -20 | while IFS= read -r l; do echo "::error::$l"; done
             { grep -E "^e: " build.log; awk '/What went wrong/{f=1} /\* Try:/{f=0} f' build.log; grep -iE "^ERROR:|AAPT: error" build.log; } | grep -v "^\s*$" | head -45 | while IFS= read -r l; do echo "::error::$l"; done
             exit 1
           fi
           mkdir -p out
-          VER=$(grep "^carosVersion=" gradle.properties | cut -d= -f2)
+          BB=$(grep "^betaBase=" gradle.properties | cut -d= -f2)
+          VER="2.0-beta.$((BUILD_NUMBER - BB))"
           echo "VER=$VER" >> "$GITHUB_ENV"
-          cp app/build/outputs/apk/release/app-release.apk "out/CarOS-$VER.${BUILD_NUMBER}.apk"
+          echo "CODE=$((100000 + BUILD_NUMBER))" >> "$GITHUB_ENV"
+          cp app/build/outputs/apk/release/app-release.apk "out/CarOS-$VER.apk"
 
       - uses: actions/upload-artifact@v4
         with:
           name: CarOS-apk
           path: out/*.apk
 
-      # Każdy build na main = nowe wydanie. Aplikacja sprawdza /releases/latest i aktualizuje się online.
+      # Każdy build na beta = wydanie testowe (prerelease). Tag kończy się versionCode (100000 + numer builda).
       - name: Publish GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create "v${VER}.${BUILD_NUMBER}" out/*.apk \
-            --title "CAR OS ${VER}.${BUILD_NUMBER}" \
+          gh release create "v${VER}-b${CODE}" out/*.apk \
+            --title "CAR OS ${VER}" \
             --notes-file notes.md \
-            --latest
+            --target "$GITHUB_SHA" \
+            --prerelease --latest=false
 
       # Numer wersji wpisany w liście zmian zapisujemy z powrotem w repozytorium
       - name: Save changelog
@@ -80,5 +87,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add app/src/main/assets/changelog.txt
-          git commit -m "Lista zmian: CAR OS ${VER}.${BUILD_NUMBER} [skip ci]" || exit 0
-          git push origin HEAD:main || echo "::warning::Nie udało się zapisać listy zmian (nowszy commit na main)"
+          git commit -m "Lista zmian: CAR OS ${VER} [skip ci]" || exit 0
+          git push origin HEAD:beta || echo "::warning::Nie udało się zapisać listy zmian (nowszy commit na beta)"

@@ -807,9 +807,16 @@ private fun LazyListScope.connPage() {
     item { SectionLabel("Telefon") }
     item {
         val paired by ConnectRepository.paired.collectAsState()
+        val ph by ConnectRepository.phone.collectAsState()
         SettingRow(
             "CAR OS Connect",
-            if (paired) "Aplikacja na telefon połączona – pokaż kod, aby dodać kolejny telefon" else "Aplikacja na telefon: gdzie zaparkowałem – połącz kodem QR",
+            if (!paired) "Aplikacja na telefon: gdzie zaparkowałem – połącz kodem QR"
+            else when {
+                ph == null -> "Aplikacja na telefon połączona – pokaż kod, aby dodać kolejny telefon"
+                ph!!.older -> "Telefon: ${ph!!.app ?: "CAR OS Connect 1.x"} – zaktualizuj CAR OS Connect (starszy protokół)"
+                ph!!.newer -> "Telefon: ${ph!!.app} – nowszy niż CAR OS w aucie, zaktualizuj CAR OS"
+                else -> "Telefon: CAR OS Connect ${ph!!.app ?: ""} · protokół ${ph!!.pv} – wszystko zgodne"
+            },
             leading = Icons.Rounded.PhoneAndroid,
             onClick = { UiState.settingsPage.value = "connect" },
         ) { Chevron() }

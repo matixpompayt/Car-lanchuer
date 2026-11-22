@@ -13,6 +13,8 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
+import pl.mati.caros.core.Proto
+import pl.mati.caros.core.RelayCrypto
 import pl.mati.carlauncher.BuildConfig
 import pl.mati.carlauncher.ui.Screen
 import pl.mati.carlauncher.ui.Toaster
@@ -64,6 +66,7 @@ object ConnectRepository {
         val sp = Prefs.store ?: return
         paired.value = sp.getString("connect_key", null) != null
         lastSent.value = sp.getLong("connect_sent", 0L)
+        if (sp.contains("phone_pv")) phone.value = Proto.Peer(sp.getInt("phone_pv", 1), sp.getString("phone_app", null)?.ifBlank { null }, emptySet())
         startListening()
         if (paired.value) {
             scope.launch {
@@ -310,6 +313,8 @@ object ConnectRepository {
                 .put("home", placeJson(p.home, p.homeLat, p.homeLon))
                 .put("work", placeJson(p.work, p.workLat, p.workLon))
                 .put("ver", BuildConfig.VERSION_NAME)
+                // protokół 2: wersja i lista obsługiwanych komend – telefon sprawdza je przed wysłaniem
+                .put(Proto.PV, Proto.VERSION).put(Proto.CAPS, Proto.capsJson())
             send(o)
         } catch (_: Exception) {
         }
@@ -446,8 +451,17 @@ object ConnectRepository {
         o.optString("n").ifBlank { "Cel z telefonu" }, o.optString("d"), o.getDouble("lat"), o.getDouble("lon"),
     )
 
+    /** Telefon (CAR OS Connect): wersja protokołu i aplikacji z ostatniej komendy. */
+    val phone = MutableStateFlow<Proto.Peer?>(null)
+
     private fun handle(o: JSONObject) {
-        when (o.optString("type")) {
+        val type = o.optString("type")
+        val ph = Proto.phoneFrom(o)
+        if (phone.value != ph) {
+            phone.value = ph
+            Prefs.store?.edit()?.putInt("phone_pv", ph.pv)?.putString("phone_app", ph.app ?: "")?.apply()
+        }
+        when (type) {
             "route" -> {
                 val p = place(o)
                 // punkty po drodze ustawione w telefonie (kolejność jak w telefonie)
@@ -579,6 +593,8 @@ object ConnectRepository {
                     pendingRestore.value = PendingRestore(text, root.optLong("created"), car)
                 }
             }
+            // komenda z nowszego telefonu, której ta wersja nie zna – telefon pokaże „zaktualizuj CAR OS”
+            else -> if (type.isNotBlank() && type !in Proto.CAR_CAPS) send(Proto.nack(type, BuildConfig.VERSION_NAME))
         }
     }
 
@@ -589,39 +605,11 @@ object ConnectRepository {
         return BackupManager.restoreText(r.text)
     }
 
-    // ---------- szyfrowanie ----------
+    // ---------- szyfrowanie (wspólne z telefonem: core/RelayCrypto) ----------
 
-    private fun topicOf(key: ByteArray, channel: String): String {
-        val md = MessageDigest.getInstance("SHA-256")
-        md.update(key)
-        if (channel.isNotEmpty()) md.update(channel.toByteArray())
-        return "caros_" + md.digest().joinToString("") { "%02x".format(it) }.take(28)
-    }
-
-    /** Format v2: "2:" + base64(iv | AES-GCM(gzip(json))). */
-    private fun encrypt(key: ByteArray, plain: String): String {
-        val iv = ByteArray(12).also { SecureRandom().nextBytes(it) }
-        val c = Cipher.getInstance("AES/GCM/NoPadding")
-        c.init(Cipher.ENCRYPT_MODE, SecretKeySpec(key, "AES"), GCMParameterSpec(128, iv))
-        return "2:" + Base64.encodeToString(iv + c.doFinal(gzip(plain.toByteArray())), Base64.NO_WRAP)
-    }
-
-    private fun decrypt(key: ByteArray, msg: String): String? = try {
-        val v2 = msg.startsWith("2:")
-        val all = Base64.decode(if (v2) msg.substring(2) else msg, Base64.NO_WRAP)
-        val c = Cipher.getInstance("AES/GCM/NoPadding")
-        c.init(Cipher.DECRYPT_MODE, SecretKeySpec(key, "AES"), GCMParameterSpec(128, all, 0, 12))
-        val out = c.doFinal(all, 12, all.size - 12)
-        String(if (v2) gunzip(out) else out)
-    } catch (_: Exception) {
-        null
-    }
-
-    private fun gzip(b: ByteArray): ByteArray {
-        val bos = ByteArrayOutputStream()
-        GZIPOutputStream(bos).use { it.write(b) }
-        return bos.toByteArray()
-    }
-
-    private fun gunzip(b: ByteArray): ByteArray = GZIPInputStream(ByteArrayInputStream(b)).use { it.readBytes() }
+    private fun topicOf(key: ByteArray, channel: String) = RelayCrypto.topicOf(key, channel)
+    private fun encrypt(key: ByteArray, plain: String) = RelayCrypto.encrypt(key, plain)
+    private fun decrypt(key: ByteArray, msg: String) = RelayCrypto.decrypt(key, msg)
+    private fun gzip(b: ByteArray) = RelayCrypto.gzip(b)
+    private fun gunzip(b: ByteArray) = RelayCrypto.gunzip(b)
 }

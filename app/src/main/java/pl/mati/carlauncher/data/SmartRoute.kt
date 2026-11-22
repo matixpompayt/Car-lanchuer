@@ -1,5 +1,6 @@
 package pl.mati.carlauncher.data
 
+import pl.mati.caros.core.AlongRoute
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob

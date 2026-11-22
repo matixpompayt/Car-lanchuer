@@ -1,4 +1,4 @@
-package pl.mati.carlauncher.data
+package pl.mati.caros.core
 
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -25,7 +25,8 @@ object AlongRoute {
     /** [atM] – w którym miejscu trasy (m od startu), [offM] – jak daleko od trasy. */
     class Hit(val name: String, val lat: Double, val lon: Double, val atM: Double, val offM: Double, val rest: Boolean, val brand: String = "")
 
-    private const val UA = "CarOS/1.1 (Android head unit launcher; pl.mati.carlauncher)"
+    /** Ustawiane przez aplikację (serwery OSM wymagają opisowego User-Agent). */
+    @Volatile var userAgent = "CarOS/2.0 (Android car launcher and phone companion; pl.mati.caros)"
     private val mirrors = listOf(
         "https://overpass-api.de/api/interpreter",
         "https://overpass.private.coffee/api/interpreter",
@@ -290,7 +291,7 @@ object AlongRoute {
         c.readTimeout = 20_000
         c.requestMethod = "POST"
         c.doOutput = true
-        c.setRequestProperty("User-Agent", UA)
+        c.setRequestProperty("User-Agent", userAgent)
         c.setRequestProperty("Accept", "*/*")
         c.setRequestProperty("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
         try {
@@ -307,7 +308,7 @@ object AlongRoute {
         val c = URL(url).openConnection() as HttpURLConnection
         c.connectTimeout = 10_000
         c.readTimeout = 20_000
-        c.setRequestProperty("User-Agent", UA)
+        c.setRequestProperty("User-Agent", userAgent)
         c.setRequestProperty("Accept", "application/json")
         try {
             val code = c.responseCode

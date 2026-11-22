@@ -16,3 +16,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "CarLauncher"
 include(":app")
+// wspólny kod z CAR OS Connect (protokół, szyfrowanie, stacje przy trasie) – Connect pobiera ten katalog przy budowaniu
+include(":core")
