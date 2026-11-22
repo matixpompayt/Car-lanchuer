@@ -1,5 +1,7 @@
 package pl.mati.carlauncher.data
 
+import pl.mati.carlauncher.BuildConfig
+
 import android.content.Context
 import android.content.SharedPreferences
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -44,6 +46,8 @@ object Prefs {
     val bootAnim = MutableStateFlow(true)
     val autoUpdate = MutableStateFlow(true)
     val updateWifiOnly = MutableStateFlow(true)
+    /** Kanał aktualizacji: wersje testowe (beta 2.0) zamiast stabilnych. W wersji beta domyślnie włączony. */
+    val updateBeta = MutableStateFlow(BuildConfig.BETA)
     val reverseCam = MutableStateFlow(true)
     val mapsInBackground = MutableStateFlow(true)
     val roadAlerts = MutableStateFlow(true)
@@ -151,6 +155,7 @@ object Prefs {
         bootAnim.value = p.getBoolean("boot_anim", true)
         autoUpdate.value = p.getBoolean("auto_update", true)
         updateWifiOnly.value = p.getBoolean("update_wifi_only", true)
+        updateBeta.value = p.getBoolean("update_beta", BuildConfig.BETA)
         reverseCam.value = p.getBoolean("reverse_cam", true)
         mapsInBackground.value = p.getBoolean("maps_bg", true)
         roadAlerts.value = p.getBoolean("road_alerts", true)
@@ -241,6 +246,7 @@ object Prefs {
     fun setBootAnim(v: Boolean) { bootAnim.value = v; edit { putBoolean("boot_anim", v) } }
     fun setAutoUpdate(v: Boolean) { autoUpdate.value = v; edit { putBoolean("auto_update", v) } }
     fun setUpdateWifiOnly(v: Boolean) { updateWifiOnly.value = v; edit { putBoolean("update_wifi_only", v) } }
+    fun setUpdateBeta(v: Boolean) { updateBeta.value = v; edit { putBoolean("update_beta", v) } }
     fun setReverseCam(v: Boolean) { reverseCam.value = v; edit { putBoolean("reverse_cam", v) } }
     fun setHomeTiles(v: String) { homeTiles.value = v; edit { putString("home_tiles", v) } }
     fun setHomeSplit(v: Float) { val c = v.coerceIn(0.35f, 0.8f); homeSplit.value = c; edit { putFloat("home_split", c) } }

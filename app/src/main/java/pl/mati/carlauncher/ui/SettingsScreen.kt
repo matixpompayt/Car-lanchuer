@@ -1,5 +1,7 @@
 package pl.mati.carlauncher.ui
 
+import pl.mati.carlauncher.BuildConfig
+
 import androidx.compose.material.icons.rounded.DarkMode
 import pl.mati.carlauncher.data.HeadlightDetector
 import pl.mati.carlauncher.data.ThemeManager
@@ -1626,6 +1628,16 @@ private fun LazyListScope.updatePage() {
     item {
         val v by Prefs.autoUpdate.collectAsState()
         SettingRow("Sprawdzaj automatycznie", "Po każdym uruchomieniu radia", onClick = { Prefs.setAutoUpdate(!v) }) { CarSwitch(v) }
+    }
+    item {
+        val ctx = LocalContext.current
+        val beta by Prefs.updateBeta.collectAsState()
+        SettingRow(
+            "Wersja testowa 2.0 (beta)",
+            if (BuildConfig.BETA) "Masz wersję testową ${BuildConfig.VERSION_NAME}. Wyłączenie: aktualizacje stabilne – powrót do 1.x wymaga odinstalowania CAR OS"
+            else "Nowe funkcje 2.0 wcześniej (mogą mieć błędy). Po włączeniu „Sprawdź aktualizacje” pobierze wersję beta",
+            onClick = { Prefs.setUpdateBeta(!beta); UpdateManager.check(ctx) },
+        ) { CarSwitch(beta) }
     }
     item {
         val v by Prefs.updateWifiOnly.collectAsState()

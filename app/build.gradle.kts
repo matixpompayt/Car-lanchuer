@@ -7,6 +7,9 @@ plugins {
 val buildNumber = (System.getenv("BUILD_NUMBER") ?: "1").toInt()
 // Wersja główna – zmieniasz w gradle.properties (carosVersion)
 val carosVersion = (project.findProperty("carosVersion") as String?) ?: "1.0"
+// Wersja testowa 2.0 (gałąź beta, BETA=1 w GitHub Actions): versionCode zawsze wyższy niż stabilnej
+val beta = System.getenv("BETA") == "1"
+val betaBase = (project.findProperty("betaBase") as String?)?.toIntOrNull() ?: 0
 
 android {
     namespace = "pl.mati.carlauncher"
@@ -16,11 +19,12 @@ android {
         applicationId = "pl.mati.carlauncher"
         minSdk = 29
         targetSdk = 34
-        versionCode = buildNumber
-        versionName = "$carosVersion.$buildNumber"
+        versionCode = if (beta) 100_000 + buildNumber else buildNumber
+        versionName = if (beta) "2.0-beta.${buildNumber - betaBase}" else "$carosVersion.$buildNumber"
         // tylko ARM (radio i telefony) – mniejszy plik aktualizacji
         ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }
         buildConfigField("String", "UPDATE_REPO", "\"matixpompayt/Car-lanchuer\"")
+        buildConfigField("boolean", "BETA", beta.toString())
     }
 
     signingConfigs {

@@ -2,6 +2,10 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
+## next
+Wersja testowa 2.0
+- Ustawienia → Aktualizacja: przełącznik „Wersja testowa 2.0 (beta)” – po włączeniu aktualizacja pobierze wersję beta 2.0 (nowe funkcje wcześniej, mogą mieć błędy)
+
 ## 1.140 · 2026-11-22
 Pojemność baku z telefonu
 - Pojemność baku ustawiona w CAR OS Connect zapisuje się w aucie; do telefonu idzie też, ile litrów zostało w baku

@@ -162,7 +162,40 @@ object UpdateManager {
         }
     }
 
+    /** Kanał beta: najnowsze wydanie testowe (prerelease, „-beta”) z listy wydań. */
+    private fun fetchBeta(): Release? {
+        val c = URL("https://api.github.com/repos/${BuildConfig.UPDATE_REPO}/releases?per_page=30").openConnection() as HttpURLConnection
+        c.connectTimeout = 10_000
+        c.readTimeout = 15_000
+        c.setRequestProperty("Accept", "application/vnd.github+json")
+        c.setRequestProperty("User-Agent", "CarOS")
+        try {
+            if (c.responseCode !in 200..299) throw IOException("Serwer aktualizacji: HTTP ${c.responseCode}")
+            val arr = org.json.JSONArray(c.inputStream.bufferedReader().use { it.readText() })
+            var best: Release? = null
+            for (k in 0 until arr.length()) {
+                val json = arr.getJSONObject(k)
+                if (!json.optBoolean("prerelease") || json.optBoolean("draft")) continue
+                val tag = json.optString("tag_name")
+                if (!tag.contains("beta")) continue
+                val code = Regex("""(\d+)$""").find(tag)?.value?.toIntOrNull() ?: continue
+                val assets = json.optJSONArray("assets") ?: continue
+                for (i in 0 until assets.length()) {
+                    val a = assets.getJSONObject(i)
+                    val name = a.optString("name")
+                    if (name.endsWith(".apk") && !name.contains("Parking") && (best == null || code > best.code)) {
+                        best = Release(code, tag.removePrefix("v").substringBefore("-b1"), json.optString("body").trim(), a.optString("browser_download_url"), a.optLong("size"))
+                    }
+                }
+            }
+            return best
+        } finally {
+            c.disconnect()
+        }
+    }
+
     private fun fetchLatest(): Release? {
+        if (Prefs.updateBeta.value) return fetchBeta()
         val url = URL("https://api.github.com/repos/${BuildConfig.UPDATE_REPO}/releases/latest")
         val c = url.openConnection() as HttpURLConnection
         c.connectTimeout = 10_000
