@@ -2,7 +2,7 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
-## next
+## 2.0-beta.8 · 2026-11-23
 - Jazda na żywo: po zakończeniu lub anulowaniu trasy strona z linku od razu chowa linię trasy i cel (auto wysyła „koniec trasy”)
 
 ## 2.0-beta.7 · 2026-11-23
