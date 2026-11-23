@@ -3,8 +3,12 @@
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
 ## 2.0-beta.1 · 2026-11-23
-Wersja testowa 2.0
-- Ustawienia → Aktualizacja: przełącznik „Wersja testowa 2.0 (beta)” – po włączeniu aktualizacja pobierze wersję beta 2.0 (nowe funkcje wcześniej, mogą mieć błędy)
+CAR OS 2.0 – pierwsza wersja testowa
+- Nowy protokół auto ↔ telefon (wersja 2): CAR OS wysyła swoją wersję i listę obsługiwanych funkcji, CAR OS Connect wie, co auto potrafi
+- Ustawienia → Połączenia → CAR OS Connect: wersja aplikacji w telefonie i czy jest zgodna z autem
+- Komenda, której auto nie zna (np. z nowszego telefonu), dostaje odpowiedź – telefon pokaże „zaktualizuj CAR OS” zamiast cicho nic nie zrobić
+- Wspólny moduł z CAR OS Connect: to samo szyfrowanie i to samo szukanie stacji / przerw przy trasie w aucie i w telefonie, sprawdzane testami przy każdym buildzie
+- Ustawienia → Aktualizacja: przełącznik „Wersja testowa 2.0 (beta)” – wyłącz, by wrócić do aktualizacji stabilnych (powrót do 1.x wymaga odinstalowania)
 
 ## 1.140 · 2026-11-22
 Pojemność baku z telefonu
