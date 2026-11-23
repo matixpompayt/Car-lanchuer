@@ -1,6 +1,9 @@
 package pl.mati.carlauncher.data
 
 import pl.mati.caros.core.AlongRoute
+import pl.mati.caros.core.FuelType
+import pl.mati.caros.core.RoutePlan
+import pl.mati.caros.core.StationPrices
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -222,79 +225,44 @@ object SmartRoute {
         }
     }
 
-    // ---------- tankowanie i przerwy ----------
-
-    data class Stop(val kind: String, val place: RouteRepository.Place, val atKm: Double, val etaS: Double, val note: String)
+    // ---------- tankowanie i przerwy (wspólne z telefonem: core/RoutePlan) ----------
 
     /**
-     * Stacja, gdy zasięg nie wystarcza (zapas z ustawień, domyślnie 100 km), i przerwa co ok. 2 h – miejsca przy samej trasie
-     * (OpenStreetMap, a gdy nie odpowiada – TomTom). Rzuca IOException, gdy nic nie udało się sprawdzić.
+     * Postój: „fuel” (tankowanie nr [n]) albo „break” (przerwa po [hours] h); [options] – propozycje,
+     * przy tankowaniu najtańsze (w złotych) pierwsze, z ceną wybranego paliwa.
      */
-    suspend fun stops(r: RouteRepository.Route, travelS: Double, rangeKm: Double?): List<Stop> = withContext(Dispatchers.IO) {
-        val out = ArrayList<Stop>()
+    data class Stop(val kind: String, val n: Int, val hours: Int, val atKm: Double, val options: List<RoutePlan.Opt>)
+
+    data class Plan(val stops: List<Stop>, val res: RoutePlan.Result)
+
+    /**
+     * Tankowania (gdy zasięg nie wystarcza – zapas z ustawień, domyślnie 100 km; na długich trasach kilka, po każdym pełny bak)
+     * i przerwy co ok. 2 h – miejsca przy samej trasie (OpenStreetMap, a gdy nie odpowiada – TomTom), z cenami paliwa
+     * z całej Europy. Rzuca IOException, gdy nic nie udało się sprawdzić.
+     */
+    suspend fun stops(ctx: android.content.Context, r: RouteRepository.Route, travelS: Double, rangeKm: Double?): Plan = withContext(Dispatchers.IO) {
         val n = r.points.size
-        if (n < 2) return@withContext out
         val lats = DoubleArray(n) { r.points[it].latitude }
         val lons = DoubleArray(n) { r.points[it].longitude }
-        val cum = r.cumulative
-        val total = cum.last()
-        val speed = total / travelS.coerceAtLeast(60.0)
-        val key = Prefs.tomtomKey.value.trim()
-        var ok = 0
-        var err: Exception? = null
-        fun look(target: Double, back: Double, fwd: Double, kind: String): AlongRoute.Hit? = try {
-            AlongRoute.find(lats, lons, cum, target, back, fwd, kind, key) { TrafficRepository.count() }.also { ok++ }
-        } catch (e: Exception) {
-            err = e
-            null
-        }
-        val reserve = Prefs.minFuelRange.value
-        // tankowania – tyle razy, ile trzeba (np. 1000 km), po każdym pełny bak (pojemność / średnie spalanie)
-        if (rangeKm != null && rangeKm < total / 1000 + reserve) {
-            val st = FuelRepository.stats.value
-            val fullKm = st.avgL100?.takeIf { it > 2 }?.let { FuelRepository.tankL.value / it * 100 } ?: maxOf(rangeKm, 650.0)
-            var pos = 0.0
-            var left = rangeKm * 1000
-            var k = 0
-            while (left - (total - pos) < reserve * 1000 && k < 6) {
-                val target = (pos + left - reserve * 1000).coerceIn(pos + 5_000, total)
-                val back = minOf(60_000.0, target - pos - 5_000).coerceAtLeast(5_000.0)
-                val h = look(target, back, 10_000.0, "fuel")
-                k++
-                if (h != null) out += Stop(
-                    "fuel", RouteRepository.Place(h.name, "Stacja paliw", h.lat, h.lon), h.atM / 1000, h.atM / speed,
-                    if (k == 1) "Zasięg ok. ${rangeKm.roundToInt()} km" else "Tankowanie $k – do pełna",
-                )
-                pos = h?.atM ?: (target - 20_000).coerceAtLeast(pos + 1_000)
-                left = fullKm * 1000
-                if (fullKm <= reserve + 30) break
-            }
-        }
-        var t = 2 * 3600.0
-        var i = 0
-        while (t < travelS - 20 * 60 && i < 6) {
-            val target = t * speed
-            if (out.none { abs(it.atKm * 1000 - target) < 25_000 }) {
-                look(target, 30_000.0, 20_000.0, "rest")?.let { h ->
-                    if (out.none { abs(it.atKm - h.atM / 1000) < 15 }) {
-                        out += Stop("break", RouteRepository.Place(h.name, if (h.rest) "Miejsce na przerwę" else "Stacja paliw", h.lat, h.lon), h.atM / 1000, h.atM / speed,
-                            "Przerwa po ok. ${(t / 3600).roundToInt()} h jazdy")
-                    }
-                }
-            }
-            t += 2 * 3600.0
-            i++
-        }
-        if (ok == 0 && err != null) throw java.io.IOException(err?.message ?: "brak odpowiedzi")
-        out.sortedBy { it.atKm }
+        val fav = FuelPrices.fav.value
+        val st = FuelRepository.stats.value
+        val res = RoutePlan.stops(
+            ctx, lats, lons, travelS, System.currentTimeMillis(), rangeKm, Prefs.minFuelRange.value,
+            FuelType.of(fav.key), StationPrices.tkKey.value, Prefs.tomtomKey.value.trim().ifBlank { null },
+            fullKmCar = RoutePlan.fullRangeKm(FuelRepository.tankL.value.toDouble(), st.avgL100),
+            plMax = FuelPrices.data.value?.today?.get(fav),
+        ) { TrafficRepository.count() }
+        Plan(res.groups.filter { it.options.isNotEmpty() }.map { g -> Stop(g.kind, g.n, g.hours, g.atKm, g.options) }, res)
     }
 
+    fun placeOf(o: RoutePlan.Opt) = RouteRepository.Place(o.place.name, o.place.detail, o.place.lat, o.place.lon)
+
     /** Dodaje postój między przystanki tak, żeby kolejność zgadzała się z trasą. */
-    fun addStopInOrder(r: RouteRepository.Route, stops: List<RouteRepository.Place>, s: Stop) {
+    fun addStopInOrder(r: RouteRepository.Route, stops: List<RouteRepository.Place>, o: RoutePlan.Opt) {
         val n = r.points.size
         val lats = DoubleArray(n) { r.points[it].latitude }
         val lons = DoubleArray(n) { r.points[it].longitude }
-        val idx = stops.indexOfFirst { AlongRoute.positionOf(it.lat, it.lon, lats, lons, r.cumulative) > s.atKm * 1000 }
-        RouteRepository.insertStop(s.place, if (idx < 0) stops.size else idx)
+        val idx = stops.indexOfFirst { AlongRoute.positionOf(it.lat, it.lon, lats, lons, r.cumulative) > o.atKm * 1000 }
+        RouteRepository.insertStop(placeOf(o), if (idx < 0) stops.size else idx)
     }
 }

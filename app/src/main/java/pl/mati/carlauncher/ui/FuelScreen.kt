@@ -77,6 +77,7 @@ fun FuelScreen() {
                 FuelStat("Zasięg", s.rangeKm?.roundToInt()?.toString() ?: "—", "km",
                     when {
                         s.rangeKm == null -> "zatankuj do pełna i wpisz"
+                        s.fromCan -> "${s.fuelLeftL?.roundToInt()} l w baku · z czujnika auta"
                         s.estimated -> "szacunek · ${s.fuelLeftL?.roundToInt()} l w baku"
                         else -> "ok. ${s.fuelLeftL?.roundToInt()} l w baku"
                     }, Modifier.weight(1f),

@@ -1,0 +1,69 @@
+package pl.mati.carlauncher.data
+
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.launch
+import pl.mati.caros.core.Look
+
+/**
+ * Wspólny wygląd z CAR OS Connect: Liquid Glass, jasny / ciemny, kolor akcentu, animacja kropli.
+ * Zmiana w radiu idzie do telefonu w statusie, zmiana w telefonie przychodzi komendą „look” – nowsza wygrywa.
+ */
+object LookSync {
+    private var started = false
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    private fun tone(mode: String) = when (mode) { "light" -> "light"; "dark" -> "dark"; else -> "auto" }
+
+    private fun time() = Prefs.store?.getLong("look_t", 0L) ?: 0L
+
+    /** Wygląd radia teraz (z czasem ostatniej zmiany). */
+    fun current(): Look = Look(Prefs.glassUi.value, tone(Prefs.themeMode.value), Prefs.accent.value, Prefs.glassAnim.value, time())
+
+    /** Zmiany w ustawieniach radia → nowy czas wyglądu i status do telefonu. */
+    @OptIn(kotlinx.coroutines.FlowPreview::class)
+    fun start() {
+        if (started) return
+        started = true
+        scope.launch {
+            delay(3000) // ustawienia wczytane
+            combine(Prefs.glassUi, Prefs.themeMode, Prefs.accent, Prefs.glassAnim) { _, _, _, _ -> current().content }
+                .debounce(1500)
+                .collect { c ->
+                    val sp = Prefs.store ?: return@collect
+                    val prev = sp.getString("look_c", null)
+                    if (prev == null) {
+                        // pierwszy raz: punkt odniesienia (czas 0 – przy pierwszym połączeniu wygląd z telefonu wygrywa)
+                        sp.edit().putString("look_c", c).apply()
+                        return@collect
+                    }
+                    if (c == prev) return@collect
+                    sp.edit().putString("look_c", c).putLong("look_t", System.currentTimeMillis()).apply()
+                    ConnectRepository.publishStatusSoon()
+                }
+        }
+    }
+
+    /** Wygląd z telefonu – stosowany, gdy nowszy niż radia. Zwraca opis do komunikatu albo null. */
+    fun apply(l: Look): String? {
+        if (!Prefs.lookSync.value) return null
+        if (l.t <= time()) return null
+        val mode = when (l.tone) {
+            "light", "dark" -> l.tone
+            else -> Prefs.themeMode.value.takeIf { it != "light" && it != "dark" } ?: "lights"
+        }
+        val target = Look(l.glass, tone(mode), l.accent ?: Prefs.accent.value, l.anim)
+        val changed = target.content != current().content
+        // najpierw „zsynchronizowany” stan – nasłuch zmian nie uzna tego za zmianę w radiu
+        Prefs.store?.edit()?.putString("look_c", target.content)?.putLong("look_t", l.t)?.apply()
+        if (Prefs.glassUi.value != l.glass) Prefs.setGlassUi(l.glass)
+        if (Prefs.themeMode.value != mode) Prefs.setThemeMode(mode)
+        l.accent?.let { if (it != Prefs.accent.value) Prefs.setAccent(it) }
+        if (Prefs.glassAnim.value != l.anim) Prefs.setGlassAnim(l.anim)
+        return if (changed) l.describe() else null
+    }
+}

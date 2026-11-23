@@ -263,6 +263,15 @@ private fun LazyListScope.lookPage() {
             onClick = { Prefs.setGlassAnim(!a) },
         ) { CarSwitch(a) }
     }
+    item {
+        val ls by Prefs.lookSync.collectAsState()
+        SettingRow(
+            "Ten sam wygląd w CAR OS Connect",
+            if (ls) "Glass, jasny / ciemny i kolor akcentu zmieniają się razem w radiu i w telefonie" else "Wyłączone – radio i telefon mają osobny wygląd",
+            leading = Icons.Rounded.AutoAwesome,
+            onClick = { Prefs.setLookSync(!ls) },
+        ) { CarSwitch(ls) }
+    }
     item { SectionLabel("Dzień / noc") }
     item {
         val mode by Prefs.themeMode.collectAsState()

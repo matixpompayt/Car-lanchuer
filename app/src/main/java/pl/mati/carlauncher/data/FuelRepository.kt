@@ -1,6 +1,9 @@
 package pl.mati.carlauncher.data
 
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.Calendar
@@ -42,6 +45,8 @@ object FuelRepository {
         val fuelLeftL: Double?,
         val rangeKm: Double?,
         val estimated: Boolean,    // zasięg liczony ze spalania domyślnego (za mało tankowań)
+        /** Ile w baku – z czujnika auta (dekoder CAN radia), nie z tankowań. */
+        val fromCan: Boolean = false,
     )
 
     val fills = MutableStateFlow<List<Fill>>(emptyList()) // najnowsze pierwsze
@@ -56,6 +61,7 @@ object FuelRepository {
         loaded = true
         val sp = Prefs.store ?: return
         tankL.value = sp.getInt("fuel_tank", 60)
+        watchCan()
         try {
             val a = JSONArray(sp.getString("fuel_fills", "[]"))
             fills.value = (0 until a.length()).map { Fill.from(a.getJSONObject(it)) }.sortedByDescending { it.odoKm * 10_000_000_000L + it.time / 1000 }
@@ -146,8 +152,77 @@ object FuelRepository {
             left = (tankL.value + added - driven * use / 100).coerceIn(0.0, tankL.value.toDouble())
             range = left / use * 100
         }
-        stats.value = Stats(avg, lastL100, costKm, month.sumOf { it.cost }, month.sumOf { it.liters }, last?.pricePerL, left, range, avg == null)
+        // poziom paliwa z czujnika auta (CAN) – dokładniejszy niż szacunek z tankowań
+        try { autoMapFuel(left) } catch (_: Exception) {}
+        val can = canLevelL()
+        if (can != null) {
+            left = can
+            range = Vehicle.data.value.rangeKm?.takeIf { it in 5..2500 }?.toDouble() ?: (can / use * 100)
+        }
+        stats.value = Stats(avg, lastL100, costKm, month.sumOf { it.cost }, month.sumOf { it.liters }, last?.pricePerL, left, range, avg == null, can != null)
         remind()
+    }
+
+    /** Litry w baku z dekodera CAN radia (pole „Paliwo w baku” albo „Paliwo” w % pojemności), null – brak. */
+    fun canLevelL(): Double? {
+        val d = Vehicle.data.value
+        val tank = tankL.value.toDouble()
+        d.fuelL?.takeIf { it in 1..250 }?.let { return it.toDouble().coerceAtMost(tank) }
+        d.fuelPct?.takeIf { it in 1..100 }?.let { return tank * it / 100.0 }
+        return null
+    }
+
+    private var canWatch = false
+
+    /** Zmiana poziomu paliwa z CAN → przelicz zasięg (i wyślij do telefonu). */
+    private fun watchCan() {
+        if (canWatch) return
+        canWatch = true
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Default).launch {
+            var lastSent = Double.NaN
+            Vehicle.data.map { it.fuelL to it.fuelPct }.distinctUntilChanged().collect {
+                try { recompute() } catch (_: Exception) {}
+                val l = canLevelL() ?: return@collect
+                // do telefonu najwyżej przy zmianie o 2 l (poziom faluje w czasie jazdy)
+                if (lastSent.isNaN() || kotlin.math.abs(l - lastSent) >= 2.0) {
+                    lastSent = l
+                    ConnectRepository.publishStatusSoon()
+                }
+            }
+        }
+    }
+
+    private var autoKind = ""
+    private var autoHits = 0
+
+    /**
+     * Pole „fuel_level” z MainApp (TopWay) nie ma stałej jednostki – zależnie od przejściówki CAN to litry,
+     * dziesiąte litra albo procent baku. Gdy nic nie jest przypisane, porównaj z szacunkiem z tankowań
+     * i po 3 zgodnych odczytach przypisz sam (zawsze można zmienić w „Dane z radia”).
+     */
+    private fun autoMapFuel(estLeft: Double?) {
+        val m = CanRepository.mappings.value
+        if (m.containsKey(CanRepository.Field.FUEL) || m.containsKey(CanRepository.Field.FUEL_L)) return
+        val est = estLeft ?: return
+        val sig = CanRepository.signals["ts:base/fuel_level"] ?: return
+        if (System.currentTimeMillis() - sig.lastUpdate > 60_000) return
+        val v = sig.value
+        if (v <= 0 || v > 2500) return
+        val tank = tankL.value.toDouble()
+        val cands = listOf(
+            Triple("l", 1.0, v), Triple("l", 0.1, v * 0.1), Triple("%", 1.0, if (v <= 100) tank * v / 100 else Double.NaN),
+        ).filter { !it.third.isNaN() && it.third <= tank * 1.05 }
+        val best = cands.minByOrNull { kotlin.math.abs(it.third - est) } ?: return
+        val err = kotlin.math.abs(best.third - est)
+        val second = cands.filter { it != best }.minOfOrNull { kotlin.math.abs(it.third - est) } ?: Double.MAX_VALUE
+        val kind = if (err < tank * 0.2 && err < second * 0.6) best.first + best.second else ""
+        if (kind.isEmpty() || (autoKind.isNotEmpty() && kind != autoKind)) { autoKind = ""; autoHits = 0; return }
+        autoKind = kind
+        if (++autoHits < 3) return
+        CanRepository.assign(
+            if (best.first == "l") CanRepository.Field.FUEL_L else CanRepository.Field.FUEL,
+            CanRepository.Mapping("ts:base/fuel_level", best.second),
+        )
     }
 
     private fun remind() {
@@ -176,5 +251,7 @@ object FuelRepository {
             .put("ckm", s.costPerKm ?: JSONObject.NULL).put("est", s.estimated)
             .put("use", s.avgL100 ?: (if (Prefs.profile.value.isDiesel) 6.5 else 8.0))
             .put("left", s.fuelLeftL ?: JSONObject.NULL)
+            // protokół 2: skąd poziom paliwa – "can" (czujnik auta) albo "est" (szacunek z tankowań)
+            .put("src", if (s.fromCan) "can" else "est")
     }
 }

@@ -10,7 +10,9 @@ import org.json.JSONObject
  *  - nadawca dopisuje "pv" (wersja protokołu) i "app" (wersja aplikacji),
  *  - status z radia niesie "caps" – komendy i funkcje, które to CAR OS obsługuje;
  *    telefon sprawdza je przed wysłaniem (np. pojemność baku, 8 przystanków),
- *  - na nieznaną komendę radio odpowiada "nack" (z nazwą komendy) – telefon pokazuje „zaktualizuj CAR OS”.
+ *  - na nieznaną komendę radio odpowiada "nack" (z nazwą komendy) – telefon pokazuje „zaktualizuj CAR OS”,
+ *  - komenda z "mid" (id wiadomości) dostaje potwierdzenie "ack" po wykonaniu (ok / błąd + opis);
+ *    radio pomija powtórki tego samego "mid", a komendy „na żywo” (ostrzeżenia) starsze niż [LIVE_MAX_MS] – po czasie są bez sensu.
  * Starsze CAR OS (1.x) nie wysyłają "caps" – wtedy obsługiwane komendy wynikają z numeru wersji ("ver").
  */
 object Proto {
@@ -21,6 +23,12 @@ object Proto {
     const val PV = "pv"
     const val APP = "app"
     const val CAPS = "caps"
+    /** Id komendy – radio odsyła je w "ack". */
+    const val MID = "mid"
+    /** Kiedy telefon wysłał komendę (ms). */
+    const val SENT = "st"
+    /** Ostrzeżenia z telefonu dłużej w drodze (np. radio było wyłączone) – pomijane. */
+    const val LIVE_MAX_MS = 3 * 60_000L
 
     /** Komendy telefon → auto. */
     object Cmd {
@@ -41,7 +49,12 @@ object Proto {
         const val SVC_ODO = "svc_odo"
         const val SYNC = "sync"
         const val RESTORE_PART = "rs"
+        /** Wygląd (motyw, Liquid Glass, akcent) – patrz [Look]. */
+        const val LOOK = "look"
     }
+
+    /** Komendy „na żywo” – bez potwierdzeń, po [LIVE_MAX_MS] nieaktualne. */
+    val LIVE_CMDS = setOf(Cmd.ALERT, Cmd.ALERT_END, Cmd.CAMSAM, Cmd.CAMSAM_HUD)
 
     /** Wiadomości auto → telefon. */
     object Msg {
@@ -52,6 +65,7 @@ object Proto {
         const val REPORT = "rp"
         const val BACKUP_PART = "bk"
         const val NACK = "nack"
+        const val ACK = "ack"
     }
 
     /** Funkcje (nie osobne komendy), które telefon może sprawdzić w "caps". */
@@ -62,6 +76,14 @@ object Proto {
         const val FUEL_LEFT = "fuel_left"
         /** Odpowiedź "nack" na nieznaną komendę. */
         const val NACK = "nack"
+        /** Potwierdzenia "ack" komend z "mid". */
+        const val ACK = "ack"
+        /** cfg z kluczem Tankerkönig ("tk") – ceny na stacjach w Niemczech także w aucie. */
+        const val CFG_TK = "cfg_tk"
+        /** Status z "fuel.src": "can" – poziom paliwa z czujnika auta, "est" – szacunek z tankowań. */
+        const val FUEL_SRC = "fuel_src"
+        /** Status z "look" i komenda "look". */
+        const val LOOK = "look"
     }
 
     /** Komendy obsługiwane przez CAR OS 1.x (przed "caps"). */
@@ -71,7 +93,9 @@ object Proto {
     )
 
     /** Wszystko, co obsługuje CAR OS z tym protokołem. */
-    val CAR_CAPS: Set<String> = V1_BASE + setOf(Cmd.FUEL_TANK, Feat.STOPS8, Feat.FUEL_LEFT, Feat.NACK)
+    val CAR_CAPS: Set<String> = V1_BASE + setOf(
+        Cmd.FUEL_TANK, Cmd.LOOK, Feat.STOPS8, Feat.FUEL_LEFT, Feat.NACK, Feat.ACK, Feat.CFG_TK, Feat.FUEL_SRC, Feat.LOOK,
+    )
 
     /** Druga strona połączenia: wersja protokołu, wersja aplikacji, obsługiwane komendy. */
     data class Peer(val pv: Int, val app: String?, val caps: Set<String>) {
@@ -83,7 +107,7 @@ object Proto {
     }
 
     /** Dopisuje wersję protokołu i aplikacji do wysyłanej wiadomości. */
-    fun stamp(o: JSONObject, app: String): JSONObject = o.put(PV, VERSION).put(APP, app)
+    fun stamp(o: JSONObject, app: String): JSONObject = o.put(PV, VERSION).put(APP, app).also { if (!it.has(SENT)) it.put(SENT, System.currentTimeMillis()) }
 
     fun capsJson(caps: Set<String> = CAR_CAPS): JSONArray = JSONArray().also { a -> caps.sorted().forEach { a.put(it) } }
 
@@ -115,6 +139,35 @@ object Proto {
         return ver.substringAfterLast('.').takeWhile { it.isDigit() }.toIntOrNull() ?: 0
     }
 
-    /** Odpowiedź radia na nieznaną komendę. */
-    fun nack(type: String, app: String): JSONObject = stamp(JSONObject().put(TYPE, Msg.NACK).put("of", type), app)
+    /** Odpowiedź radia na nieznaną komendę (z "mid", jeśli komenda go miała). */
+    fun nack(type: String, app: String, mid: String = ""): JSONObject =
+        stamp(JSONObject().put(TYPE, Msg.NACK).put("of", type).also { if (mid.isNotBlank()) it.put(MID, mid) }, app)
+
+    /** Potwierdzenie wykonania komendy [mid]: [ok] – udało się, [text] – co zrobiło radio albo opis błędu. */
+    fun ack(type: String, mid: String, ok: Boolean, text: String?, app: String): JSONObject =
+        stamp(JSONObject().put(TYPE, Msg.ACK).put("of", type).put(MID, mid).put("ok", ok).put("r", text ?: ""), app)
+
+    /** Potwierdzenie z radia (odczytane po stronie telefonu). */
+    data class Ack(val mid: String, val of: String, val ok: Boolean, val text: String, val known: Boolean = true)
+
+    fun ackFrom(o: JSONObject): Ack? {
+        val mid = o.optString(MID).ifBlank { return null }
+        return when (o.optString(TYPE)) {
+            Msg.ACK -> Ack(mid, o.optString("of"), o.optBoolean("ok", true), o.optString("r"))
+            Msg.NACK -> Ack(mid, o.optString("of"), false, "", known = false)
+            else -> null
+        }
+    }
+
+    private val rnd = java.security.SecureRandom()
+
+    /** Nowe id komendy (10 znaków hex). */
+    fun newMid(): String = ByteArray(5).also { rnd.nextBytes(it) }.joinToString("") { "%02x".format(it) }
+
+    /** Komenda „na żywo”, która przyszła za późno (np. radio było wyłączone). */
+    fun isStaleLive(o: JSONObject, now: Long = System.currentTimeMillis()): Boolean {
+        if (o.optString(TYPE) !in LIVE_CMDS) return false
+        val st = o.optLong(SENT, 0L)
+        return st > 0 && now - st > LIVE_MAX_MS
+    }
 }

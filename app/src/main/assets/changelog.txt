@@ -2,6 +2,15 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
+## next
+Potwierdzenia z telefonu, plan trasy z cenami paliw, wspólny wygląd
+- Komendy z CAR OS Connect (trasa, ulubione, serwis, tankowania…) dostają potwierdzenie – telefon widzi, że radio je wykonało albo co poszło nie tak
+- Ta sama komenda wysłana z telefonu drugi raz nie wykona się podwójnie; ostrzeżenia, które czekały, aż radio się włączy, są pomijane (nieaktualne)
+- Plan trasy: przy tankowaniu cena wybranego paliwa – na stacjach w Niemczech, Francji, Austrii, Włoszech i Hiszpanii, w Polsce cena maksymalna, w innych krajach UE średnia; najtańsze pierwsze, „Inna” pokazuje kolejne propozycje i ile zostanie zasięgu
+- Klucz Tankerkönig wpisany w telefonie trafia też do radia (ceny na stacjach w Niemczech)
+- Poziom paliwa z czujnika auta (dekoder CAN radia): zasięg i litry w baku z auta zamiast szacunku z tankowań; jednostka pola paliwa z MainApp rozpoznawana sama (litry albo %), zawsze do zmiany w „Dane z radia”
+- Ustawienia → Wygląd: „Ten sam wygląd w CAR OS Connect” – Glass, jasny / ciemny i kolor akcentu zmieniają się razem w radiu i w telefonie
+
 ## 2.0-beta.1 · 2026-11-23
 CAR OS 2.0 – pierwsza wersja testowa
 - Nowy protokół auto ↔ telefon (wersja 2): CAR OS wysyła swoją wersję i listę obsługiwanych funkcji, CAR OS Connect wie, co auto potrafi

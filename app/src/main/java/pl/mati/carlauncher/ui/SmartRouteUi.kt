@@ -1,6 +1,9 @@
 package pl.mati.carlauncher.ui
 
 import androidx.compose.animation.AnimatedVisibility
+import pl.mati.caros.core.Countries
+import pl.mati.caros.core.RoutePlan
+import pl.mati.carlauncher.data.FuelPrices
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -78,17 +81,23 @@ fun SmartPlanCar(p: RouteRepository.Plan) {
     var ordering by remember { mutableStateOf(false) }
     var slots by remember(r.id) { mutableStateOf<List<SmartRoute.Slot>?>(null) }
     var slotsBusy by remember(r.id) { mutableStateOf(false) }
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    var plan by remember(r.id) { mutableStateOf<SmartRoute.Plan?>(null) }
     var stops by remember(r.id) { mutableStateOf<List<SmartRoute.Stop>?>(null) }
+    // wybrana propozycja w każdym postoju (Inna → następna)
+    val pick = remember(r.id) { androidx.compose.runtime.mutableStateMapOf<Int, Int>() }
+    val fav by FuelPrices.fav.collectAsState()
     var stopsErr by remember(r.id) { mutableStateOf<String?>(null) }
     var stopsTry by remember(r.id) { mutableStateOf(0) }
     val reserve by Prefs.minFuelRange.collectAsState()
     val needStops = (range != null && range < r.distanceM / 1000 + reserve) || travelS > 2 * 3600 + 20 * 60
-    LaunchedEffect(r.id, range, reserve, stopsTry) {
+    LaunchedEffect(r.id, range?.let { (it / 20).roundToInt() }, reserve, stopsTry, fav) {
         stopsErr = null
         if (!needStops) { stops = emptyList(); return@LaunchedEffect }
         stops = null
+        pick.clear()
         stops = try {
-            SmartRoute.stops(r, travelS, range)
+            SmartRoute.stops(ctx, r, travelS, range).also { plan = it }.stops
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -184,21 +193,55 @@ fun SmartPlanCar(p: RouteRepository.Plan) {
                 ) { Text("Ponów", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = accent) }
             }
             st.isEmpty() -> SmartLine(Icons.Rounded.LocalGasStation, CarColors.Muted, "Brak stacji i MOP-ów blisko trasy w miejscach, gdzie wypada postój")
-            else -> st.forEach { s ->
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Icon(if (s.kind == "fuel") Icons.Rounded.LocalGasStation else Icons.Rounded.Coffee, null, tint = if (s.kind == "fuel") CarColors.Orange else accent, modifier = Modifier.size(26.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(s.place.name, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text("${s.atKm.roundToInt()} km · ok. ${hhmm(System.currentTimeMillis() + (s.etaS * 1000).toLong())} · ${s.note}", fontSize = 14.sp, color = CarColors.Muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            else -> {
+                val res = plan?.res
+                st.forEachIndexed { si, s ->
+                    val k = (pick[si] ?: 0).coerceIn(0, s.options.size - 1)
+                    val o = s.options[k]
+                    val fuelStop = s.kind == "fuel"
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Icon(if (fuelStop) Icons.Rounded.LocalGasStation else Icons.Rounded.Coffee, null, tint = if (fuelStop) CarColors.Orange else accent, modifier = Modifier.size(26.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(o.place.name, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            val head = if (fuelStop) (if (st.count { it.kind == "fuel" } > 1) "Tankowanie ${s.n}" else "Tankowanie") else "Przerwa po ok. ${s.hours} h"
+                            Text("$head · ${o.atKm.roundToInt()} km · ok. ${hhmm(o.atTime)}", fontSize = 14.sp, color = CarColors.Muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            if (fuelStop) {
+                                val price = RoutePlan.priceText(o)?.let { pt ->
+                                    pt + " " + when (o.src) {
+                                        "station" -> if (o.open) "na stacji" else "na stacji · teraz zamknięta"
+                                        "max" -> "cena maks. w Polsce" + if (o.cheap) " · zwykle tańsza sieć" else ""
+                                        "avg" -> "średnio: ${Countries.name(o.iso)}"
+                                        else -> ""
+                                    }
+                                }
+                                val left = if (range != null && res != null) RoutePlan.rangeLeftAt(res, range, o.atKm) else null
+                                Text(
+                                    listOfNotNull(price ?: "${fav.short} – brak ceny", left?.let { "zostanie ok. ${it.coerceAtLeast(0.0).roundToInt()} km zasięgu" }).joinToString(" · "),
+                                    fontSize = 14.sp, color = if (o.src == "station" && o.open) CarColors.Green else CarColors.Text2, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                                )
+                            }
+                        }
+                        if (s.options.size > 1) Box(
+                            Modifier.clip(RoundedCornerShape(12.dp)).border(1.dp, accent.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
+                                .clickable { pick[si] = (k + 1) % s.options.size }.padding(horizontal = 12.dp, vertical = 8.dp),
+                        ) { Text("Inna ${k + 1}/${s.options.size}", fontSize = 15.sp, color = accent) }
+                        val added = p.stops.any { kotlin.math.abs(it.lat - o.place.lat) < 1e-5 && kotlin.math.abs(it.lon - o.place.lon) < 1e-5 }
+                        if (!added && p.stops.size < 8) Box(
+                            Modifier.clip(RoundedCornerShape(12.dp)).background(accent.copy(alpha = 0.18f)).clickable {
+                                SmartRoute.addStopInOrder(r, p.stops, o)
+                                Toaster.show("Dodano przystanek: ${o.place.name}")
+                            }.padding(horizontal = 14.dp, vertical = 8.dp),
+                        ) { Text("Dodaj", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = accent) }
+                        else if (added) Text("dodany", fontSize = 15.sp, color = CarColors.Green)
                     }
-                    val added = p.stops.any { kotlin.math.abs(it.lat - s.place.lat) < 1e-5 && kotlin.math.abs(it.lon - s.place.lon) < 1e-5 }
-                    if (!added && p.stops.size < 8) Box(
-                        Modifier.clip(RoundedCornerShape(12.dp)).background(accent.copy(alpha = 0.18f)).clickable {
-                            SmartRoute.addStopInOrder(r, p.stops, s)
-                            Toaster.show("Dodano przystanek: ${s.place.name}")
-                        }.padding(horizontal = 14.dp, vertical = 8.dp),
-                    ) { Text("Dodaj", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = accent) }
-                    else if (added) Text("dodany", fontSize = 15.sp, color = CarColors.Green)
+                }
+                if (res != null && st.any { it.kind == "fuel" }) {
+                    Text(
+                        "${fav.short}: ceny na stacjach w Niemczech, Francji, Austrii, Włoszech i Hiszpanii, w Polsce cena maksymalna, w innych krajach UE średnia" +
+                            (if (res.deKeyMissing) ". Trasa przez Niemcy – ceny na stacjach po dodaniu klucza Tankerkönig w CAR OS Connect" else "") +
+                            (if (res.fullGuess) ". Pełny bak – szacunek (dopisz tankowania do pełna)" else ""),
+                        fontSize = 13.sp, color = CarColors.Muted,
+                    )
                 }
             }
         }

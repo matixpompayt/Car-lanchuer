@@ -62,7 +62,10 @@ object ConnectRepository {
     private var statusJob: Job? = null
     private val restoreParts = HashMap<String, Array<String?>>()
 
-    fun init() {
+    private var appCtx: android.content.Context? = null
+
+    fun init(ctx: android.content.Context? = null) {
+        if (ctx != null) appCtx = ctx.applicationContext
         val sp = Prefs.store ?: return
         paired.value = sp.getString("connect_key", null) != null
         lastSent.value = sp.getLong("connect_sent", 0L)
@@ -313,6 +316,7 @@ object ConnectRepository {
                 .put("home", placeJson(p.home, p.homeLat, p.homeLon))
                 .put("work", placeJson(p.work, p.workLat, p.workLon))
                 .put("ver", BuildConfig.VERSION_NAME)
+                .put("look", LookSync.current().toJson())
                 // protokół 2: wersja i lista obsługiwanych komend – telefon sprawdza je przed wysłaniem
                 .put(Proto.PV, Proto.VERSION).put(Proto.CAPS, Proto.capsJson())
             send(o)
@@ -454,6 +458,24 @@ object ConnectRepository {
     /** Telefon (CAR OS Connect): wersja protokołu i aplikacji z ostatniej komendy. */
     val phone = MutableStateFlow<Proto.Peer?>(null)
 
+    /** Opis wykonania bieżącej komendy (do potwierdzenia „ack”). */
+    private var result: String? = null
+
+    /** Komunikat na ekranie radia + opis do potwierdzenia dla telefonu. */
+    private fun say(t: String) {
+        Toaster.show(t)
+        result = t
+    }
+
+    /** Ostatnie wykonane komendy (mid) – powtórka tej samej z telefonu nie robi nic drugi raz. */
+    private fun seen(mid: String): Boolean {
+        val sp = Prefs.store ?: return false
+        val list = (sp.getString("connect_mids", "") ?: "").split(',').filter { it.isNotBlank() }
+        if (mid in list) return true
+        sp.edit().putString("connect_mids", (list.takeLast(59) + mid).joinToString(",")).apply()
+        return false
+    }
+
     private fun handle(o: JSONObject) {
         val type = o.optString("type")
         val ph = Proto.phoneFrom(o)
@@ -461,6 +483,27 @@ object ConnectRepository {
             phone.value = ph
             Prefs.store?.edit()?.putInt("phone_pv", ph.pv)?.putString("phone_app", ph.app ?: "")?.apply()
         }
+        // ostrzeżenie z telefonu, które czekało w przekaźniku (radio było wyłączone) – już nieaktualne
+        if (Proto.isStaleLive(o)) return
+        val mid = o.optString(Proto.MID)
+        val known = type in Proto.CAR_CAPS
+        if (mid.isNotBlank() && known && seen(mid)) {
+            // telefon wysłał jeszcze raz (nie dostał potwierdzenia) – tylko potwierdź
+            send(Proto.ack(type, mid, true, "już wykonane", BuildConfig.VERSION_NAME))
+            return
+        }
+        result = null
+        var err: String? = null
+        try {
+            command(type, o)
+        } catch (e: Exception) {
+            err = e.message?.take(120) ?: e.javaClass.simpleName
+        }
+        if (mid.isNotBlank() && known) send(Proto.ack(type, mid, err == null, err ?: result, BuildConfig.VERSION_NAME))
+    }
+
+    private fun command(type: String, o: JSONObject) {
+        val mid = o.optString(Proto.MID)
         when (type) {
             "route" -> {
                 val p = place(o)
@@ -472,13 +515,13 @@ object ConnectRepository {
                 }.orEmpty()
                 RouteRepository.planTo(p, via, shape)
                 UiState.go(Screen.NAV)
-                Toaster.show("Trasa z telefonu: ${p.name}" + if (via.isNotEmpty()) " przez ${via.size} ${if (via.size == 1) "punkt" else "punkty"}" else "")
+                say("Trasa z telefonu: ${p.name}" + if (via.isNotEmpty()) " przez ${via.size} ${if (via.size == 1) "punkt" else "punkty"}" else "")
             }
             "fav_add" -> {
                 val p = place(o)
                 PlacesRepository.load()
                 if (!PlacesRepository.isFavorite(p)) PlacesRepository.toggleFavorite(p)
-                Toaster.show("Dodano do ulubionych z telefonu: ${p.name}")
+                say("Dodano do ulubionych z telefonu: ${p.name}")
                 publishStatusSoon()
             }
             // ustawienia z telefonu (np. klucz TomTom do korków)
@@ -499,6 +542,12 @@ object ConnectRepository {
                     if (k.isBlank()) pl.mati.carlauncher.ui.Toaster.show("Klucz TomTom usunięty z telefonu – korki wyłączone")
                     else TrafficRepository.testKey { pl.mati.carlauncher.ui.Toaster.show("Klucz TomTom z telefonu: $it") }
                 }
+                // klucz Tankerkönig – ceny na stacjach w Niemczech także w planie trasy w radiu
+                if (o.has("tk")) {
+                    val tk = o.optString("tk", "").trim()
+                    appCtx?.let { c -> if (tk != pl.mati.caros.core.StationPrices.tkKey.value) pl.mati.caros.core.StationPrices.setKey(c, tk) }
+                }
+                result = "Ustawienia zapisane w radiu"
             }
             // ostrzeżenie CamSam / Yanosika z telefonu
             "alert" -> AlertRepository.fromPhone(o)
@@ -512,7 +561,7 @@ object ConnectRepository {
                 val lat = if (o.has("lat") && !o.isNull("lat")) o.getDouble("lat") else null
                 val lon = if (o.has("lon") && !o.isNull("lon")) o.getDouble("lon") else null
                 Prefs.setPlace(work, a, lat, lon)
-                Toaster.show(
+                say(
                     (if (work) "Adres pracy" else "Adres domu") +
                         (if (a.isBlank()) " usunięty z telefonu" else " z telefonu: $a"),
                 )
@@ -521,7 +570,7 @@ object ConnectRepository {
             // tankowanie dodane / usunięte w telefonie
             "fuel_add" -> {
                 FuelRepository.add(FuelRepository.Fill.from(o.getJSONObject("fill")))
-                Toaster.show("Tankowanie z telefonu zapisane")
+                say("Tankowanie z telefonu zapisane")
                 publishStatusSoon()
             }
             "fuel_del" -> {
@@ -534,7 +583,7 @@ object ConnectRepository {
                 if (l in 20..150) {
                     FuelRepository.setTank(l)
                     try { FuelRepository.recompute() } catch (_: Exception) {}
-                    Toaster.show("Pojemność baku z telefonu: $l l")
+                    say("Pojemność baku z telefonu: $l l")
                     publishStatusSoon()
                 }
             }
@@ -550,7 +599,7 @@ object ConnectRepository {
                 val cur = ServiceRepository.items.value.firstOrNull { x -> x.id == it.id } ?: return
                 ServiceRepository.update(cur.copy(intervalKm = it.intervalKm, intervalMonths = it.intervalMonths, lastKm = it.lastKm, lastDate = it.lastDate))
                 ServiceRepository.checkReminders()
-                Toaster.show("Serwis zmieniony z telefonu: ${cur.name}")
+                say("Serwis zmieniony z telefonu: ${cur.name}")
             }
             "svc_done" -> {
                 ServiceRepository.load()
@@ -558,7 +607,7 @@ object ConnectRepository {
                 val cur = ServiceRepository.items.value.firstOrNull { x -> x.id == id } ?: return
                 ServiceRepository.markDone(id)
                 ServiceRepository.checkReminders()
-                Toaster.show("Z telefonu: ${cur.name} – wykonano")
+                say("Z telefonu: ${cur.name} – wykonano")
             }
             "svc_odo" -> {
                 ServiceRepository.load()
@@ -566,7 +615,7 @@ object ConnectRepository {
                 if (km > 0) {
                     ServiceRepository.setOdometer(km)
                     ServiceRepository.checkReminders()
-                    Toaster.show("Przebieg z telefonu: $km km")
+                    say("Przebieg z telefonu: $km km")
                 }
             }
             "sync" -> {
@@ -593,8 +642,16 @@ object ConnectRepository {
                     pendingRestore.value = PendingRestore(text, root.optLong("created"), car)
                 }
             }
+            // wygląd z telefonu (Glass, jasny / ciemny, akcent)
+            Proto.Cmd.LOOK -> {
+                val l = pl.mati.caros.core.Look.fromJson(o.optJSONObject("look")) ?: return
+                val d = LookSync.apply(l)
+                if (d != null) say("Wygląd z telefonu: $d")
+                else result = if (Prefs.lookSync.value) "Wygląd bez zmian" else "W radiu wyłączony wspólny wygląd"
+                publishStatusSoon()
+            }
             // komenda z nowszego telefonu, której ta wersja nie zna – telefon pokaże „zaktualizuj CAR OS”
-            else -> if (type.isNotBlank() && type !in Proto.CAR_CAPS) send(Proto.nack(type, BuildConfig.VERSION_NAME))
+            else -> if (type.isNotBlank() && type !in Proto.CAR_CAPS) send(Proto.nack(type, BuildConfig.VERSION_NAME, mid))
         }
     }
 
