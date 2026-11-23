@@ -51,6 +51,9 @@ object Proto {
         const val RESTORE_PART = "rs"
         /** Wygląd (motyw, Liquid Glass, akcent) – patrz [Look]. */
         const val LOOK = "look"
+        /** Jazda na żywo przez link: "k" – klucz ([LiveShare.keyText]), "min" – na ile minut (0 = do celu). */
+        const val SHARE = "share"
+        const val SHARE_END = "share_end"
     }
 
     /** Komendy „na żywo” – bez potwierdzeń, po [LIVE_MAX_MS] nieaktualne. */
@@ -84,6 +87,8 @@ object Proto {
         const val FUEL_SRC = "fuel_src"
         /** Status z "look" i komenda "look". */
         const val LOOK = "look"
+        /** "park" z "dest" – cel trasy, do którego zostało dojść pieszo (ostatnia mila). */
+        const val PARK_DEST = "park_dest"
     }
 
     /** Komendy obsługiwane przez CAR OS 1.x (przed "caps"). */
@@ -94,7 +99,8 @@ object Proto {
 
     /** Wszystko, co obsługuje CAR OS z tym protokołem. */
     val CAR_CAPS: Set<String> = V1_BASE + setOf(
-        Cmd.FUEL_TANK, Cmd.LOOK, Feat.STOPS8, Feat.FUEL_LEFT, Feat.NACK, Feat.ACK, Feat.CFG_TK, Feat.FUEL_SRC, Feat.LOOK,
+        Cmd.FUEL_TANK, Cmd.LOOK, Cmd.SHARE, Cmd.SHARE_END,
+        Feat.STOPS8, Feat.FUEL_LEFT, Feat.NACK, Feat.ACK, Feat.CFG_TK, Feat.FUEL_SRC, Feat.LOOK, Feat.PARK_DEST,
     )
 
     /** Druga strona połączenia: wersja protokołu, wersja aplikacji, obsługiwane komendy. */

@@ -2,6 +2,13 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
+## next
+Jazda na żywo przez link i ostatnia mila
+- Nawigacja → „Udostępnij jazdę na żywo”: do celu, na 1 h albo na 4 h. Kod QR z linkiem – bliscy widzą w przeglądarce auto na mapie, trasę, ile zostało i godzinę przyjazdu, bez instalowania aplikacji
+- Link zaszyfrowany (klucz tylko w linku), kończy się sam po dojechaniu do celu albo po czasie; można też zakończyć w radiu albo w telefonie
+- Udostępnianie można włączyć też z CAR OS Connect – telefon od razu wysyła link
+- Ostatnia mila: gdy zaparkujesz 150 m – 3 km od celu trasy, CAR OS Connect poprowadzi dalej pieszo chodnikami
+
 ## 2.0-beta.2 · 2026-11-23
 Potwierdzenia z telefonu, plan trasy z cenami paliw, wspólny wygląd
 - Komendy z CAR OS Connect (trasa, ulubione, serwis, tankowania…) dostają potwierdzenie – telefon widzi, że radio je wykonało albo co poszło nie tak

@@ -186,6 +186,9 @@ private fun ColumnScope.SearchPanel(addingStop: Boolean, onPick: (RouteRepositor
         }
     }
     if (!addingStop) {
+        var share by remember { mutableStateOf(false) }
+        ShareButton({ share = true }, Modifier.fillMaxWidth())
+        if (share) ShareDialog { share = false }
         if (route != null) SecondaryButton("Zakończ trasę", { RouteRepository.cancel(ctx) }, Modifier.fillMaxWidth(), icon = Icons.Rounded.Close)
         else SecondaryButton("Otwórz Mapy Google", { Launch.navigation(ctx) }, Modifier.fillMaxWidth(), icon = Icons.Rounded.Map)
     }

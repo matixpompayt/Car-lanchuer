@@ -100,7 +100,8 @@ object ConnectRepository {
         if (!moving) return
         // przekaźnik (limit ok. 250 wiadomości dziennie): co minutę, a gdy działa Firebase – co 5 min
         // (z przekaźnika telefon w tle wie, że „auto ruszyło”)
-        val gap = if (now - fbOkAt < 60_000) 5 * 60_000L else 60_000L
+        // przy udostępnianiu jazdy linkiem (osobne wiadomości) – co 3 min, żeby zmieścić się w limicie
+        val gap = if (now - fbOkAt < 60_000) 5 * 60_000L else if (TripShare.session.value != null) 180_000L else 60_000L
         if (now - lastLive < gap) return
         lastLive = now
         send(
@@ -260,10 +261,14 @@ object ConnectRepository {
         val sig = "${s.lat},${s.lon},${s.time},${s.address},$fin"
         if (!force && sig == lastParkSig) return
         lastParkSig = sig
-        send(
-            JSONObject().put("type", "park").put("lat", s.lat).put("lon", s.lon).put("t", s.time).put("a", s.address ?: "").put("fin", fin)
-                .put("body", Prefs.carBody.value).put("paint", Prefs.carPaint.value),
-        )
+        val o = JSONObject().put("type", "park").put("lat", s.lat).put("lon", s.lon).put("t", s.time).put("a", s.address ?: "").put("fin", fin)
+            .put("body", Prefs.carBody.value).put("paint", Prefs.carPaint.value)
+        // ostatnia mila: cel trasy, gdy auto stoi 150 m – 3 km od niego
+        if (fin) LastMile.destFor(s.lat, s.lon)?.let { d ->
+            o.put("dest", d)
+            if (!force) pl.mati.carlauncher.ui.Toaster.show("Do celu ${d.optInt("m")} m pieszo – CAR OS Connect poprowadzi chodnikami")
+        }
+        send(o)
     }
 
     /** Stan auta po krótkiej zwłoce (łączy kilka zmian w jedną wiadomość). */
@@ -317,6 +322,7 @@ object ConnectRepository {
                 .put("work", placeJson(p.work, p.workLat, p.workLon))
                 .put("ver", BuildConfig.VERSION_NAME)
                 .put("look", LookSync.current().toJson())
+                .put("share", TripShare.statusJson() ?: JSONObject.NULL)
                 // protokół 2: wersja i lista obsługiwanych komend – telefon sprawdza je przed wysłaniem
                 .put(Proto.PV, Proto.VERSION).put(Proto.CAPS, Proto.capsJson())
             send(o)
@@ -372,6 +378,33 @@ object ConnectRepository {
             true
         } catch (_: Exception) {
             false
+        }
+    }
+
+    /** Wiadomość na dowolny kanał przekaźnika (już zaszyfrowana) – np. jazda na żywo przez link. */
+    fun relayPost(topic: String, body: String) {
+        scope.launch(sender) {
+            for (attempt in 0..2) {
+                try {
+                    val c = URL(RELAY + topic).openConnection() as HttpURLConnection
+                    c.connectTimeout = 10_000
+                    c.readTimeout = 15_000
+                    c.requestMethod = "POST"
+                    c.doOutput = true
+                    c.setRequestProperty("User-Agent", "CarOS")
+                    try {
+                        c.outputStream.use { it.write(body.toByteArray()) }
+                        val code = c.responseCode
+                        if (code in 200..299) break
+                        if (code == 429) delay(6000)
+                    } finally {
+                        c.disconnect()
+                    }
+                } catch (_: Exception) {
+                    delay(4000)
+                }
+            }
+            delay(600)
         }
     }
 
@@ -641,6 +674,19 @@ object ConnectRepository {
                     val car = listOf(s("p_brand"), s("p_model"), s("p_engine")).filter { it.isNotBlank() }.joinToString(" ")
                     pendingRestore.value = PendingRestore(text, root.optLong("created"), car)
                 }
+            }
+            // jazda na żywo przez link – klucz z telefonu (telefon zna link)
+            Proto.Cmd.SHARE -> {
+                val k = pl.mati.caros.core.LiveShare.keyFrom(o.optString("k")) ?: throw IllegalArgumentException("zły klucz udostępniania")
+                val min = o.optInt("min", 0)
+                val s = TripShare.start(k, if (min > 0) min else null, "phone")
+                say("Udostępniasz jazdę na żywo " + if (s.toDest) "do celu" else "do ${java.text.SimpleDateFormat("H:mm", java.util.Locale("pl")).format(java.util.Date(s.until))}")
+            }
+            Proto.Cmd.SHARE_END -> {
+                val had = TripShare.session.value != null
+                TripShare.stop("stopped")
+                result = if (had) "Udostępnianie jazdy zakończone" else "Udostępnianie było już wyłączone"
+                if (had) Toaster.show("Udostępnianie jazdy zakończone")
             }
             // wygląd z telefonu (Glass, jasny / ciemny, akcent)
             Proto.Cmd.LOOK -> {

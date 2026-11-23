@@ -91,6 +91,8 @@ class MainActivity : ComponentActivity() {
         pl.mati.caros.core.StationPrices.init(this)
         pl.mati.carlauncher.data.ConnectRepository.init(this)
         pl.mati.carlauncher.data.LookSync.start()
+        pl.mati.carlauncher.data.TripShare.init()
+        pl.mati.carlauncher.data.LastMile.init()
         pl.mati.carlauncher.data.ParkingRepository.start()
         pl.mati.carlauncher.data.PlacesRepository.load()
         pl.mati.carlauncher.data.FuelPrices.start(this)
