@@ -2,7 +2,7 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
-## next
+## 2.0-beta.3 · 2026-11-23
 Jazda na żywo przez link i ostatnia mila
 - Nawigacja → „Udostępnij jazdę na żywo”: do celu, na 1 h albo na 4 h. Kod QR z linkiem – bliscy widzą w przeglądarce auto na mapie, trasę, ile zostało i godzinę przyjazdu, bez instalowania aplikacji
 - Link zaszyfrowany (klucz tylko w linku), kończy się sam po dojechaniu do celu albo po czasie; można też zakończyć w radiu albo w telefonie
