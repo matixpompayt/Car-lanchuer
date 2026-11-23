@@ -2,6 +2,11 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
+## next
+Modele aut w jakości „studyjnej”
+- Gładkie cieniowanie karoserii (bez kanciastych ścianek) i lakier z odbiciami jak w studiu fotograficznym – softboxy, horyzont, efekt Fresnela na krawędziach
+- Szyby odbijają światło, felgi metaliczne, opony z zaokrąglonym barkiem, przyciemnienie przy ziemi
+
 ## 2.0-beta.5 · 2026-11-23
 Realistyczne modele aut
 - Nowe modele 3D auta (na mapie i w ustawieniach): zaokrąglona karoseria, szyby z odbiciem nieba, słupki, lusterka, reflektory i lampy, atrapa, tablice, felgi z ramionami, nadkola, odblask lakieru
