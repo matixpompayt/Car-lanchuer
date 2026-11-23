@@ -288,15 +288,41 @@ async function main() {
 }
 
 function handle(o) {
-  if (o.type === "sh") { if (!st.pos || o.t >= st.pos.t) st.pos = o; }
+  if (o.type === "sh") {
+    if (!st.pos || o.t >= st.pos.t) st.pos = o;
+    // pozycja bez trasy, nowsza niż trasa – kierowca zakończył nawigację (starszy CAR OS nie wysyła „koniec trasy”)
+    if (st.route && !o.rid && !o.dest && o.t > st.route.t + 5000) { st.routeClearedAt = o.t; clearRoute(false); }
+  }
   else if (o.type === "shr") {
-    if (!st.route || o.t >= st.route.t) {
+    const after = !st.routeClearedAt || o.t > st.routeClearedAt;
+    if (o.clear || !o.pl) {
+      // koniec / anulowanie trasy w aucie – linia i cel znikają
+      if (after) { st.routeClearedAt = o.t; clearRoute(false); }
+    } else if (after && (!st.route || o.t >= st.route.t)) {
       const pts = decodePolyline(o.pl || "");
       // pierwsza trasa – pokaż całą; przeliczona w czasie jazdy – bez skakania mapą
       if (pts.length >= 2) { if (!st.route) st.fitted = false; st.route = { ...o, pts, cum: cumulative(pts) }; drawRoute(); }
     }
   }
-  else if (o.type === "she") { if (!st.end || o.t >= st.end.t) st.end = o; }
+  else if (o.type === "she") {
+    if (!st.end || o.t >= st.end.t) st.end = o;
+    // koniec udostępniania: bez linii trasy; przy dojechaniu zostaje tylko pinezka celu
+    clearRoute(o.why === "arrived");
+  }
+}
+
+/** Cel z najnowszych danych (po zakończeniu trasy – brak). */
+function curDest() {
+  const p = st.pos;
+  const fromPos = p && p.dest && !(st.routeClearedAt && p.t < st.routeClearedAt) ? p.dest : null;
+  return fromPos || st.route?.dest || null;
+}
+
+function clearRoute(keepDest) {
+  st.route = null; doneKey = "";
+  if (map && mapReady) { map.getSource("route")?.setData(emptyLine()); map.getSource("done")?.setData(emptyLine()); }
+  stopMarkers.forEach((m) => m.remove()); stopMarkers = [];
+  if (destMarker && !keepDest) destMarker.remove();
 }
 
 // ---------- mapa ----------
@@ -411,7 +437,7 @@ function render(forceCenter) {
   }
   // karta
   const who = p.who || "Auto";
-  const dest = p.dest || st.route?.dest;
+  const dest = curDest();
   $("who").textContent = who;
   $("dot").className = "dot" + (!ended && !stale ? " live" : "");
   $("ago").textContent = "· " + (ended ? "zakończone" : "aktualizacja " + ago(age));
@@ -544,7 +570,7 @@ function onFix(pos) {
 function navTarget(now) {
   if (!nav) return null;
   if (nav.mode === "dest") {
-    const d = st.pos?.dest || st.route?.dest;
+    const d = curDest();
     return d ? { p: [d.lon, d.lat], brg: null } : null;
   }
   const e = estimate(now);
@@ -648,6 +674,12 @@ const distTxt = (m) => m >= 1000 ? `${(m / 1000).toFixed(1).replace(".", ",")} k
 function navTick() {
   if (!nav) return;
   const now = Date.now();
+  // kierowca zakończył trasę – „do celu” przechodzi w „za autem”
+  if (nav.mode === "dest" && !curDest() && st.pos) {
+    nav.mode = "car"; nav.r = null; nav.routedAt = 0; nav.arrived = false;
+    if (map && mapReady) map.getSource("nav")?.setData(emptyLine());
+    say("Kierowca zakończył trasę. Prowadzę za autem.");
+  }
   const me = nav.me, r = nav.r;
   const tg = navTarget(now);
   if (!me) return;
@@ -714,7 +746,7 @@ function setTurnIcon(type) {
 
 function showNavCard(left, secs, tg, carMoving) {
   const now = Date.now();
-  const dest = st.pos?.dest || st.route?.dest;
+  const dest = curDest();
   $("navWho").textContent = nav.mode === "car" ? `Jedziesz za: ${st.pos?.who || "auto"}` : `Do celu: ${dest ? dest.n : "cel"}`;
   $("navTime").textContent = secs != null ? (secs < 60 ? "<1 min" : `${Math.round(secs / 60)} min`) : "—";
   $("navDist").textContent = distTxt(left) + (secs != null && nav.mode === "dest" ? ` · przyjazd ${hhmm(now + secs * 1000)}` : "");
