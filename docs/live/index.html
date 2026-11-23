@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#05070a">
+<title>Jazda na żywo – CAR OS</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2305070a'/%3E%3Cpath d='M32 12 48 50 32 42 16 50Z' fill='%2322d3ee'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.css">
+<style>
+  :root {
+    --bg: #05070a; --card: rgba(16, 21, 29, 0.86); --line: rgba(255, 255, 255, 0.09);
+    --text: #eef2f6; --muted: #8a96a6; --accent: #22d3ee; --accent2: #3b82f6; --ok: #34d399; --warn: #fbbf24;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+    font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+  #map { position: fixed; inset: 0; }
+  .card {
+    position: fixed; left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom)); max-width: 520px; margin: 0 auto;
+    background: var(--card); border: 1px solid var(--line); border-radius: 22px; padding: 16px 18px 14px;
+    -webkit-backdrop-filter: blur(18px) saturate(1.3); backdrop-filter: blur(18px) saturate(1.3);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45);
+  }
+  .who { font-size: 13px; color: var(--muted); letter-spacing: .02em; display: flex; align-items: center; gap: 8px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex: none; }
+  .dot.live { background: var(--ok); box-shadow: 0 0 0 0 rgba(52, 211, 153, .6); animation: pulse 2s infinite; }
+  @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(52, 211, 153, .55); } 70% { box-shadow: 0 0 0 10px rgba(52, 211, 153, 0); } 100% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0); } }
+  h1 { font-size: 21px; line-height: 1.25; margin: 4px 0 10px; font-weight: 700; }
+  .eta { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .eta b { font-size: 34px; line-height: 1; color: var(--accent); font-variant-numeric: tabular-nums; }
+  .eta span { color: var(--text); font-size: 16px; }
+  .stats { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  .chip { background: rgba(255, 255, 255, 0.06); border: 1px solid var(--line); border-radius: 12px; padding: 6px 10px; font-size: 14px; font-variant-numeric: tabular-nums; }
+  .chip em { font-style: normal; color: var(--muted); margin-right: 4px; }
+  .note { margin-top: 10px; font-size: 13px; color: var(--muted); }
+  .note.warn { color: var(--warn); }
+  .btns { position: fixed; right: 12px; top: calc(12px + env(safe-area-inset-top)); display: flex; flex-direction: column; gap: 8px; }
+  .btns button {
+    width: 46px; height: 46px; border-radius: 14px; border: 1px solid var(--line); background: var(--card); color: var(--text);
+    -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); display: grid; place-items: center; cursor: pointer; padding: 0;
+  }
+  .btns button.on { color: var(--accent); border-color: rgba(34, 211, 238, .5); }
+  .btns svg { width: 22px; height: 22px; }
+  .brand { position: fixed; left: 12px; top: calc(12px + env(safe-area-inset-top)); background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 8px 12px; font-size: 13px; color: var(--muted); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+  .brand b { color: var(--text); } .brand b span { color: var(--accent); }
+  .car { width: 44px; height: 44px; display: grid; place-items: center; }
+  .car .ring { position: absolute; width: 44px; height: 44px; border-radius: 50%; background: rgba(34, 211, 238, .18); border: 2px solid rgba(34, 211, 238, .55); }
+  .car.guess .ring { border-style: dashed; }
+  .car.stale .ring { background: rgba(138, 150, 166, .18); border-color: rgba(138, 150, 166, .6); }
+  .car svg { position: relative; width: 26px; height: 26px; filter: drop-shadow(0 2px 4px rgba(0, 0, 0, .5)); transition: transform .6s ease; }
+  .pin { width: 30px; height: 30px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); background: var(--accent2); border: 3px solid #fff; box-shadow: 0 3px 8px rgba(0, 0, 0, .4); }
+  .stop { width: 14px; height: 14px; border-radius: 50%; background: #fff; border: 3px solid var(--accent2); }
+  .center { position: fixed; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; pointer-events: none; }
+  .center div { max-width: 420px; background: var(--card); border: 1px solid var(--line); border-radius: 22px; padding: 22px; pointer-events: auto; }
+  .hidden { display: none !important; }
+  .maplibregl-ctrl-attrib { font-size: 11px; }
+  @media (min-width: 700px) { .card { left: 20px; right: auto; width: 420px; bottom: 20px; margin: 0; } }
+</style>
+</head>
+<body>
+<div id="map"></div>
+<div class="brand"><b>CAR<span>&nbsp;OS</span></b> · jazda na żywo</div>
+<div class="btns">
+  <button id="follow" title="Śledź auto" aria-label="Śledź auto">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+  </button>
+  <button id="whole" title="Cała trasa" aria-label="Cała trasa">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+  </button>
+</div>
+<div id="card" class="card hidden">
+  <div class="who"><i id="dot" class="dot"></i><span id="who">Auto</span><span id="ago"></span></div>
+  <h1 id="title">Jazda na żywo</h1>
+  <div class="eta" id="etaRow"><b id="eta">—</b><span id="etaIn"></span></div>
+  <div class="stats" id="stats"></div>
+  <div class="note" id="note"></div>
+</div>
+<div id="msg" class="center"><div id="msgText">Łączę…</div></div>
+
+<script src="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.js"></script>
+<script>
+"use strict";
+// Klucz jest tylko w linku po „#” – przeglądarka nie wysyła go nigdzie. Przekaźnik (ntfy.sh) widzi sam szyfrogram.
+const RELAY = "https://ntfy.sh/";
+const $ = (id) => document.getElementById(id);
+
+function b64urlToBytes(s) {
+  s = s.replace(/-/g, "+").replace(/_/g, "/");
+  while (s.length % 4) s += "=";
+  const bin = atob(s); const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+function b64ToBytes(s) { return b64urlToBytes(s.trim()); }
+
+async function topicOf(keyBytes) {
+  const ch = new TextEncoder().encode("share");
+  const all = new Uint8Array(keyBytes.length + ch.length); all.set(keyBytes); all.set(ch, keyBytes.length);
+  const h = new Uint8Array(await crypto.subtle.digest("SHA-256", all));
+  return "caros_" + Array.from(h, (b) => b.toString(16).padStart(2, "0")).join("").slice(0, 28);
+}
+
+async function gunzip(bytes) {
+  const ds = new DecompressionStream("gzip");
+  const stream = new Blob([bytes]).stream().pipeThrough(ds);
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+
+/** "2:" + base64(iv 12 B | AES-GCM(gzip(json))) – tak samo jak w CAR OS (core/RelayCrypto). */
+async function decrypt(key, msg) {
+  try {
+    const v2 = msg.startsWith("2:");
+    const all = b64ToBytes(v2 ? msg.slice(2) : msg);
+    const plain = new Uint8Array(await crypto.subtle.decrypt({ name: "AES-GCM", iv: all.slice(0, 12) }, key, all.slice(12)));
+    const txt = new TextDecoder().decode(v2 ? await gunzip(plain) : plain);
+    return JSON.parse(txt);
+  } catch (e) { return null; }
+}
+
+/** Polyline Google (1e-5) → [[lon, lat], …]. */
+function decodePolyline(s) {
+  const out = []; let i = 0, lat = 0, lon = 0;
+  const next = () => { let shift = 0, res = 0, b; do { b = s.charCodeAt(i++) - 63; res |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20); return (res & 1) ? ~(res >> 1) : (res >> 1); };
+  while (i < s.length) { lat += next(); lon += next(); out.push([lon / 1e5, lat / 1e5]); }
+  return out;
+}
+
+// ---------- geometria ----------
+const R = 6371000, rad = Math.PI / 180;
+function dist(a, b) {
+  const dLat = (b[1] - a[1]) * rad, dLon = (b[0] - a[0]) * rad;
+  const x = Math.sin(dLat / 2) ** 2 + Math.cos(a[1] * rad) * Math.cos(b[1] * rad) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(x)));
+}
+function cumulative(pts) { const c = [0]; for (let i = 1; i < pts.length; i++) c.push(c[i - 1] + dist(pts[i - 1], pts[i])); return c; }
+/** Rzut punktu na trasę: { along, off, i }. */
+function project(pts, cum, p) {
+  let best = { along: 0, off: Infinity, i: 0 };
+  const kx = Math.cos(p[1] * rad) * 111320, ky = 110540;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const ax = (pts[i][0] - p[0]) * kx, ay = (pts[i][1] - p[1]) * ky;
+    const bx = (pts[i + 1][0] - p[0]) * kx, by = (pts[i + 1][1] - p[1]) * ky;
+    const dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy;
+    let t = l2 > 0 ? -(ax * dx + ay * dy) / l2 : 0; t = Math.max(0, Math.min(1, t));
+    const x = ax + t * dx, y = ay + t * dy, off = Math.hypot(x, y);
+    if (off < best.off) best = { along: cum[i] + t * (cum[i + 1] - cum[i]), off, i };
+  }
+  return best;
+}
+function pointAt(pts, cum, along) {
+  if (along <= 0) return { p: pts[0], i: 0 };
+  for (let i = 1; i < pts.length; i++) {
+    if (cum[i] >= along) {
+      const t = (along - cum[i - 1]) / Math.max(1e-6, cum[i] - cum[i - 1]);
+      return { p: [pts[i - 1][0] + t * (pts[i][0] - pts[i - 1][0]), pts[i - 1][1] + t * (pts[i][1] - pts[i - 1][1])], i: i - 1 };
+    }
+  }
+  return { p: pts[pts.length - 1], i: pts.length - 2 };
+}
+function bearing(a, b) {
+  const y = Math.sin((b[0] - a[0]) * rad) * Math.cos(b[1] * rad);
+  const x = Math.cos(a[1] * rad) * Math.sin(b[1] * rad) - Math.sin(a[1] * rad) * Math.cos(b[1] * rad) * Math.cos((b[0] - a[0]) * rad);
+  return (Math.atan2(y, x) / rad + 360) % 360;
+}
+
+// ---------- teksty ----------
+const hhmm = (t) => new Date(t).toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" });
+function dur(ms) {
+  const m = Math.max(0, Math.round(ms / 60000));
+  if (m < 1) return "za chwilę";
+  if (m < 60) return `za ${m} min`;
+  const h = Math.floor(m / 60), r = m % 60;
+  return `za ${h} h` + (r ? ` ${r} min` : "");
+}
+function ago(ms) {
+  const s = Math.max(0, Math.round(ms / 1000));
+  if (s < 50) return "przed chwilą";
+  const m = Math.round(s / 60);
+  if (m < 60) return `${m} min temu`;
+  return `${Math.floor(m / 60)} h ${m % 60} min temu`;
+}
+const km = (m) => m >= 10000 ? `${Math.round(m / 1000)} km` : m >= 1000 ? `${(m / 1000).toFixed(1).replace(".", ",")} km` : `${Math.round(m / 10) * 10} m`;
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+// ---------- stan ----------
+// na start cała trasa z autem; „Śledź auto” – mapa jedzie za autem
+const st = { pos: null, route: null, end: null, lastId: null, seen: new Set(), follow: false, fitted: false };
+
+function show(msg) { $("msgText").innerHTML = msg; $("msg").classList.remove("hidden"); }
+function hideMsg() { $("msg").classList.add("hidden"); }
+
+async function main() {
+  const raw = location.hash.slice(1).split("&")[0];
+  let keyBytes;
+  try { keyBytes = b64urlToBytes(raw); } catch (e) { keyBytes = null; }
+  if (!keyBytes || keyBytes.length !== 32) {
+    show("<b>Nieprawidłowy link</b><br><span style='color:var(--muted)'>Poproś o nowy link do jazdy na żywo z CAR OS albo CAR OS Connect.</span>");
+    return;
+  }
+  if (!window.crypto?.subtle || typeof DecompressionStream === "undefined") {
+    show("<b>Ta przeglądarka jest za stara</b><br><span style='color:var(--muted)'>Otwórz link w aktualnym Chrome, Safari albo Firefoxie.</span>");
+    return;
+  }
+  const key = await crypto.subtle.importKey("raw", keyBytes, "AES-GCM", false, ["decrypt"]);
+  const topic = await topicOf(keyBytes);
+  // bez mapy (np. zablokowany serwer map) karta z przyjazdem i tak działa
+  try { if (window.maplibregl) initMap(); } catch (e) { map = null; }
+  show("Czekam na pozycję auta…");
+  const poll = async () => {
+    try {
+      const url = RELAY + topic + "/json?poll=1&since=" + (st.lastId || "all");
+      const r = await fetch(url, { cache: "no-store" });
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      const lines = (await r.text()).split("\n").filter(Boolean);
+      for (const line of lines) {
+        let m; try { m = JSON.parse(line); } catch (e) { continue; }
+        if (m.event !== "message" || st.seen.has(m.id)) continue;
+        st.seen.add(m.id); st.lastId = m.id;
+        const o = await decrypt(key, m.message || "");
+        if (o) handle(o);
+      }
+      $("note").classList.remove("warn");
+    } catch (e) {
+      if (!st.pos) show("Nie mogę połączyć się z serwerem – sprawdzam ponownie…");
+    }
+    render();
+  };
+  await poll();
+  setInterval(() => { if (!document.hidden) poll(); }, 20000);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) poll(); });
+  setInterval(render, 1000);
+}
+
+function handle(o) {
+  if (o.type === "sh") { if (!st.pos || o.t >= st.pos.t) st.pos = o; }
+  else if (o.type === "shr") {
+    if (!st.route || o.t >= st.route.t) {
+      const pts = decodePolyline(o.pl || "");
+      // pierwsza trasa – pokaż całą; przeliczona w czasie jazdy – bez skakania mapą
+      if (pts.length >= 2) { if (!st.route) st.fitted = false; st.route = { ...o, pts, cum: cumulative(pts) }; drawRoute(); }
+    }
+  }
+  else if (o.type === "she") { if (!st.end || o.t >= st.end.t) st.end = o; }
+}
+
+// ---------- mapa ----------
+let map, carMarker, carEl, destMarker, stopMarkers = [], mapReady = false, doneKey = "";
+function initMap() {
+  const dark = !matchMedia("(prefers-color-scheme: light)").matches;
+  map = new maplibregl.Map({
+    container: "map", style: "https://tiles.openfreemap.org/styles/" + (dark ? "dark" : "positron"),
+    center: [17.0, 52.0], zoom: 5, attributionControl: { compact: true },
+  });
+  map.on("dragstart", () => setFollow(false));
+  map.on("load", () => {
+    map.addSource("route", { type: "geojson", data: emptyLine() });
+    map.addSource("done", { type: "geojson", data: emptyLine() });
+    map.addLayer({ id: "route-casing", type: "line", source: "route", layout: { "line-cap": "round", "line-join": "round" }, paint: { "line-color": "#0b3a66", "line-width": ["interpolate", ["linear"], ["zoom"], 5, 6, 14, 12] } });
+    map.addLayer({ id: "route", type: "line", source: "route", layout: { "line-cap": "round", "line-join": "round" }, paint: { "line-color": "#3b9cff", "line-width": ["interpolate", ["linear"], ["zoom"], 5, 3.5, 14, 8] } });
+    map.addLayer({ id: "done", type: "line", source: "done", layout: { "line-cap": "round", "line-join": "round" }, paint: { "line-color": "#8a96a6", "line-opacity": 0.75, "line-width": ["interpolate", ["linear"], ["zoom"], 5, 3.5, 14, 8] } });
+    mapReady = true;
+    drawRoute(); render();
+  });
+  $("follow").onclick = () => { setFollow(true); render(true); };
+  $("whole").onclick = () => { setFollow(false); fitAll(); };
+}
+function setFollow(v) { st.follow = v; $("follow").classList.toggle("on", v); }
+const emptyLine = () => ({ type: "Feature", geometry: { type: "LineString", coordinates: [] } });
+const line = (c) => ({ type: "Feature", geometry: { type: "LineString", coordinates: c } });
+
+function drawRoute() {
+  if (!map || !mapReady || !st.route) return;
+  map.getSource("route").setData(line(st.route.pts));
+  const d = st.route.dest;
+  if (d) {
+    // MapLibre ustawia „transform” na elemencie znacznika – obrót pinezki w środku
+    if (!destMarker) { const el = document.createElement("div"); el.innerHTML = '<div class="pin"></div>'; destMarker = new maplibregl.Marker({ element: el, anchor: "bottom", offset: [0, -6] }); }
+    destMarker.setLngLat([d.lon, d.lat]).addTo(map);
+  }
+  stopMarkers.forEach((m) => m.remove()); stopMarkers = [];
+  (st.route.stops || []).forEach((s) => { const el = document.createElement("div"); el.className = "stop"; stopMarkers.push(new maplibregl.Marker({ element: el }).setLngLat([s.lon, s.lat]).addTo(map)); });
+}
+function fitAll() {
+  if (!map) return;
+  const b = new maplibregl.LngLatBounds();
+  if (st.route) st.route.pts.forEach((p) => b.extend(p));
+  if (st.pos) b.extend([st.pos.lon, st.pos.lat]);
+  if (b.isEmpty()) return;
+  const pad = innerWidth >= 700 ? { top: 70, bottom: 70, left: 470, right: 80 } : { top: 80, bottom: 260, left: 40, right: 70 };
+  map.fitBounds(b, { padding: pad, maxZoom: 15, duration: 800 });
+}
+
+/** Gdzie jest auto teraz: ostatnia pozycja, a w ruchu – przesunięta po trasie o prędkość × czas (najwyżej 5 min). */
+function estimate(now) {
+  const p = st.pos; if (!p) return null;
+  const here = [p.lon, p.lat];
+  const age = now - p.t;
+  const out = { p: here, brg: p.brg || 0, moved: 0, guess: false };
+  const r = st.route;
+  if (!p.m || !r || age < 3000) return out;
+  const pr = project(r.pts, r.cum, here);
+  if (pr.off > 300) return out;
+  const v = Math.min(Math.max(p.spd || 0, 15), 140) / 3.6;
+  const dt = Math.min(age, 5 * 60000) / 1000;
+  const along = Math.min(pr.along + v * dt * 0.9, r.cum[r.cum.length - 1]);
+  const at = pointAt(r.pts, r.cum, along);
+  out.p = at.p; out.moved = along - pr.along; out.guess = true;
+  out.brg = bearing(r.pts[at.i], r.pts[Math.min(at.i + 1, r.pts.length - 1)]);
+  return out;
+}
+
+function render(forceCenter) {
+  const now = Date.now();
+  const p = st.pos;
+  const ended = st.end || (p && p.until && now > p.until);
+  if (!p) { if (st.end) show("<b>Udostępnianie zakończone</b>"); return; }
+  hideMsg();
+  $("card").classList.remove("hidden");
+  const e = estimate(now);
+  const age = now - p.t;
+  const stale = !ended && p.m && age > 8 * 60000;
+  // auto
+  if (map) {
+    if (!carMarker) {
+      carEl = document.createElement("div"); carEl.className = "car";
+      carEl.innerHTML = '<div class="ring"></div><svg viewBox="0 0 24 24"><path d="M12 2 20 21 12 16.5 4 21Z" fill="#22d3ee" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></svg>';
+      carMarker = new maplibregl.Marker({ element: carEl });
+    }
+    carMarker.setLngLat(e.p).addTo(map);
+    carEl.querySelector("svg").style.transform = `rotate(${(e.brg || 0) - map.getBearing()}deg)`;
+    carEl.classList.toggle("guess", e.guess); carEl.classList.toggle("stale", !!(stale || ended));
+    // przejechana część trasy – szara
+    if (st.route && mapReady) {
+      const pr = project(st.route.pts, st.route.cum, e.p);
+      const k = pr.off < 400 ? Math.round(pr.along / 25) + ":" + st.route.t : "-";
+      if (k !== doneKey) {
+        doneKey = k;
+        map.getSource("done")?.setData(line(pr.off < 400 ? st.route.pts.slice(0, pr.i + 1).concat([e.p]) : []));
+      }
+    }
+    if (!st.fitted && mapReady) { st.fitted = true; fitAll(); }
+    else if (st.follow && (forceCenter || !map.isMoving())) map.easeTo({ center: e.p, duration: forceCenter ? 700 : 900, zoom: forceCenter ? Math.max(map.getZoom(), 12) : undefined });
+  }
+  // karta
+  const who = p.who || "Auto";
+  const dest = p.dest || st.route?.dest;
+  $("who").textContent = who;
+  $("dot").className = "dot" + (!ended && !stale ? " live" : "");
+  $("ago").textContent = "· " + (ended ? "zakończone" : "aktualizacja " + ago(age));
+  let title, etaB = "—", etaIn = "", note = "", stats = [];
+  if (ended) {
+    const arr = (st.end && st.end.why === "arrived") || p.arr;
+    title = arr && dest ? `Na miejscu: ${esc(dest.n)}` : "Udostępnianie zakończone";
+    etaB = arr ? hhmm((st.end && st.end.t) || p.t) : "";
+    etaIn = arr ? "dojazd" : `ostatnia pozycja o ${hhmm(p.t)}`;
+    note = arr ? "" : "Pozycja na mapie to ostatnie miejsce przed końcem udostępniania.";
+  } else {
+    title = dest ? `${esc(who)} jedzie do: ${esc(dest.n)}` : (p.m ? `${esc(who)} w drodze` : `${esc(who)} – postój`);
+    if (p.eta && dest) {
+      // przyjazd: z radia (z korkami); przy dłuższym braku danych nie zgadujemy
+      const eta = Math.max(p.eta, now);
+      etaB = hhmm(eta); etaIn = "przyjazd · " + dur(eta - now);
+    } else { etaB = p.m ? `${p.spd || 0} km/h` : "postój"; etaIn = ""; }
+    if (p.rem != null && dest) stats.push(`<span class="chip"><em>zostało</em>${km(Math.max(0, p.rem - e.moved))}</span>`);
+    if (p.eta && dest) stats.push(`<span class="chip"><em>prędkość</em>${p.m ? (p.spd || 0) + " km/h" : "postój"}</span>`);
+    if (p.until && !p.toDest) stats.push(`<span class="chip"><em>udostępnione do</em>${hhmm(p.until)}</span>`);
+    if (stale) note = `Brak nowych danych od ${ago(age).replace(" temu", "")} – auto może być bez zasięgu. Pokazuję przybliżoną pozycję.`;
+    else if (e.guess) note = "Między aktualizacjami (co ok. 2 min) auto przesuwa się po trasie – pozycja przybliżona.";
+  }
+  $("title").innerHTML = title;
+  $("eta").textContent = etaB; $("etaIn").textContent = etaIn;
+  $("etaRow").classList.toggle("hidden", !etaB && !etaIn);
+  $("stats").innerHTML = stats.join("");
+  $("note").textContent = note; $("note").classList.toggle("warn", !!stale);
+}
+
+main();
+</script>
+</body>
+</html>
