@@ -57,10 +57,14 @@ object TripShare {
             RouteRepository.route.map { it?.id ?: 0L }.distinctUntilChanged().collect {
                 val s = session.value ?: return@collect
                 if (it != 0L) try { publishRoute(force = false) } catch (_: Exception) {}
-                // „do celu”, a trasa zakończona bez dojechania – po 10 min bez nowej trasy koniec
-                else if (s.toDest) scope.launch {
-                    delay(10 * 60_000L)
-                    if (RouteRepository.route.value == null && session.value === s) stop("stopped")
+                else {
+                    // trasa zakończona / anulowana – strona od razu chowa linię trasy i cel
+                    if (lastRouteId != 0L) try { clearRoute(s) } catch (_: Exception) {}
+                    // „do celu”, a trasa zakończona bez dojechania – po 10 min bez nowej trasy koniec
+                    if (s.toDest) scope.launch {
+                        delay(10 * 60_000L)
+                        if (RouteRepository.route.value == null && session.value === s) stop("stopped")
+                    }
                 }
             }
         }
@@ -194,6 +198,13 @@ object TripShare {
                 .put("dest", JSONObject().put("n", r.dest.name).put("d", r.dest.detail).put("lat", r.dest.lat).put("lon", r.dest.lon))
                 .put("stops", stops).put("km", (r.distanceM / 1000).toInt()),
         )
+    }
+
+    /** Koniec trasy: pusta trasa (strona chowa linię i cel) + pozycja już bez celu. */
+    private fun clearRoute(s: Session) {
+        lastRouteId = 0L
+        post(s, JSONObject().put("type", LiveShare.ROUTE).put("id", "0").put("t", System.currentTimeMillis()).put("pl", "").put("clear", true))
+        scope.launch { delay(1500); try { publishPos(force = true) } catch (_: Exception) {} }
     }
 
     private fun post(s: Session, o: JSONObject) {
