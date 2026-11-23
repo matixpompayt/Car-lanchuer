@@ -58,7 +58,33 @@
   .center div { max-width: 420px; background: var(--card); border: 1px solid var(--line); border-radius: 22px; padding: 22px; pointer-events: auto; }
   .hidden { display: none !important; }
   .maplibregl-ctrl-attrib { font-size: 11px; }
-  @media (min-width: 700px) { .card { left: 20px; right: auto; width: 420px; bottom: 20px; margin: 0; } }
+  /* przyciski w karcie: „Jedź za autem” / „Prowadź do celu” */
+  .acts { display: flex; gap: 8px; margin-top: 12px; }
+  .act { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center; gap: 8px; height: 48px; padding: 0 12px;
+    border-radius: 16px; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.06); color: var(--text);
+    font: 600 15px/1.1 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; cursor: pointer; white-space: nowrap; }
+  .act.primary { background: linear-gradient(90deg, var(--accent), #67e8f9); color: #04141a; border: 0; }
+  .act.stop { background: rgba(248, 113, 113, 0.16); border-color: rgba(248, 113, 113, 0.45); color: #fecaca; }
+  .act.on { color: var(--accent); border-color: rgba(34, 211, 238, .5); }
+  .act svg { width: 20px; height: 20px; flex: none; }
+  .act:active { transform: scale(.97); }
+  /* nawigacja: karta manewru na górze */
+  .turn { position: fixed; left: 12px; right: 12px; top: calc(12px + env(safe-area-inset-top)); max-width: 520px; margin: 0 auto;
+    display: flex; gap: 14px; align-items: center; background: var(--card); border: 1px solid var(--line); border-radius: 22px;
+    padding: 10px 16px 10px 10px; -webkit-backdrop-filter: blur(18px) saturate(1.3); backdrop-filter: blur(18px) saturate(1.3);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45); }
+  .turn .ic { width: 62px; height: 62px; border-radius: 18px; background: linear-gradient(135deg, var(--accent), #0891b2); display: grid; place-items: center; flex: none; color: #04141a; }
+  .turn .ic svg { width: 38px; height: 38px; transition: transform .35s ease; }
+  .turn b { font-size: 28px; line-height: 1.1; display: block; font-variant-numeric: tabular-nums; }
+  .turn span { font-size: 15px; display: block; margin-top: 2px; color: #cbd5e1; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  body.nav .brand { display: none; }
+  body.nav .btns { top: calc(100px + env(safe-area-inset-top)); }
+  .me { width: 30px; height: 30px; display: grid; place-items: center; }
+  .me svg { width: 30px; height: 30px; filter: drop-shadow(0 2px 4px rgba(0, 0, 0, .5)); }
+  .me.nohdg svg { display: none; }
+  .me .d { display: none; width: 16px; height: 16px; border-radius: 50%; background: #3b82f6; border: 3px solid #fff; box-shadow: 0 0 0 6px rgba(59, 130, 246, .25); }
+  .me.nohdg .d { display: block; }
+  @media (min-width: 700px) { .card { left: 20px; right: auto; width: 420px; bottom: 20px; margin: 0; } .turn { left: 20px; right: auto; width: 420px; margin: 0; } }
 </style>
 </head>
 <body>
@@ -78,6 +104,32 @@
   <div class="eta" id="etaRow"><b id="eta">—</b><span id="etaIn"></span></div>
   <div class="stats" id="stats"></div>
   <div class="note" id="note"></div>
+  <div class="acts" id="acts">
+    <button class="act primary hidden" id="goCar">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2 20 21 12 16.5 4 21Z"/></svg>Jedź za autem
+    </button>
+    <button class="act hidden" id="goDest">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4h11l-2 4 2 4H5"/></svg>Prowadź do celu
+    </button>
+  </div>
+</div>
+<div id="turn" class="turn hidden">
+  <div class="ic"><svg id="turnIc" viewBox="0 0 24 24"><path d="M12 3 19 20 12 16 5 20Z" fill="currentColor"/></svg></div>
+  <div style="min-width:0"><b id="turnDist">—</b><span id="turnText">Czekam na Twoją lokalizację…</span></div>
+</div>
+<div id="nav" class="card hidden">
+  <div class="who"><i class="dot live"></i><span id="navWho">Jedziesz za autem</span></div>
+  <div class="eta"><b id="navTime">—</b><span id="navDist"></span></div>
+  <div class="stats" id="navStats"></div>
+  <div class="note" id="navNote"></div>
+  <div class="acts">
+    <button class="act on" id="voice">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4zM15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/></svg><span id="voiceTxt">Głos</span>
+    </button>
+    <button class="act stop" id="stopNav">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>Zakończ
+    </button>
+  </div>
 </div>
 <div id="msg" class="center"><div id="msgText">Łączę…</div></div>
 
@@ -121,11 +173,11 @@ async function decrypt(key, msg) {
   } catch (e) { return null; }
 }
 
-/** Polyline Google (1e-5) → [[lon, lat], …]. */
-function decodePolyline(s) {
+/** Polyline Google (1e-5; Valhalla – 1e-6) → [[lon, lat], …]. */
+function decodePolyline(s, f = 1e5) {
   const out = []; let i = 0, lat = 0, lon = 0;
   const next = () => { let shift = 0, res = 0, b; do { b = s.charCodeAt(i++) - 63; res |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20); return (res & 1) ? ~(res >> 1) : (res >> 1); };
-  while (i < s.length) { lat += next(); lon += next(); out.push([lon / 1e5, lat / 1e5]); }
+  while (i < s.length) { lat += next(); lon += next(); out.push([lon / f, lat / f]); }
   return out;
 }
 
@@ -255,18 +307,28 @@ function initMap() {
     container: "map", style: "https://tiles.openfreemap.org/styles/" + (dark ? "dark" : "positron"),
     center: [17.0, 52.0], zoom: 5, attributionControl: { compact: true },
   });
-  map.on("dragstart", () => setFollow(false));
+  map.on("dragstart", () => { setFollow(false); if (nav) { nav.cam = false; $("follow").classList.remove("on"); } });
   map.on("load", () => {
     map.addSource("route", { type: "geojson", data: emptyLine() });
     map.addSource("done", { type: "geojson", data: emptyLine() });
     map.addLayer({ id: "route-casing", type: "line", source: "route", layout: { "line-cap": "round", "line-join": "round" }, paint: { "line-color": "#0b3a66", "line-width": ["interpolate", ["linear"], ["zoom"], 5, 6, 14, 12] } });
     map.addLayer({ id: "route", type: "line", source: "route", layout: { "line-cap": "round", "line-join": "round" }, paint: { "line-color": "#3b9cff", "line-width": ["interpolate", ["linear"], ["zoom"], 5, 3.5, 14, 8] } });
     map.addLayer({ id: "done", type: "line", source: "done", layout: { "line-cap": "round", "line-join": "round" }, paint: { "line-color": "#8a96a6", "line-opacity": 0.75, "line-width": ["interpolate", ["linear"], ["zoom"], 5, 3.5, 14, 8] } });
+    // Twoja trasa (nawigacja) – zielona, nad trasą auta
+    map.addSource("nav", { type: "geojson", data: emptyLine() });
+    map.addLayer({ id: "nav-casing", type: "line", source: "nav", layout: { "line-cap": "round", "line-join": "round" }, paint: { "line-color": "#064e3b", "line-width": ["interpolate", ["linear"], ["zoom"], 5, 7, 14, 14, 18, 22] } });
+    map.addLayer({ id: "nav", type: "line", source: "nav", layout: { "line-cap": "round", "line-join": "round" }, paint: { "line-color": "#34d399", "line-width": ["interpolate", ["linear"], ["zoom"], 5, 4, 14, 9, 18, 15] } });
     mapReady = true;
     drawRoute(); render();
   });
-  $("follow").onclick = () => { setFollow(true); render(true); };
-  $("whole").onclick = () => { setFollow(false); fitAll(); };
+  $("follow").onclick = () => {
+    if (nav) { nav.cam = true; $("follow").classList.add("on"); navCamera(true); return; }
+    setFollow(true); render(true);
+  };
+  $("whole").onclick = () => {
+    if (nav) { nav.cam = false; $("follow").classList.remove("on"); }
+    setFollow(false); fitAll();
+  };
 }
 function setFollow(v) { st.follow = v; $("follow").classList.toggle("on", v); }
 const emptyLine = () => ({ type: "Feature", geometry: { type: "LineString", coordinates: [] } });
@@ -289,6 +351,8 @@ function fitAll() {
   const b = new maplibregl.LngLatBounds();
   if (st.route) st.route.pts.forEach((p) => b.extend(p));
   if (st.pos) b.extend([st.pos.lon, st.pos.lat]);
+  if (nav && nav.me) b.extend(nav.me.p);
+  if (nav && nav.r) nav.r.pts.forEach((p) => b.extend(p));
   if (b.isEmpty()) return;
   const pad = innerWidth >= 700 ? { top: 70, bottom: 70, left: 470, right: 80 } : { top: 80, bottom: 260, left: 40, right: 70 };
   map.fitBounds(b, { padding: pad, maxZoom: 15, duration: 800 });
@@ -319,7 +383,7 @@ function render(forceCenter) {
   const ended = st.end || (p && p.until && now > p.until);
   if (!p) { if (st.end) show("<b>Udostępnianie zakończone</b>"); return; }
   hideMsg();
-  $("card").classList.remove("hidden");
+  $("card").classList.toggle("hidden", !!nav);
   const e = estimate(now);
   const age = now - p.t;
   const stale = !ended && p.m && age > 8 * 60000;
@@ -376,7 +440,314 @@ function render(forceCenter) {
   $("etaRow").classList.toggle("hidden", !etaB && !etaIn);
   $("stats").innerHTML = stats.join("");
   $("note").textContent = note; $("note").classList.toggle("warn", !!stale);
+  // prowadzenie: za autem (cały czas do jego aktualnej pozycji) albo do jego celu
+  $("goCar").classList.toggle("hidden", !!ended);
+  $("goDest").classList.toggle("hidden", !!ended || !dest);
+  $("acts").classList.toggle("hidden", !!ended);
 }
+
+// ---------- nawigacja: „Jedź za autem” / „Prowadź do celu” ----------
+// Trasa samochodem z Twojej pozycji (GPS przeglądarki) do auta albo do jego celu. Przelicza się sama, gdy auto
+// odjedzie dalej (auto wysyła pozycję co ok. 2–3 min, w międzyczasie jedzie po swojej trasie – szacunek),
+// gdy zjedziesz z trasy albo co jakiś czas. Głos mówi skręty po polsku (trasy i komunikaty: Valhalla, OpenStreetMap).
+let nav = null;
+const VALHALLA = "https://valhalla1.openstreetmap.de/route?json=";
+const OSRM = "https://routing.openstreetmap.de/routed-car/route/v1/driving/";
+
+$("goCar").onclick = () => startNav("car");
+$("goDest").onclick = () => startNav("dest");
+$("stopNav").onclick = () => stopNav();
+$("voice").onclick = () => {
+  if (!nav) return;
+  nav.voice = !nav.voice;
+  try { localStorage.setItem("carosVoice", nav.voice ? "1" : "0"); } catch (e) {}
+  if (!nav.voice) try { speechSynthesis.cancel(); } catch (e) {}
+  $("voice").classList.toggle("on", nav.voice);
+  $("voiceTxt").textContent = nav.voice ? "Głos" : "Bez głosu";
+};
+
+function startNav(mode) {
+  if (!navigator.geolocation) { alert("Ta przeglądarka nie udostępnia lokalizacji – nie poprowadzę."); return; }
+  let voice = true; try { voice = localStorage.getItem("carosVoice") !== "0"; } catch (e) {}
+  nav = { mode, voice, me: null, r: null, routedAt: 0, routedTo: null, busy: false, off: 0, spoken: new Set(), cam: true, watch: null, lock: null, err: null, arrived: false, fails: 0 };
+  document.body.classList.add("nav");
+  $("card").classList.add("hidden"); $("nav").classList.remove("hidden"); $("turn").classList.remove("hidden");
+  $("voice").classList.toggle("on", voice); $("voiceTxt").textContent = voice ? "Głos" : "Bez głosu";
+  $("follow").classList.add("on"); setFollow(false);
+  $("turnDist").textContent = "GPS…"; $("turnText").textContent = "Czekam na Twoją lokalizację – zezwól przeglądarce, gdy zapyta";
+  // pierwsze zdanie po dotknięciu – odblokowuje mowę w przeglądarce (iPhone)
+  say(mode === "car" ? "Prowadzę za autem." : "Prowadzę do celu.");
+  keepAwake();
+  nav.watch = navigator.geolocation.watchPosition(onFix, (e) => {
+    if (!nav) return;
+    nav.err = e.code === 1 ? "Brak zgody na lokalizację – zezwól w ustawieniach przeglądarki i spróbuj jeszcze raz" : "Nie mogę ustalić Twojej lokalizacji";
+    $("turnDist").textContent = "Brak GPS"; $("turnText").textContent = nav.err;
+  }, { enableHighAccuracy: true, maximumAge: 2000, timeout: 20000 });
+}
+
+function stopNav() {
+  if (!nav) return;
+  try { navigator.geolocation.clearWatch(nav.watch); } catch (e) {}
+  try { nav.lock && nav.lock.release(); } catch (e) {}
+  try { speechSynthesis.cancel(); } catch (e) {}
+  if (meMarker) { meMarker.remove(); meMarker = null; }
+  if (map && mapReady) { map.getSource("nav")?.setData(emptyLine()); map.easeTo({ pitch: 0, bearing: 0, duration: 600 }); }
+  nav = null;
+  document.body.classList.remove("nav");
+  $("nav").classList.add("hidden"); $("turn").classList.add("hidden");
+  $("follow").classList.remove("on");
+  render(); fitAll();
+}
+
+async function keepAwake() {
+  try { if (navigator.wakeLock) nav.lock = await navigator.wakeLock.request("screen"); } catch (e) {}
+}
+document.addEventListener("visibilitychange", () => { if (nav && !document.hidden) keepAwake(); });
+
+function say(t) {
+  if (!nav || !nav.voice || !t || !window.speechSynthesis) return;
+  try {
+    const u = new SpeechSynthesisUtterance(t);
+    u.lang = "pl-PL";
+    const v = speechSynthesis.getVoices().find((x) => (x.lang || "").toLowerCase().startsWith("pl"));
+    if (v) u.voice = v;
+    speechSynthesis.cancel(); speechSynthesis.speak(u);
+  } catch (e) {}
+}
+
+let meMarker = null;
+function onFix(pos) {
+  if (!nav) return;
+  const c = pos.coords;
+  const p = [c.longitude, c.latitude];
+  const prev = nav.me;
+  let hdg = (c.heading != null && !isNaN(c.heading) && (c.speed || 0) > 1.5) ? c.heading : null;
+  if (hdg == null && prev && dist(prev.p, p) > 8) hdg = bearing(prev.p, p);
+  if (hdg == null && prev && prev.hdg != null && (c.speed == null || c.speed > 0.5)) hdg = prev.hdg;
+  nav.me = { p, hdg, spd: c.speed || 0, acc: c.accuracy || 50, t: pos.timestamp || Date.now() };
+  nav.err = null;
+  if (map) {
+    if (!meMarker) {
+      const el = document.createElement("div"); el.className = "me nohdg";
+      el.innerHTML = '<i class="d"></i><svg viewBox="0 0 24 24"><path d="M12 2 20 21 12 16.5 4 21Z" fill="#3b82f6" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"/></svg>';
+      meMarker = new maplibregl.Marker({ element: el, rotationAlignment: "map", pitchAlignment: "map" });
+    }
+    meMarker.setLngLat(p).setRotation(hdg ?? 0).addTo(map);
+    meMarker.getElement().classList.toggle("nohdg", hdg == null);
+  }
+  if (!nav.r && !nav.busy) reroute("start");
+  navTick();
+  navCamera(false);
+}
+
+/** Dokąd prowadzić teraz: auto (szacowana pozycja na jego trasie) albo jego cel. */
+function navTarget(now) {
+  if (!nav) return null;
+  if (nav.mode === "dest") {
+    const d = st.pos?.dest || st.route?.dest;
+    return d ? { p: [d.lon, d.lat], brg: null } : null;
+  }
+  const e = estimate(now);
+  return e ? { p: e.p, brg: st.pos && st.pos.m ? e.brg : null } : null;
+}
+
+async function reroute(why) {
+  if (!nav || nav.busy || !nav.me) return;
+  const tg = navTarget(Date.now());
+  if (!tg) return;
+  nav.busy = true;
+  const me = nav.me;
+  let r = null;
+  try { r = await routeValhalla(me.p, me.spd > 3 ? me.hdg : null, tg.p, tg.brg); }
+  catch (e) { try { r = await routeOsrm(me.p, tg.p); } catch (e2) { r = null; } }
+  if (!nav) return;
+  nav.busy = false;
+  nav.routedAt = Date.now();
+  if (!r || r.pts.length < 2) {
+    nav.fails++;
+    $("navNote").textContent = "Nie mogę wyznaczyć trasy – spróbuję ponownie za chwilę";
+    return;
+  }
+  nav.fails = 0;
+  const first = !nav.r;
+  nav.r = { ...r, id: (nav.r?.id || 0) + 1 };
+  nav.routedTo = tg.p;
+  nav.off = 0;
+  if (map && mapReady) map.getSource("nav")?.setData(line(r.pts));
+  if (first) {
+    const m0 = r.man[0];
+    say((nav.mode === "car" ? "Do auta " : "Do celu ") + spokenKm(r.len) + ". " + (m0 ? m0.pre : ""));
+    if (map) navCamera(true);
+  } else if (why === "off") say("Wyznaczam nową trasę.");
+  navTick();
+}
+
+async function routeValhalla(from, fromBrg, to, toBrg) {
+  const loc = (p, b) => {
+    const o = { lat: +p[1].toFixed(6), lon: +p[0].toFixed(6) };
+    if (b != null) { o.heading = Math.round((b + 360) % 360); o.heading_tolerance = 60; }
+    return o;
+  };
+  const req = { locations: [loc(from, fromBrg), loc(to, toBrg)], costing: "auto", language: "pl-PL", units: "kilometers" };
+  const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 12000);
+  const res = await fetch(VALHALLA + encodeURIComponent(JSON.stringify(req)), { cache: "no-store", signal: ctl.signal });
+  clearTimeout(tm);
+  if (!res.ok) throw new Error("valhalla " + res.status);
+  const js = await res.json();
+  const leg = js.trip.legs[0];
+  const pts = decodePolyline(leg.shape, 1e6);
+  const cum = cumulative(pts);
+  const man = leg.maneuvers.map((m) => ({
+    type: m.type, at: cum[Math.min(m.begin_shape_index, pts.length - 1)],
+    text: (m.instruction || "").replace(/\.$/, ""),
+    alert: m.verbal_transition_alert_instruction || m.verbal_pre_transition_instruction || m.instruction || "",
+    pre: m.verbal_pre_transition_instruction || m.instruction || "",
+  }));
+  return { pts, cum, man, len: js.trip.summary.length * 1000, time: js.trip.summary.time };
+}
+
+async function routeOsrm(from, to) {
+  const url = OSRM + `${from[0].toFixed(6)},${from[1].toFixed(6)};${to[0].toFixed(6)},${to[1].toFixed(6)}?overview=full&geometries=polyline&steps=true`;
+  const res = await fetch(url, { cache: "no-store" });
+  if (!res.ok) throw new Error("osrm " + res.status);
+  const js = await res.json();
+  const rt = js.routes[0];
+  const pts = decodePolyline(rt.geometry);
+  const cum = cumulative(pts);
+  const man = [];
+  rt.legs[0].steps.forEach((s) => {
+    const loc = s.maneuver.location;
+    const pr = project(pts, cum, loc);
+    const t = osrmText(s);
+    man.push({ type: osrmType(s), at: pr.along, text: t, alert: t, pre: t });
+  });
+  return { pts, cum, man, len: rt.distance, time: rt.duration };
+}
+function osrmType(s) {
+  const m = s.maneuver, mod = m.modifier || "";
+  if (m.type === "depart") return 1;
+  if (m.type === "arrive") return 4;
+  if (m.type === "roundabout" || m.type === "rotary") return 26;
+  return { "slight right": 9, right: 10, "sharp right": 11, uturn: 12, "sharp left": 14, left: 15, "slight left": 16 }[mod] || 8;
+}
+function osrmText(s) {
+  const m = s.maneuver, mod = m.modifier || "", name = s.name ? ` w ${s.name}` : "";
+  const turn = { "slight right": "Skręć lekko w prawo", right: "Skręć w prawo", "sharp right": "Skręć ostro w prawo", uturn: "Zawróć",
+    "sharp left": "Skręć ostro w lewo", left: "Skręć w lewo", "slight left": "Skręć lekko w lewo", straight: "Jedź prosto" }[mod] || "Jedź dalej";
+  if (m.type === "depart") return "Ruszaj" + (s.name ? ` – ${s.name}` : "");
+  if (m.type === "arrive") return nav && nav.mode === "car" ? "Auto jest tutaj" : "Jesteś na miejscu";
+  if (m.type === "roundabout" || m.type === "rotary") return `Na rondzie zjedź ${m.exit ? m.exit + ". zjazdem" : ""}`.trim();
+  return turn + name;
+}
+
+// strzałka manewru (Valhalla: typ → kąt)
+const TURN_DEG = { 2: 90, 3: -90, 9: 45, 10: 90, 11: 135, 12: 180, 13: 180, 14: -135, 15: -90, 16: -45, 18: 45, 19: -45, 20: 45, 21: -45, 23: 25, 24: -25, 37: 25, 38: -25 };
+const spokenKm = (m) => m >= 10000 ? `${Math.round(m / 1000)} kilometrów` : m >= 1000 ? `${(m / 1000).toFixed(1).replace(".", ",")} kilometra` : `${Math.max(50, Math.round(m / 50) * 50)} metrów`;
+const distTxt = (m) => m >= 1000 ? `${(m / 1000).toFixed(1).replace(".", ",")} km` : m >= 100 ? `${Math.round(m / 10) * 10} m` : `${Math.max(1, Math.round(m))} m`;
+
+function navTick() {
+  if (!nav) return;
+  const now = Date.now();
+  const me = nav.me, r = nav.r;
+  const tg = navTarget(now);
+  if (!me) return;
+  if (!tg) { $("navNote").textContent = "Brak pozycji auta – czekam"; return; }
+  const toTarget = dist(me.p, tg.p);
+  const carMoving = !!(st.pos && st.pos.m) && !(st.end || (st.pos.until && now > st.pos.until));
+  // na miejscu / przy aucie
+  const near = nav.mode === "car" ? toTarget < 70 : toTarget < 45;
+  if (near && !nav.arrived) { nav.arrived = true; say(nav.mode === "car" ? (carMoving ? "Jesteś tuż za autem." : "Jesteś przy aucie.") : "Jesteś na miejscu."); }
+  if (!near && toTarget > 150) nav.arrived = false;
+  // przeliczanie trasy
+  if (!nav.busy && now - nav.routedAt > 8000 && !(near && nav.mode === "dest")) {
+    let why = null;
+    if (!r) why = "start";
+    else {
+      const pr = project(r.pts, r.cum, me.p);
+      if (pr.off > Math.max(45, me.acc)) nav.off++; else nav.off = 0;
+      const moved = nav.routedTo ? dist(nav.routedTo, tg.p) : 1e9;
+      if (nav.off >= 2) why = "off";
+      else if (nav.mode === "car" && moved > 150 && now - nav.routedAt > 15000) why = "car";
+      else if (nav.mode === "car" && moved > 30 && now - nav.routedAt > 60000) why = "car";
+      else if (nav.mode === "dest" && moved > 200) why = "dest";
+      else if (now - nav.routedAt > 5 * 60000) why = "old";
+    }
+    if (nav.fails && now - nav.routedAt < Math.min(60000, 8000 * nav.fails)) why = null;
+    if (why) reroute(why);
+  }
+  if (!r) { $("turnDist").textContent = "…"; $("turnText").textContent = "Wyznaczam trasę"; showNavCard(toTarget, null, tg, carMoving); return; }
+  const pr = project(r.pts, r.cum, me.p);
+  const total = r.cum[r.cum.length - 1];
+  const left = Math.max(0, total - pr.along) + (nav.mode === "car" ? dist(r.pts[r.pts.length - 1], tg.p) : 0);
+  // pozostała część trasy na mapie (przejechana znika)
+  if (map && mapReady) {
+    const k = Math.round(pr.along / 15) + ":" + r.id;
+    if (k !== nav.drawn) { nav.drawn = k; map.getSource("nav")?.setData(line([pointAt(r.pts, r.cum, pr.along).p].concat(r.pts.slice(pr.i + 1)))); }
+  }
+  // następny manewr
+  const ni = r.man.findIndex((m, i) => i > 0 && m.at > pr.along + 3);
+  const nm = ni >= 0 ? r.man[ni] : null;
+  if (near) {
+    $("turnDist").textContent = nav.mode === "car" ? distTxt(toTarget) : "Na miejscu";
+    $("turnText").textContent = nav.mode === "car" ? (carMoving ? "Auto tuż przed Tobą" : "Auto jest tutaj") : "Jesteś u celu";
+    setTurnIcon(null);
+  } else if (nm) {
+    const d = nm.at - pr.along;
+    $("turnDist").textContent = distTxt(d);
+    $("turnText").textContent = (nm.type >= 4 && nm.type <= 6) ? (nav.mode === "car" ? (carMoving ? "Tu będzie auto – jedzie dalej, trasa się przeliczy" : "Auto stoi tutaj") : nm.text) : nm.text;
+    setTurnIcon(nm.type);
+    // głos: zapowiedź i polecenie tuż przed manewrem
+    const v = Math.max(me.spd || 0, 8);
+    const key = r.id + ":" + ni;
+    if (d < Math.max(45, v * 4)) { if (!nav.spoken.has(key + "p")) { nav.spoken.add(key + "p"); nav.spoken.add(key + "a"); say(nm.pre); } }
+    else if (d < Math.max(300, v * 18) && d > 120) { if (!nav.spoken.has(key + "a")) { nav.spoken.add(key + "a"); say(`Za ${spokenKm(d)}, ${nm.alert.charAt(0).toLowerCase()}${nm.alert.slice(1)}`); } }
+  } else {
+    $("turnDist").textContent = distTxt(left); $("turnText").textContent = "Jedź dalej"; setTurnIcon(null);
+  }
+  showNavCard(left, r.time * (left / Math.max(1, total)), tg, carMoving);
+}
+
+function setTurnIcon(type) {
+  const deg = type != null && TURN_DEG[type] != null ? TURN_DEG[type] : 0;
+  $("turnIc").style.transform = `rotate(${deg}deg)`;
+}
+
+function showNavCard(left, secs, tg, carMoving) {
+  const now = Date.now();
+  const dest = st.pos?.dest || st.route?.dest;
+  $("navWho").textContent = nav.mode === "car" ? `Jedziesz za: ${st.pos?.who || "auto"}` : `Do celu: ${dest ? dest.n : "cel"}`;
+  $("navTime").textContent = secs != null ? (secs < 60 ? "<1 min" : `${Math.round(secs / 60)} min`) : "—";
+  $("navDist").textContent = distTxt(left) + (secs != null && nav.mode === "dest" ? ` · przyjazd ${hhmm(now + secs * 1000)}` : "");
+  const stats = [];
+  if (st.pos) {
+    if (nav.mode === "car") {
+      stats.push(`<span class="chip"><em>auto</em>${carMoving ? (st.pos.spd || 0) + " km/h" : "stoi"}</span>`);
+      if (dest) stats.push(`<span class="chip"><em>jedzie do</em>${esc(dest.n)}</span>`);
+    } else if (st.pos.eta && carMoving) stats.push(`<span class="chip"><em>auto będzie o</em>${hhmm(st.pos.eta)}</span>`);
+    stats.push(`<span class="chip"><em>pozycja auta</em>${ago(now - st.pos.t)}</span>`);
+  }
+  $("navStats").innerHTML = stats.join("");
+  if (nav.err) $("navNote").textContent = nav.err;
+  else if (nav.mode === "car") $("navNote").textContent = carMoving
+    ? "Trasa przelicza się sama, gdy auto odjedzie dalej. Auto wysyła pozycję co ok. 2–3 min – między nimi przyjmuję, że jedzie swoją trasą."
+    : "Auto stoi – prowadzę do jego miejsca.";
+  else $("navNote").textContent = "Trasa przelicza się, gdy zjedziesz z drogi.";
+}
+
+/** Kamera nawigacji: za Tobą, przechylona, w kierunku jazdy; trochę dalej przy dużej prędkości. */
+function navCamera(force) {
+  if (!nav || !map || !nav.me || !nav.cam) return;
+  if (!force && map.isMoving()) return;
+  const v = (nav.me.spd || 0) * 3.6;
+  const zoom = v > 90 ? 14.6 : v > 50 ? 15.4 : 16.4;
+  const bottom = ($("nav").offsetHeight || 180) + 30;
+  map.easeTo({
+    center: nav.me.p, zoom, pitch: 50, bearing: nav.me.hdg ?? map.getBearing(),
+    padding: { top: 150, bottom, left: 20, right: 20 }, duration: force ? 800 : 950,
+  });
+}
+
+setInterval(() => { if (nav) navTick(); }, 1000);
 
 main();
 </script>
