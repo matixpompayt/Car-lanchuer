@@ -2,7 +2,7 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
-## next
+## 2.0-beta.2 · 2026-11-23
 Potwierdzenia z telefonu, plan trasy z cenami paliw, wspólny wygląd
 - Komendy z CAR OS Connect (trasa, ulubione, serwis, tankowania…) dostają potwierdzenie – telefon widzi, że radio je wykonało albo co poszło nie tak
 - Ta sama komenda wysłana z telefonu drugi raz nie wykona się podwójnie; ostrzeżenia, które czekały, aż radio się włączy, są pomijane (nieaktualne)
