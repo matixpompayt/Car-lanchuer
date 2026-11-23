@@ -2,7 +2,7 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
-## next
+## 2.0-beta.5 · 2026-11-23
 Realistyczne modele aut
 - Nowe modele 3D auta (na mapie i w ustawieniach): zaokrąglona karoseria, szyby z odbiciem nieba, słupki, lusterka, reflektory i lampy, atrapa, tablice, felgi z ramionami, nadkola, odblask lakieru
 - Te same modele w CAR OS i CAR OS Connect (wspólny moduł), dla każdego typu nadwozia: hatchback, sedan, kombi, SUV, minivan, van, pickup, coupé
