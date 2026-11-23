@@ -47,11 +47,17 @@ object FuelRepository {
         val estimated: Boolean,    // zasięg liczony ze spalania domyślnego (za mało tankowań)
         /** Ile w baku – z czujnika auta (dekoder CAN radia), nie z tankowań. */
         val fromCan: Boolean = false,
+        /** Zasięg przed korektą (do kalibracji z licznikiem). */
+        val rangeRawKm: Double? = null,
+        /** Zasięg podany przez samo auto (CAN) – korekta nie dotyczy. */
+        val rangeFromCar: Boolean = false,
     )
 
     val fills = MutableStateFlow<List<Fill>>(emptyList()) // najnowsze pierwsze
     val stats = MutableStateFlow(Stats(null, null, null, 0.0, 0.0, null, null, null, true))
     val tankL = MutableStateFlow(60)
+    /** Korekta zasięgu (mnożnik, 1 = bez) – żeby zgadzał się z licznikiem auta. */
+    val rangeK = MutableStateFlow(1.0)
 
     private var loaded = false
     private var lastReminder = 0L
@@ -61,6 +67,7 @@ object FuelRepository {
         loaded = true
         val sp = Prefs.store ?: return
         tankL.value = sp.getInt("fuel_tank", 60)
+        rangeK.value = sp.getFloat("fuel_rk", 1f).toDouble().coerceIn(0.5, 1.5)
         watchCan()
         try {
             val a = JSONArray(sp.getString("fuel_fills", "[]"))
@@ -73,7 +80,8 @@ object FuelRepository {
     private fun save() {
         val a = JSONArray()
         fills.value.take(300).forEach { a.put(it.toJson()) }
-        Prefs.store?.edit()?.putString("fuel_fills", a.toString())?.putInt("fuel_tank", tankL.value)?.apply()
+        Prefs.store?.edit()?.putString("fuel_fills", a.toString())?.putInt("fuel_tank", tankL.value)
+            ?.putFloat("fuel_rk", rangeK.value.toFloat())?.apply()
         recompute()
         ConnectRepository.publishStatusSoon()
     }
@@ -97,6 +105,23 @@ object FuelRepository {
     fun setTank(l: Int) {
         tankL.value = l.coerceIn(20, 150)
         save()
+    }
+
+    /** Korekta zasięgu jako mnożnik (0,5–1,5; 1 = bez korekty). */
+    fun setRangeK(k: Double) {
+        load()
+        rangeK.value = (Math.round(k.coerceIn(0.5, 1.5) * 1000) / 1000.0)
+        save()
+    }
+
+    /** Kalibracja z licznikiem: auto pokazuje [clusterKm] – mnożnik tak, żeby CAR OS pokazywał to samo. Zwraca mnożnik albo null. */
+    fun calibrate(clusterKm: Int): Double? {
+        load()
+        try { recompute() } catch (_: Exception) {}
+        val raw = stats.value.rangeRawKm?.takeIf { it > 5 } ?: return null
+        if (clusterKm !in 1..3000) return null
+        setRangeK(clusterKm / raw)
+        return rangeK.value
     }
 
     /** Spalanie, koszty, zasięg – po każdej zmianie i co jakiś czas (przebieg rośnie). */
@@ -146,6 +171,7 @@ object FuelRepository {
         else lastFull?.let { lf -> lf.odoKm + (try { TripRepository.summary(lf.time).distanceM } catch (_: Exception) { 0.0 }) / 1000.0 }
         var left: Double? = null
         var range: Double? = null
+        var fromCar = false
         if (lastFull != null && odo != null) {
             val added = list.filter { it.odoKm > lastFull.odoKm }.sumOf { it.liters }
             val driven = (odo - lastFull.odoKm).coerceAtLeast(0.0)
@@ -157,9 +183,14 @@ object FuelRepository {
         val can = canLevelL()
         if (can != null) {
             left = can
-            range = Vehicle.data.value.rangeKm?.takeIf { it in 5..2500 }?.toDouble() ?: (can / use * 100)
+            val carRange = Vehicle.data.value.rangeKm?.takeIf { it in 5..2500 }?.toDouble()
+            fromCar = carRange != null
+            range = carRange ?: (can / use * 100)
         }
-        stats.value = Stats(avg, lastL100, costKm, month.sumOf { it.cost }, month.sumOf { it.liters }, last?.pricePerL, left, range, avg == null, can != null)
+        // korekta z licznika (zasięg podany przez samo auto – bez korekty, to już wartość z licznika)
+        val raw = range
+        if (range != null && !fromCar) range *= rangeK.value
+        stats.value = Stats(avg, lastL100, costKm, month.sumOf { it.cost }, month.sumOf { it.liters }, last?.pricePerL, left, range, avg == null, can != null, raw, fromCar)
         remind()
     }
 
@@ -253,5 +284,7 @@ object FuelRepository {
             .put("left", s.fuelLeftL ?: JSONObject.NULL)
             // protokół 2: skąd poziom paliwa – "can" (czujnik auta) albo "est" (szacunek z tankowań)
             .put("src", if (s.fromCan) "can" else "est")
+            // korekta zasięgu: mnożnik, zasięg przed korektą, czy zasięg podało samo auto
+            .put("rk", rangeK.value).put("rraw", s.rangeRawKm ?: JSONObject.NULL).put("rcar", s.rangeFromCar)
     }
 }

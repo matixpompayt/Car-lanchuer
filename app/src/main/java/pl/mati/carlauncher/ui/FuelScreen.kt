@@ -59,6 +59,8 @@ fun FuelScreen() {
     val s by FuelRepository.stats.collectAsState()
     val tank by FuelRepository.tankL.collectAsState()
     var adding by remember { mutableStateOf(false) }
+    var calib by remember { mutableStateOf(false) }
+    val rk by FuelRepository.rangeK.collectAsState()
     var deleting by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(Unit) { FuelRepository.load(); FuelRepository.recompute() }
 
@@ -74,14 +76,17 @@ fun FuelScreen() {
             Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                 FuelStat("Średnie spalanie", s.avgL100?.pl1d() ?: "—", "l/100 km",
                     if (s.avgL100 == null) "po 2 tankowaniach do pełna" else s.lastL100?.let { "ostatnio ${it.pl1d()}" } ?: "", Modifier.weight(1f))
-                FuelStat("Zasięg", s.rangeKm?.roundToInt()?.toString() ?: "—", "km",
+                // dotknij – korekta zasięgu z licznikiem auta
+                val pct = Math.round((rk - 1) * 100)
+                FuelStat("Zasięg" + if (pct != 0L && !s.rangeFromCar) " · korekta ${if (pct > 0) "+" else ""}$pct %" else "", s.rangeKm?.roundToInt()?.toString() ?: "—", "km",
                     when {
                         s.rangeKm == null -> "zatankuj do pełna i wpisz"
                         s.fromCan -> "${s.fuelLeftL?.roundToInt()} l w baku · z czujnika auta"
                         s.estimated -> "szacunek · ${s.fuelLeftL?.roundToInt()} l w baku"
                         else -> "ok. ${s.fuelLeftL?.roundToInt()} l w baku"
                     }, Modifier.weight(1f),
-                    color = if ((s.rangeKm ?: 999.0) < 80) CarColors.Red else null)
+                    color = if ((s.rangeKm ?: 999.0) < 80) CarColors.Red else null,
+                    onClick = { calib = true })
                 FuelStat("Koszt kilometra", s.costPerKm?.let { (it * 100).pl1d() } ?: "—", "gr/km",
                     s.lastPrice?.let { "ostatnio ${it.pl2()} zł/l" } ?: "", Modifier.weight(1f))
                 FuelStat("Ten miesiąc", s.monthCost.roundToInt().toString(), "zł", "${s.monthLiters.pl1d()} l", Modifier.weight(1f))
@@ -121,12 +126,13 @@ fun FuelScreen() {
             }
         }
         if (adding) FuelAddDialog { adding = false }
+        if (calib) RangeCalDialog { calib = false }
     }
 }
 
 @Composable
-private fun FuelStat(label: String, value: String, unit: String, sub: String, modifier: Modifier, color: Color? = null) {
-    CarCard(modifier) {
+private fun FuelStat(label: String, value: String, unit: String, sub: String, modifier: Modifier, color: Color? = null, onClick: (() -> Unit)? = null) {
+    CarCard(if (onClick != null) modifier.clip(RoundedCornerShape(22.dp)).clickable(onClick = onClick) else modifier) {
         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Caption(label)
             ValueText(value, unit, 38.sp, color = color ?: CarColors.Text)
@@ -184,6 +190,71 @@ private fun FuelAddDialog(onDismiss: () -> Unit) {
                     Toaster.show("Zapisano tankowanie")
                     onDismiss()
                 }, Modifier.weight(1f), enabled = ok)
+            }
+        }
+    }
+}
+
+/**
+ * Korekta zasięgu: wpisz zasięg z licznika auta – CAR OS liczy mnożnik i od teraz pokazuje tyle samo
+ * (także w telefonie). Albo ręcznie −/+ 1 %, albo bez korekty.
+ */
+@Composable
+private fun RangeCalDialog(onDismiss: () -> Unit) {
+    val s by FuelRepository.stats.collectAsState()
+    val cur by FuelRepository.rangeK.collectAsState()
+    var k by remember { mutableStateOf(cur) }
+    var km by remember { mutableStateOf("") }
+    val raw = s.rangeRawKm
+    val typed = km.toIntOrNull()
+    // wpisany zasięg z licznika ma pierwszeństwo przed −/+
+    val kNew = if (typed != null && raw != null && raw > 5) (typed / raw).coerceIn(0.5, 1.5) else k
+    val pct = Math.round((kNew - 1) * 100)
+    Box(
+        Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.55f))
+            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { onDismiss() },
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            Modifier.width(720.dp).clip(RoundedCornerShape(26.dp)).carSurface(RoundedCornerShape(26.dp), CarColors.Panel, heavy = true)
+                .border(1.dp, CarColors.Border, RoundedCornerShape(26.dp))
+                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {}
+                .padding(26.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Text("Korekta zasięgu", fontSize = 26.sp, fontWeight = FontWeight.Bold)
+            if (s.rangeFromCar) {
+                Text("Zasięg podaje samo auto (z CAN) – to ta sama wartość co na liczniku, korekta nie jest potrzebna.", fontSize = 18.sp, color = CarColors.Muted)
+            } else {
+                Text("Wpisz zasięg z licznika auta – CAR OS dopasuje swój (także w telefonie).", fontSize = 18.sp, color = CarColors.Muted)
+                Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Caption("Zasięg na liczniku (km)")
+                        CarTextField(km, { km = it.filter(Char::isDigit).take(4) }, "np. 690", Modifier.fillMaxWidth(), keyboardType = KeyboardType.Number, imeAction = ImeAction.Done)
+                    }
+                    Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Caption("Korekta")
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            RoundIconButton(Icons.Rounded.Remove, "Mniej", 48.dp, { km = ""; k = ((kNew * 100).roundToInt() - 1) / 100.0 })
+                            Text((if (pct > 0) "+" else "") + "$pct %", fontSize = 30.sp, fontWeight = FontWeight.Bold,
+                                color = if (pct == 0L) CarColors.Text else LocalAccent.current, modifier = Modifier.width(110.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                            RoundIconButton(Icons.Rounded.Add, "Więcej", 48.dp, { km = ""; k = ((kNew * 100).roundToInt() + 1) / 100.0 })
+                        }
+                    }
+                }
+                if (raw != null) Text(
+                    "Bez korekty ${raw.roundToInt()} km → z korektą ${(raw * kNew).roundToInt()} km",
+                    fontSize = 18.sp, color = CarColors.Text,
+                ) else Text("Zasięg będzie znany po tankowaniu do pełna albo z czujnika paliwa.", fontSize = 17.sp, color = CarColors.Muted)
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                SecondaryButton("Bez korekty", { FuelRepository.setRangeK(1.0); Toaster.show("Zasięg bez korekty"); onDismiss() }, Modifier.weight(1f), height = 56.dp)
+                SecondaryButton("Anuluj", onDismiss, Modifier.weight(1f), height = 56.dp)
+                PrimaryButton("Zapisz", {
+                    FuelRepository.setRangeK(kNew)
+                    Toaster.show(if (pct == 0L) "Zasięg bez korekty" else "Korekta zasięgu: ${if (pct > 0) "+" else ""}$pct %")
+                    onDismiss()
+                }, Modifier.weight(1f), enabled = !s.rangeFromCar)
             }
         }
     }

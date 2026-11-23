@@ -620,6 +620,15 @@ object ConnectRepository {
                     publishStatusSoon()
                 }
             }
+            // korekta zasięgu z telefonu: zasięg z licznika auta albo mnożnik
+            "fuel_rk" -> {
+                val k = if (o.has("km")) FuelRepository.calibrate(o.optInt("km")) else o.optDouble("k", Double.NaN).takeIf { !it.isNaN() }?.also { FuelRepository.setRangeK(it) }
+                if (k != null) {
+                    val pct = Math.round((k - 1) * 100)
+                    say(if (pct == 0L) "Zasięg bez korekty" else "Korekta zasięgu: ${if (pct > 0) "+" else ""}$pct %")
+                    publishStatusSoon()
+                }
+            }
             "fav_del" -> {
                 PlacesRepository.load()
                 PlacesRepository.removeFavorite(place(o))

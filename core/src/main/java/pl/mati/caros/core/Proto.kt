@@ -44,6 +44,8 @@ object Proto {
         const val FUEL_ADD = "fuel_add"
         const val FUEL_DEL = "fuel_del"
         const val FUEL_TANK = "fuel_tank"
+        /** Korekta zasięgu: {"km": zasięg z licznika} albo {"k": mnożnik} (1 = bez korekty). */
+        const val FUEL_RK = "fuel_rk"
         const val SVC_ITEM = "svc_item"
         const val SVC_DONE = "svc_done"
         const val SVC_ODO = "svc_odo"
@@ -99,7 +101,7 @@ object Proto {
 
     /** Wszystko, co obsługuje CAR OS z tym protokołem. */
     val CAR_CAPS: Set<String> = V1_BASE + setOf(
-        Cmd.FUEL_TANK, Cmd.LOOK, Cmd.SHARE, Cmd.SHARE_END,
+        Cmd.FUEL_TANK, Cmd.FUEL_RK, Cmd.LOOK, Cmd.SHARE, Cmd.SHARE_END,
         Feat.STOPS8, Feat.FUEL_LEFT, Feat.NACK, Feat.ACK, Feat.CFG_TK, Feat.FUEL_SRC, Feat.LOOK, Feat.PARK_DEST,
     )
 
