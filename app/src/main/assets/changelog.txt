@@ -2,7 +2,7 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
-## next
+## 2.0-beta.9 · 2026-11-23
 Korekta zasięgu – kalibracja z licznikiem auta
 - Tankowania → dotknij „Zasięg”: wpisz zasięg z licznika auta, a CAR OS dopasuje swój (albo −/+ 1 %, „Bez korekty”)
 - Korekta działa wszędzie: zasięg w radiu, przypomnienie o tankowaniu, inteligentny plan trasy i CAR OS Connect w telefonie
