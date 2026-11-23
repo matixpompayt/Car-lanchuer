@@ -1329,7 +1329,7 @@ fun HeadlightCalibrationOverlay() {
 private fun CarIconPicker() {
     val body by Prefs.carBody.collectAsState()
     val paint by Prefs.carPaint.collectAsState()
-    val preview = remember(body, paint) { Model3D.carIcon(body, paint, 35.0, 32.0, 360).asImageBitmap() }
+    val preview = remember(body, paint) { Model3D.carIcon(body, paint, 35.0, 32.0, 360, outline = false).asImageBitmap() }
     Row(
         Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).carSurface(RoundedCornerShape(18.dp), CarColors.Card).padding(18.dp),
         horizontalArrangement = Arrangement.spacedBy(22.dp),

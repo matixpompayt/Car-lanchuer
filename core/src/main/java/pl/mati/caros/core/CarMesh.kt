@@ -419,7 +419,8 @@ object CarMesh {
         val nh = max(0.0, nx * s.hx + ny * s.hy + nz * s.hz)
         // odbicie kierunku patrzenia
         val rx = 2 * nv * nx - s.vx; val ry = 2 * nv * ny - s.vy; val rz = 2 * nv * nz - s.vz
-        val fres = 0.04 + 0.96 * ipow(1 - nv, 5)
+        // Fresnel, przygaszony na samej sylwetce – inaczej krawędź świeci jak biały kontur
+        val fres = 0.04 + 0.96 * ipow(1 - nv, 5) * (0.30 + 0.70 * sstep(0.0, 0.28, nv))
         val ao = 0.50 + 0.50 * smooth((zw - 0.04) / 0.55)
         val sky = 0.5 + 0.5 * nz
         val br = ((base shr 16) and 0xFF) / 255.0; val bg = ((base shr 8) and 0xFF) / 255.0; val bb = (base and 0xFF) / 255.0

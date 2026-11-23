@@ -2,6 +2,9 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
+## next
+- Modele aut: krawędzie karoserii bez świecącego konturu, podgląd w ustawieniach bez obrysu (na mapie zostaje delikatny obrys ciemnych lakierów)
+
 ## 2.0-beta.6 · 2026-11-23
 Modele aut w jakości „studyjnej”
 - Gładkie cieniowanie karoserii (bez kanciastych ścianek) i lakier z odbiciami jak w studiu fotograficznym – softboxy, horyzont, efekt Fresnela na krawędziach

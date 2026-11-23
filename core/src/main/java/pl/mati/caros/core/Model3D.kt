@@ -22,10 +22,17 @@ object Model3D {
 
     private fun lum(c: Int) = (0.299 * Color.red(c) + 0.587 * Color.green(c) + 0.114 * Color.blue(c)) / 255.0
 
-    /** Gotowa ikona auta 3D (ciemne lakiery z jasnym obrysem). */
-    fun carIcon(body: String?, paint: Int, yawDeg: Double, elevDeg: Double, sizePx: Int, faces: List<CarMesh.Face> = car(body, paint)): Bitmap {
+    /**
+     * Gotowa ikona auta 3D. [outline] – delikatny jasny obrys ciemnych lakierów, żeby auto nie ginęło
+     * na ciemnej mapie; w podglądach (ekran główny, ustawienia) bez obrysu.
+     */
+    fun carIcon(
+        body: String?, paint: Int, yawDeg: Double, elevDeg: Double, sizePx: Int,
+        faces: List<CarMesh.Face> = car(body, paint), outline: Boolean = true,
+    ): Bitmap {
         val (w, l) = carSize(body)
-        return render(faces, yawDeg, elevDeg, sizePx, 6.0, w, l, 0.5, if (lum(paint) < 0.35) Color.argb(235, 200, 210, 222) else null)
+        val rim = if (outline && lum(paint) < 0.35) Color.argb(150, 200, 210, 222) else null
+        return render(faces, yawDeg, elevDeg, sizePx, 6.0, w, l, 0.5, rim)
     }
 
     /** Ludzik 3D (Twoja pozycja w telefonie). Punkt na ziemi przy dole obrazka. */
