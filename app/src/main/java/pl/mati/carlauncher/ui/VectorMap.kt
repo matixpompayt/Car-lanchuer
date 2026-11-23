@@ -1,5 +1,6 @@
 package pl.mati.carlauncher.ui
 
+import pl.mati.caros.core.Model3D
 import android.annotation.SuppressLint
 import android.content.Context
 import android.view.Gravity
