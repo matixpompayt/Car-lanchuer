@@ -2,7 +2,7 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
-## next
+## 2.0-beta.7 · 2026-11-23
 - Modele aut: krawędzie karoserii bez świecącego konturu, podgląd w ustawieniach bez obrysu (na mapie zostaje delikatny obrys ciemnych lakierów)
 
 ## 2.0-beta.6 · 2026-11-23
