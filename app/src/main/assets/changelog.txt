@@ -2,7 +2,7 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
-## next
+## 2.0-beta.11 · 2026-11-24
 Pasy ruchu w nawigacji i nowe panele
 - Nawigacja: przed skrzyżowaniem i zjazdem pod banerem pokazują się pasy ruchu – podświetlone te, którymi jechać (na autostradzie z ok. 1,5 km, w mieście z ok. 500 m)
 - Głos podpowiada pas: „Za 500 metrów zjedź w prawo. Zajmij jeden z dwóch prawych pasów”
