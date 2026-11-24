@@ -117,6 +117,8 @@ object Prefs {
     /** Kto prowadzi: "caros" (własna nawigacja z głosem) albo "google" (Mapy Google w tle). */
     val navEngine = MutableStateFlow("caros")
     val navVoice = MutableStateFlow(true)
+    /** Pasy ruchu na banerze nawigacji i „Zajmij prawy pas” w komunikatach. */
+    val navLanes = MutableStateFlow(true)
     /** Pozycja auta na żywo w CAR OS Connect (gdy auto jedzie). */
     val shareLive = MutableStateFlow(true)
     /** Ile razy licznik rozciąga obraz z radia w poziomie (1 = bez dopasowania). */
@@ -204,6 +206,7 @@ object Prefs {
         turboTimer.value = p.getBoolean("turbo_timer", true)
         navEngine.value = p.getString("nav_engine", "caros") ?: "caros"
         navVoice.value = p.getBoolean("nav_voice", true)
+        navLanes.value = p.getBoolean("nav_lanes", true)
         shareLive.value = p.getBoolean("share_live", true)
         clusterStretch.value = p.getFloat("cluster_stretch", 1f)
         clusterUiScale.value = p.getFloat("cluster_ui", 1.5f)
@@ -297,6 +300,7 @@ object Prefs {
     }
     fun setShareLive(v: Boolean) { shareLive.value = v; edit { putBoolean("share_live", v) } }
     fun setNavVoice(v: Boolean) { navVoice.value = v; edit { putBoolean("nav_voice", v) } }
+    fun setNavLanes(v: Boolean) { navLanes.value = v; edit { putBoolean("nav_lanes", v) } }
     fun setMapSigns(v: Boolean) { mapSigns.value = v; edit { putBoolean("map_signs", v) } }
     fun setTurboTimer(v: Boolean) { turboTimer.value = v; edit { putBoolean("turbo_timer", v) } }
     fun setMapSnap(v: Boolean) { mapSnap.value = v; edit { putBoolean("map_snap", v) } }

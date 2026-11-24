@@ -161,11 +161,20 @@ fun MapCard(
             GuidanceBanner(g, Modifier.align(Alignment.TopCenter).padding(start = 16.dp, end = 16.dp, top = 16.dp + topPad, bottom = 16.dp).fillMaxWidth())
         }
         val bannerUp = nav != null || guide != null
+        // pasy ruchu wydłużają baner – elementy pod nim zjeżdżają niżej
+        val belowBanner by androidx.compose.animation.core.animateDpAsState(
+            when {
+                guide?.lanes != null && guide?.arrived != true -> 128.dp + LaneStripHeight
+                bannerUp -> 128.dp
+                else -> 16.dp
+            },
+            androidx.compose.animation.core.tween(260), label = "belowBanner",
+        )
 
         // Ograniczenie prędkości (OSM) + aktualna prędkość
         // + znaczek „CamSam działa” (CamSam na telefonie)
         Column(
-            Modifier.align(Alignment.TopStart).padding(top = (if (bannerUp) 128.dp else 16.dp) + topPad, start = 16.dp),
+            Modifier.align(Alignment.TopStart).padding(top = belowBanner + topPad, start = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
@@ -179,7 +188,7 @@ fun MapCard(
             Row(
                 Modifier
                     .align(Alignment.TopEnd)
-                    .padding(top = (if (bannerUp) 128.dp else 16.dp) + topPad, end = 16.dp)
+                    .padding(top = belowBanner + topPad, end = 16.dp)
                     .clip(RoundedCornerShape(16.dp))
                     .background(if (w.rain) CarColors.RainBg.copy(alpha = 0.92f) else CarColors.Overlay)
                     .clickable { UiState.go(Screen.WEATHER) }

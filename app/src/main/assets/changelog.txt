@@ -2,6 +2,14 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
+## next
+Pasy ruchu w nawigacji i nowe panele
+- Nawigacja: przed skrzyżowaniem i zjazdem pod banerem pokazują się pasy ruchu – podświetlone te, którymi jechać (na autostradzie z ok. 1,5 km, w mieście z ok. 500 m)
+- Głos podpowiada pas: „Za 500 metrów zjedź w prawo. Zajmij jeden z dwóch prawych pasów”
+- Pasy z OpenStreetMap – nie na każdej drodze; można wyłączyć: Ustawienia → Nawigacja → „Pasy ruchu”
+- Nowe panele zamiast starych okien: tankowanie, korekta zasięgu, jazda na żywo, szczegóły jazdy, wybór kafla – wjeżdżają od dołu nad całym ekranem, duże przyciski, zamykanie przeciągnięciem w dół, krzyżykiem albo „wstecz”
+- Tankowanie i korekta zasięgu: liczby wpisuje się z dużej klawiatury w panelu (bez klawiatury systemowej zasłaniającej pół ekranu); przytrzymaj ⌫, żeby wyczyścić pole
+
 ## 2.0-beta.10 · 2026-11-24
 - Auto na żywo: pierwsza pozycja po ruszeniu idzie do telefonu od razu (alarm „auto jedzie bez Ciebie” w CAR OS Connect)
 

@@ -19,6 +19,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Speed
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.LocalGasStation
 import androidx.compose.material.icons.rounded.Remove
@@ -141,6 +143,7 @@ private fun FuelStat(label: String, value: String, unit: String, sub: String, mo
     }
 }
 
+/** Nowe tankowanie: litry, kwota, przebieg – z klawiatury w panelu. */
 @Composable
 private fun FuelAddDialog(onDismiss: () -> Unit) {
     val odo by ServiceRepository.odometerKm.collectAsState()
@@ -148,49 +151,65 @@ private fun FuelAddDialog(onDismiss: () -> Unit) {
     var cost by remember { mutableStateOf("") }
     var km by remember { mutableStateOf(if (ServiceRepository.odometerSet.value) odo.roundToInt().toString() else "") }
     var full by remember { mutableStateOf(true) }
-    fun num(t: String) = t.replace(',', '.').toDoubleOrNull()
-    val l = num(liters)
-    val c = num(cost)
-    val o = km.toIntOrNull()
-    val ok = l != null && l in 1.0..200.0 && c != null && c >= 0 && o != null && o > 0
-    Box(
-        Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.55f))
-            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { onDismiss() },
-        contentAlignment = Alignment.Center,
+    var field by remember { mutableStateOf(0) }
+    CarPanel(
+        onDismiss, "Nowe tankowanie", "Wpisz z dystrybutora i licznika – CAR OS policzy spalanie, zasięg i koszty",
+        Icons.Rounded.LocalGasStation,
+        actions = { ctl ->
+            val l = padNum(liters)
+            val c = padNum(cost)
+            val o = km.toIntOrNull()
+            val ok = l != null && l in 1.0..200.0 && c != null && c >= 0 && o != null && o > 0
+            PanelButton("Anuluj", { ctl.dismiss() }, Modifier.weight(1f))
+            PanelButton("Zapisz tankowanie", {
+                if (!ok) return@PanelButton
+                FuelRepository.add(FuelRepository.Fill(UUID.randomUUID().toString(), System.currentTimeMillis(), o!!, l!!, c!!, full))
+                Toaster.show("Zapisano tankowanie")
+                ctl.dismiss()
+            }, Modifier.weight(1.4f), icon = Icons.Rounded.Check, primary = true, enabled = ok)
+        },
     ) {
-        Column(
-            Modifier.width(720.dp).clip(RoundedCornerShape(26.dp)).carSurface(RoundedCornerShape(26.dp), CarColors.Panel, heavy = true)
-                .border(1.dp, CarColors.Border, RoundedCornerShape(26.dp))
-                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {}
-                .padding(26.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            Text("Nowe tankowanie", fontSize = 26.sp, fontWeight = FontWeight.Bold)
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Column(Modifier.weight(1f)) {
-                    Caption("Litry")
-                    CarTextField(liters, { liters = it.filter { ch -> ch.isDigit() || ch == ',' || ch == '.' }.take(6) }, "np. 45,3", Modifier.fillMaxWidth(), keyboardType = KeyboardType.Decimal)
-                }
-                Column(Modifier.weight(1f)) {
-                    Caption("Kwota (zł)")
-                    CarTextField(cost, { cost = it.filter { ch -> ch.isDigit() || ch == ',' || ch == '.' }.take(7) }, "np. 289,90", Modifier.fillMaxWidth(), keyboardType = KeyboardType.Decimal)
-                }
-                Column(Modifier.weight(1f)) {
-                    Caption("Przebieg (km)")
-                    CarTextField(km, { km = it.filter(Char::isDigit).take(7) }, "z licznika", Modifier.fillMaxWidth(), keyboardType = KeyboardType.Number, imeAction = ImeAction.Done)
+        val l = padNum(liters)
+        val c = padNum(cost)
+        Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                PadField("Litry", liters, "l", field == 0, { field = 0 }, Modifier.fillMaxWidth(), hint = "0")
+                PadField(
+                    "Kwota", cost, "zł", field == 1, { field = 1 }, Modifier.fillMaxWidth(), hint = "0",
+                    sub = if (l != null && c != null && l > 0 && c > 0) "${(c / l).pl2()} zł/l" else null,
+                )
+                PadField("Przebieg", km, "km", field == 2, { field = 2 }, Modifier.fillMaxWidth(), hint = "z licznika")
+                Row(
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).carSurface(RoundedCornerShape(20.dp), CarColors.Card)
+                        .clickable { full = !full }.padding(horizontal = 20.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Do pełna", fontSize = 19.sp, fontWeight = FontWeight.SemiBold)
+                        Text("Do odbicia pistoletu – potrzebne do spalania", fontSize = 14.sp, color = CarColors.Muted)
+                    }
+                    CarSwitch(full)
                 }
             }
-            SettingRow("Do pełna", "Zatankowane do odbicia pistoletu – potrzebne do liczenia spalania", onClick = { full = !full }) { CarSwitch(full) }
-            if (l != null && c != null && l > 0) Text("Cena: ${(c / l).pl2()} zł/l", fontSize = 17.sp, color = CarColors.Muted)
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                SecondaryButton("Anuluj", onDismiss, Modifier.weight(1f), height = 56.dp)
-                PrimaryButton("Zapisz", {
-                    if (!ok) return@PrimaryButton
-                    FuelRepository.add(FuelRepository.Fill(UUID.randomUUID().toString(), System.currentTimeMillis(), o!!, l!!, c!!, full))
-                    Toaster.show("Zapisano tankowanie")
-                    onDismiss()
-                }, Modifier.weight(1f), enabled = ok)
-            }
+            NumPad(
+                onKey = { ch ->
+                    when (field) {
+                        0 -> liters = padType(liters, ch, 3, 2)
+                        1 -> cost = padType(cost, ch, 4, 2)
+                        else -> km = padType(km, ch, 7, 0)
+                    }
+                },
+                onBackspace = {
+                    when (field) {
+                        0 -> liters = liters.dropLast(1)
+                        1 -> cost = cost.dropLast(1)
+                        else -> km = km.dropLast(1)
+                    }
+                },
+                onClear = { when (field) { 0 -> liters = ""; 1 -> cost = ""; else -> km = "" } },
+                modifier = Modifier.width(340.dp),
+                decimal = field != 2,
+            )
         }
     }
 }
@@ -210,52 +229,57 @@ private fun RangeCalDialog(onDismiss: () -> Unit) {
     // wpisany zasięg z licznika ma pierwszeństwo przed −/+
     val kNew = if (typed != null && raw != null && raw > 5) (typed / raw).coerceIn(0.5, 1.5) else k
     val pct = Math.round((kNew - 1) * 100)
-    Box(
-        Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.55f))
-            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { onDismiss() },
-        contentAlignment = Alignment.Center,
+    CarPanel(
+        onDismiss, "Korekta zasięgu",
+        if (s.rangeFromCar) "Zasięg podaje samo auto (CAN)" else "Wpisz zasięg z licznika auta – CAR OS dopasuje swój (także w telefonie)",
+        Icons.Rounded.Speed,
+        actions = { ctl ->
+            PanelButton("Bez korekty", { FuelRepository.setRangeK(1.0); Toaster.show("Zasięg bez korekty"); ctl.dismiss() }, Modifier.weight(1f))
+            PanelButton("Zapisz", {
+                FuelRepository.setRangeK(kNew)
+                Toaster.show(if (pct == 0L) "Zasięg bez korekty" else "Korekta zasięgu: ${if (pct > 0) "+" else ""}$pct %")
+                ctl.dismiss()
+            }, Modifier.weight(1f), icon = Icons.Rounded.Check, primary = true, enabled = !s.rangeFromCar)
+        },
     ) {
-        Column(
-            Modifier.width(720.dp).clip(RoundedCornerShape(26.dp)).carSurface(RoundedCornerShape(26.dp), CarColors.Panel, heavy = true)
-                .border(1.dp, CarColors.Border, RoundedCornerShape(26.dp))
-                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {}
-                .padding(26.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            Text("Korekta zasięgu", fontSize = 26.sp, fontWeight = FontWeight.Bold)
-            if (s.rangeFromCar) {
-                Text("Zasięg podaje samo auto (z CAN) – to ta sama wartość co na liczniku, korekta nie jest potrzebna.", fontSize = 18.sp, color = CarColors.Muted)
-            } else {
-                Text("Wpisz zasięg z licznika auta – CAR OS dopasuje swój (także w telefonie).", fontSize = 18.sp, color = CarColors.Muted)
-                Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Caption("Zasięg na liczniku (km)")
-                        CarTextField(km, { km = it.filter(Char::isDigit).take(4) }, "np. 690", Modifier.fillMaxWidth(), keyboardType = KeyboardType.Number, imeAction = ImeAction.Done)
-                    }
-                    Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Caption("Korekta")
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            RoundIconButton(Icons.Rounded.Remove, "Mniej", 48.dp, { km = ""; k = ((kNew * 100).roundToInt() - 1) / 100.0 })
-                            Text((if (pct > 0) "+" else "") + "$pct %", fontSize = 30.sp, fontWeight = FontWeight.Bold,
-                                color = if (pct == 0L) CarColors.Text else LocalAccent.current, modifier = Modifier.width(110.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-                            RoundIconButton(Icons.Rounded.Add, "Więcej", 48.dp, { km = ""; k = ((kNew * 100).roundToInt() + 1) / 100.0 })
-                        }
-                    }
+        if (s.rangeFromCar) {
+            Text("To ta sama wartość co na liczniku – korekta nie jest potrzebna.", fontSize = 19.sp, color = CarColors.Text2)
+            return@CarPanel
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                PadField("Zasięg na liczniku", km, "km", true, {}, Modifier.fillMaxWidth(), hint = raw?.let { "${(it * kNew).roundToInt()}" } ?: "0")
+                Row(
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).carSurface(RoundedCornerShape(20.dp), CarColors.Card).padding(horizontal = 20.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Text("Korekta", fontSize = 19.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                    RoundIconButton(Icons.Rounded.Remove, "Mniej", 56.dp, { km = ""; k = ((kNew * 100).roundToInt() - 1) / 100.0 })
+                    Text(
+                        (if (pct > 0) "+" else "") + "$pct %", fontSize = 32.sp, fontWeight = FontWeight.Bold,
+                        color = if (pct == 0L) CarColors.Text else LocalAccent.current, modifier = Modifier.width(110.dp),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    )
+                    RoundIconButton(Icons.Rounded.Add, "Więcej", 56.dp, { km = ""; k = ((kNew * 100).roundToInt() + 1) / 100.0 })
                 }
-                if (raw != null) Text(
-                    "Bez korekty ${raw.roundToInt()} km → z korektą ${(raw * kNew).roundToInt()} km",
-                    fontSize = 18.sp, color = CarColors.Text,
-                ) else Text("Zasięg będzie znany po tankowaniu do pełna albo z czujnika paliwa.", fontSize = 17.sp, color = CarColors.Muted)
+                if (raw != null) {
+                    Column(
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(LocalAccent.current.copy(alpha = 0.10f)).padding(horizontal = 20.dp, vertical = 14.dp),
+                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                    ) {
+                        Text("Bez korekty ${raw.roundToInt()} km", fontSize = 17.sp, color = CarColors.Muted)
+                        Text("Z korektą ${(raw * kNew).roundToInt()} km", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                    }
+                } else Text("Zasięg będzie znany po tankowaniu do pełna albo z czujnika paliwa.", fontSize = 17.sp, color = CarColors.Muted)
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                SecondaryButton("Bez korekty", { FuelRepository.setRangeK(1.0); Toaster.show("Zasięg bez korekty"); onDismiss() }, Modifier.weight(1f), height = 56.dp)
-                SecondaryButton("Anuluj", onDismiss, Modifier.weight(1f), height = 56.dp)
-                PrimaryButton("Zapisz", {
-                    FuelRepository.setRangeK(kNew)
-                    Toaster.show(if (pct == 0L) "Zasięg bez korekty" else "Korekta zasięgu: ${if (pct > 0) "+" else ""}$pct %")
-                    onDismiss()
-                }, Modifier.weight(1f), enabled = !s.rangeFromCar)
-            }
+            NumPad(
+                onKey = { ch -> km = padType(km, ch, 4, 0) },
+                onBackspace = { km = km.dropLast(1) },
+                onClear = { km = "" },
+                modifier = Modifier.width(340.dp),
+                decimal = false,
+            )
         }
     }
 }

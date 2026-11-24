@@ -21,6 +21,8 @@ import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.material.icons.rounded.GridView
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
@@ -448,7 +450,7 @@ private fun VehicleTiles(modifier: Modifier, fill: Boolean = false) {
                     l[idx] = k
                 } else if (k !in l) l += k
                 save(l.take(MAX_TILES))
-                pickFor = null
+                // panel sam się zamknie (z animacją) i wtedy wyzeruje wybór
             },
             onDismiss = { pickFor = null },
         )
@@ -516,32 +518,33 @@ private fun AddTile(modifier: Modifier, onClick: () -> Unit) {
 @Composable
 private fun TilePicker(current: String?, used: List<String>, onPick: (String) -> Unit, onDismiss: () -> Unit) {
     val accent = LocalAccent.current
-    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
-        Column(
-            Modifier.width(760.dp).clip(RoundedCornerShape(26.dp)).carSurface(RoundedCornerShape(26.dp), CarColors.Panel, heavy = true)
-                .border(1.dp, CarColors.Border, RoundedCornerShape(26.dp)).padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Text(if (current == null) "Dodaj kafel" else "Zmień kafel", fontSize = 26.sp, fontWeight = FontWeight.Bold, color = CarColors.Text)
-            TILE_DEFS.chunked(3).forEach { row ->
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    row.forEach { (k, label) ->
-                        val sel = k == current
-                        val onScreen = k in used && !sel
-                        Column(
-                            Modifier.weight(1f).clip(RoundedCornerShape(16.dp))
-                                .background(if (sel) accent.copy(alpha = 0.18f) else CarColors.Card)
-                                .border(1.dp, if (sel) accent else CarColors.Border, RoundedCornerShape(16.dp))
-                                .clickable { onPick(k) }.padding(horizontal = 14.dp, vertical = 12.dp),
-                        ) {
-                            Text(label, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, color = if (sel) accent else CarColors.Text, maxLines = 1)
-                            if (sel || onScreen) Text(if (sel) "teraz tutaj" else "na ekranie – zamieni miejscami", fontSize = 13.sp, color = CarColors.Muted, maxLines = 1)
-                        }
+    CarPanel(
+        onDismiss, if (current == null) "Dodaj kafel" else "Zmień kafel",
+        if (current == null) "Wybierz, co ma być na ekranie głównym" else "Kafel, który już jest na ekranie, zamieni się miejscami",
+        Icons.Rounded.GridView,
+        width = 1000.dp, scroll = true,
+        actions = { ctl -> PanelButton("Anuluj", { ctl.dismiss() }, Modifier.weight(1f)) },
+    ) { ctl ->
+        TILE_DEFS.chunked(4).forEach { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                row.forEach { (k, label) ->
+                    val sel = k == current
+                    val onScreen = k in used && !sel
+                    val src = remember { MutableInteractionSource() }
+                    Column(
+                        Modifier.weight(1f).pressScale(src).height(84.dp).clip(RoundedCornerShape(20.dp))
+                            .background(if (sel) accent.copy(alpha = 0.18f) else CarColors.Card)
+                            .border(2.dp, if (sel) accent else CarColors.Border, RoundedCornerShape(20.dp))
+                            .clickable(interactionSource = src, indication = androidx.compose.foundation.LocalIndication.current) { onPick(k); ctl.dismiss() }
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalArrangement = Arrangement.Center,
+                    ) {
+                        Text(label, fontSize = 19.sp, fontWeight = FontWeight.SemiBold, color = if (sel) accent else CarColors.Text, maxLines = 1)
+                        if (sel || onScreen) Text(if (sel) "teraz tutaj" else "na ekranie – zamieni", fontSize = 14.sp, color = CarColors.Muted, maxLines = 1)
                     }
-                    repeat(3 - row.size) { Box(Modifier.weight(1f)) }
                 }
+                repeat(4 - row.size) { Box(Modifier.weight(1f)) }
             }
-            Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) { SecondaryButton("Anuluj", onDismiss, height = 52.dp) }
         }
     }
 }

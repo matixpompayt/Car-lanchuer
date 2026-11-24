@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Route
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -64,32 +66,29 @@ fun tripFuel(distanceM: Double): Pair<Double?, Double?> {
 
 private val DETAIL_FMT = SimpleDateFormat("EEEE, d MMMM yyyy", PL)
 
-/** Szczegóły jazdy: mapa przejechanej trasy + statystyki. */
+/** Szczegóły jazdy (panel): mapa przejechanej trasy + statystyki. */
 @Composable
 fun TripDetailDialog(t: TripRepository.Trip, onDismiss: () -> Unit) {
     val accent = LocalAccent.current
     val path = remember(t.start) { TripRepository.pathOf(t)?.let { try { Polyline.decode(it) } catch (_: Exception) { null } }.orEmpty() }
     val fuel = remember(t.start) { tripFuel(t.distanceM) }
-    Box(
-        Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.55f))
-            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { onDismiss() },
-        contentAlignment = Alignment.Center,
+    CarPanel(
+        onDismiss,
+        DETAIL_FMT.format(Date(t.start)).replaceFirstChar { it.uppercase() },
+        "${formatTime(t.start)} – ${formatTime(t.end)} · ${(t.distanceM / 1000).toFloat().pl1()} km",
+        Icons.Rounded.Route,
+        width = 1240.dp,
+        tall = true,
     ) {
-        Row(
-            Modifier.fillMaxWidth().fillMaxHeight(0.92f).clip(RoundedCornerShape(26.dp)).carSurface(RoundedCornerShape(26.dp), CarColors.Panel, heavy = true)
-                .border(1.dp, CarColors.Border, RoundedCornerShape(26.dp))
-                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {},
-        ) {
-            Box(Modifier.weight(1.4f).fillMaxHeight().clip(RoundedCornerShape(topStart = 26.dp, bottomStart = 26.dp))) {
+        Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+            Box(Modifier.weight(1.4f).fillMaxHeight().clip(RoundedCornerShape(24.dp))) {
                 if (path.size >= 2) TripPathMap(path, accent.toArgb(), Modifier.fillMaxSize())
                 else Box(Modifier.fillMaxSize().background(CarColors.Card), contentAlignment = Alignment.Center) {
                     Text("Brak zapisanego śladu GPS dla tej jazdy", fontSize = 18.sp, color = CarColors.Muted)
                 }
             }
-            Column(Modifier.width(380.dp).fillMaxHeight().padding(24.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(DETAIL_FMT.format(Date(t.start)).replaceFirstChar { it.uppercase() }, fontSize = 16.sp, color = CarColors.Muted)
-                Text("${formatTime(t.start)} – ${formatTime(t.end)}", fontSize = 26.sp, fontWeight = FontWeight.Bold)
-                ValueText((t.distanceM / 1000).toFloat().pl1(), "km", 44.sp)
+            Column(Modifier.width(380.dp).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                ValueText((t.distanceM / 1000).toFloat().pl1(), "km", 52.sp)
                 DetailLine("Czas", formatDurationLong(t.durationS) + " (w ruchu " + formatDurationLong(t.movingS) + ")")
                 DetailLine("Średnia / maks.", "${t.avgKmh.roundToInt()} / ${t.maxSpeed} km/h")
                 t.maxCoolant?.let { DetailLine("Płyn chłodniczy maks.", "$it °C") }
@@ -98,7 +97,6 @@ fun TripDetailDialog(t: TripRepository.Trip, onDismiss: () -> Unit) {
                 if (t.distanceM >= 1000) DetailLine("Płynność jazdy", "${t.score} / 100 · ${t.accel} przysp. · ${t.brake} ham.")
                 Box(Modifier.weight(1f))
                 if (fuel.first == null) Text("Spalanie i koszt pokażą się po dwóch tankowaniach do pełna (zakładka Paliwo).", fontSize = 14.sp, color = CarColors.Muted)
-                SecondaryButton("Zamknij", onDismiss, Modifier.fillMaxWidth(), height = 56.dp)
             }
         }
     }

@@ -204,6 +204,8 @@ private fun Shell() {
         DestinationBanner()
         TireBanner()
         TurboBanner()
+        // panele (tankowanie, udostępnianie, kafle…) nad całym systemem
+        PanelHost()
         ControlCenter()
         VolumeHud()
         ServiceAlertOverlay()

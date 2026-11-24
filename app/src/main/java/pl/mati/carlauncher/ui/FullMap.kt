@@ -198,7 +198,14 @@ private fun ClusterMap() {
             androidx.compose.runtime.CompositionLocalProvider(
                 androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(d.density * scale, d.fontScale),
             ) {
-                val g = guide ?: if (editing) pl.mati.carlauncher.data.Guidance.State(0, "right", "Skręć w prawo", "Jana Pawła II", 300.0, null, null) else null
+                val g = guide ?: if (editing) pl.mati.carlauncher.data.Guidance.State(
+                    0, "right", "Skręć w prawo", "Jana Pawła II", 300.0, null, null,
+                    lanes = listOf(
+                        pl.mati.carlauncher.data.Guidance.Lane(listOf("left"), false, null),
+                        pl.mati.carlauncher.data.Guidance.Lane(listOf("straight"), false, null),
+                        pl.mati.carlauncher.data.Guidance.Lane(listOf("straight", "right"), true, "right"),
+                    ),
+                ) else null
                 if (g != null) Placed("banner") { GuidanceBanner(g, Modifier.width(bannerW)) }
 
                 Placed("speed") {

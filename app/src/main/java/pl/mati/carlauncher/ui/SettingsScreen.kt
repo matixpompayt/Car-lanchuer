@@ -377,6 +377,14 @@ private fun LazyListScope.lookPage() {
             }, height = 52.dp)
         }
     }
+    item {
+        val v by Prefs.navLanes.collectAsState()
+        SettingRow(
+            "Pasy ruchu",
+            "Przed skrzyżowaniem i zjazdem strzałki pasów pod banerem (podświetlone te, którymi jechać) i w głosie „Zajmij prawy pas” – z OpenStreetMap, nie na każdej drodze",
+            onClick = { Prefs.setNavLanes(!v) },
+        ) { CarSwitch(v) }
+    }
     trafficSection()
     item {
         val v by Prefs.mapSigns.collectAsState()

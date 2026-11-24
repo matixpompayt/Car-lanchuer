@@ -32,7 +32,15 @@ object Guidance {
         val alongM: Double,
         /** Rondo: kąt zjazdu względem wjazdu (0 = prosto, +90 = w prawo, -90 = w lewo, 180 = zawracanie). */
         val angle: Double? = null,
+        /** Pasy ruchu przed manewrem (od lewej), gdy są w OpenStreetMap. */
+        val lanes: List<Lane>? = null,
     )
+
+    /**
+     * Pas ruchu: strzałki na jezdni ([ind] – jak w OSRM: straight, left, slight right, uturn, none…),
+     * [valid] – tym pasem da się wykonać manewr, [active] – strzałka do podświetlenia.
+     */
+    data class Lane(val ind: List<String>, val valid: Boolean, val active: String?)
 
     /** Co pokazuje baner. [kind] wybiera strzałkę. */
     data class State(
@@ -47,6 +55,8 @@ object Guidance {
         /** Rondo: kąt zjazdu (do rysowania strzałki). */
         val angle: Double? = null,
         val thenAngle: Double? = null,
+        /** Pasy ruchu do pokazania pod banerem (null = brak / jeszcze za daleko). */
+        val lanes: List<Lane>? = null,
     )
 
     val state = MutableStateFlow<State?>(null)
@@ -96,10 +106,80 @@ object Guidance {
                     lat = lat, lon = lon,
                     alongM = cum[idx],
                     angle = if (m.optString("type") in setOf("roundabout", "rotary", "roundabout turn")) roundaboutAngle(s, m) else null,
+                    lanes = try { parseLanes(s, m.optString("modifier").ifBlank { null }) } catch (_: Exception) { null },
                 )
             }
         }
         return out
+    }
+
+    // ---------- pasy ruchu ----------
+
+    /** Kąt strzałki pasa (0 = prosto, + w prawo); zawracanie w lewo (ruch prawostronny). */
+    private fun laneAngle(ind: String): Double = when (ind) {
+        "slight right" -> 45.0
+        "right" -> 90.0
+        "sharp right" -> 135.0
+        "slight left" -> -45.0
+        "left" -> -90.0
+        "sharp left" -> -135.0
+        "uturn" -> -180.0
+        else -> 0.0
+    }
+
+    /** Pasy z pierwszego skrzyżowania kroku (= miejsce manewru). Tylko gdy coś mówią: nie wszystkie pasy pasują. */
+    private fun parseLanes(step: JSONObject, mod: String?): List<Lane>? {
+        val arr = step.optJSONArray("intersections")?.optJSONObject(0)?.optJSONArray("lanes") ?: return null
+        if (arr.length() < 2) return null
+        val target = when (mod) { "uturn" -> -180.0; null -> 0.0; else -> modAngle(mod) ?: 0.0 }
+        val out = ArrayList<Lane>(arr.length())
+        for (i in 0 until arr.length()) {
+            val o = arr.optJSONObject(i) ?: return null
+            val ia = o.optJSONArray("indications")
+            val ind = buildList { if (ia != null) for (k in 0 until ia.length()) add(ia.optString(k)) }.filter { it.isNotBlank() }.ifEmpty { listOf("none") }
+            val valid = o.optBoolean("valid", false)
+            val active = if (!valid) null else {
+                val marked = ind.filter { it != "none" }
+                // pas bez strzałek – podświetl kierunek manewru
+                if (marked.isEmpty()) (mod?.takeIf { it != "uturn" } ?: "straight")
+                else marked.minByOrNull { kotlin.math.abs(laneAngle(it) - target) }
+            }
+            out += Lane(ind, valid, active)
+        }
+        val v = out.count { it.valid }
+        return if (v in 1 until out.size) out else null
+    }
+
+    private val NUM_GEN = listOf("", "jednego", "dwóch", "trzech", "czterech", "pięciu", "sześciu")
+    private val ORD_NOM = listOf("", "pierwszy", "drugi", "trzeci", "czwarty", "piąty", "szósty")
+
+    /** „Zajmij prawy pas”, „Zajmij jeden z dwóch lewych pasów”, „Zajmij drugi pas od prawej”… */
+    fun laneHint(lanes: List<Lane>?): String? {
+        if (lanes == null) return null
+        val n = lanes.size
+        val v = lanes.indices.filter { lanes[it].valid }
+        if (n < 2 || v.isEmpty() || v.size == n) return null
+        if (v.last() - v.first() + 1 != v.size) return null
+        val k = v.size
+        val left = v.first() == 0
+        val right = v.last() == n - 1
+        return when {
+            left && k == 1 -> "Zajmij lewy pas"
+            right && k == 1 -> "Zajmij prawy pas"
+            left && k < NUM_GEN.size -> "Zajmij jeden z ${NUM_GEN[k]} lewych pasów"
+            right && k < NUM_GEN.size -> "Zajmij jeden z ${NUM_GEN[k]} prawych pasów"
+            left -> "Zajmij lewe pasy"
+            right -> "Zajmij prawe pasy"
+            k == 1 && n == 3 -> "Zajmij środkowy pas"
+            k == 1 -> {
+                val fromLeft = v[0] + 1
+                val fromRight = n - v[0]
+                if (fromRight <= fromLeft && fromRight < ORD_NOM.size) "Zajmij ${ORD_NOM[fromRight]} pas od prawej"
+                else if (fromLeft < ORD_NOM.size) "Zajmij ${ORD_NOM[fromLeft]} pas od lewej"
+                else "Zajmij środkowy pas"
+            }
+            else -> "Zajmij środkowe pasy"
+        }
     }
 
     // ---------- teksty po polsku ----------
@@ -173,6 +253,7 @@ object Guidance {
 
     /** Czy manewr wymaga komunikatu (jazda prosto / zmiana nazwy ulicy – nie). */
     fun silent(s: Step): Boolean =
+        (s.type == "use lane" && laneHint(s.lanes) == null) ||
         s.type == "depart" || s.type == "new name" || s.type == "notification" ||
             s.type == "exit roundabout" || s.type == "exit rotary" ||
             ((s.type == "continue" || s.type == "turn") && (s.modifier == null || s.modifier == "straight"))
@@ -206,6 +287,7 @@ object Guidance {
             "on ramp" -> "Wjedź " + d.removePrefix("lekko ")
             "off ramp" -> "Zjedź " + d.removePrefix("lekko ")
             "end of road" -> "Na końcu drogi skręć $d"
+            "use lane" -> laneHint(s.lanes) ?: "Jedź prosto"
             else -> if (s.modifier == "uturn") "Zawróć" else if (s.modifier == null || s.modifier == "straight") "Jedź prosto" else "Skręć $d"
         }
     }
@@ -301,20 +383,28 @@ object Guidance {
         val s = steps[shown]
         val dist = (s.alongM - along).coerceAtLeast(0.0)
         val next = steps.getOrNull(shown + 1)?.takeIf { !silent(it) && it.alongM - s.alongM < 150 }
-        state.value = State(shown, kind(s), action(s), street(s), dist, s.exit, next?.let { kind(it) }, angle = s.angle, thenAngle = next?.angle)
+        val v = if (loc.hasSpeed()) loc.speed.toDouble().coerceAtLeast(8.0) else 13.0
+        // pasy: na szybkiej drodze z daleka (zjazdy), w mieście tuż przed skrzyżowaniem
+        val lanesOn = Prefs.navLanes.value && s.lanes != null
+        val laneShowM = if (v > 19.0) 1600.0 else 550.0
+        state.value = State(
+            shown, kind(s), action(s), street(s), dist, s.exit, next?.let { kind(it) }, angle = s.angle, thenAngle = next?.angle,
+            lanes = if (lanesOn && dist <= laneShowM) s.lanes else null,
+        )
 
         // głos
-        val v = if (loc.hasSpeed()) loc.speed.toDouble().coerceAtLeast(8.0) else 13.0
         val far = (v * 25).coerceIn(350.0, 1500.0)
         val near = (v * 8).coerceIn(90.0, 320.0)
         val now = (v * 3 + 15).coerceIn(25.0, 80.0)
         val then = next?.let { ", a potem " + action(it).replaceFirstChar { c -> c.lowercase() } } ?: ""
+        // „Zajmij prawy pas” po zapowiedzi (nie przy samym manewrze – wtedy już za późno)
+        val lane = if (lanesOn && s.type != "use lane") laneHint(s.lanes)?.let { ". $it" } ?: "" else ""
         val key = "${r.id}:$shown"
         when {
             dist <= now -> if (spoken.add("$key:now")) NavVoice.say(action(s) + spokenStreet(s) + then)
-            dist <= near -> if (spoken.add("$key:near")) NavVoice.say("Za ${distancePl(dist)} " + action(s).replaceFirstChar { it.lowercase() } + spokenStreet(s))
+            dist <= near -> if (spoken.add("$key:near")) NavVoice.say("Za ${distancePl(dist)} " + action(s).replaceFirstChar { it.lowercase() } + spokenStreet(s) + lane)
             dist <= far && dist > near + 150 && s.alongM - (steps.getOrNull(shown - 1)?.alongM ?: 0.0) > near + 200 ->
-                if (spoken.add("$key:far")) NavVoice.say("Za ${distancePl(dist)} " + action(s).replaceFirstChar { it.lowercase() } + spokenStreet(s))
+                if (spoken.add("$key:far")) NavVoice.say("Za ${distancePl(dist)} " + action(s).replaceFirstChar { it.lowercase() } + spokenStreet(s) + lane)
         }
     }
 }

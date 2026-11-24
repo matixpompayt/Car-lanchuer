@@ -17,6 +17,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Share
+import androidx.compose.material.icons.rounded.Schedule
+import androidx.compose.material.icons.rounded.Timer
+import androidx.compose.material.icons.rounded.Flag
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -49,7 +52,7 @@ fun ShareButton(onOpen: () -> Unit, modifier: Modifier = Modifier) {
 }
 
 /**
- * Okno udostępniania: bez sesji – wybór (do celu / 1 h / 4 h); z sesją – kod QR linku
+ * Panel udostępniania: bez sesji – wybór (do celu / 1 h / 4 h); z sesją – kod QR linku
  * (zeskanuj telefonem pasażera albo wyślij z CAR OS Connect) i „Zakończ”.
  */
 @Composable
@@ -58,47 +61,64 @@ fun ShareDialog(onDismiss: () -> Unit) {
     val s by TripShare.session.collectAsState()
     val route by RouteRepository.route.collectAsState()
     val paired by ConnectRepository.paired.collectAsState()
-    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
-        Column(
-            Modifier.width(760.dp).clip(RoundedCornerShape(26.dp)).carSurface(RoundedCornerShape(26.dp), CarColors.Panel, heavy = true)
-                .border(1.dp, CarColors.Border, RoundedCornerShape(26.dp)).padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Jazda na żywo", fontSize = 26.sp, fontWeight = FontWeight.Bold, color = CarColors.Text, modifier = Modifier.weight(1f))
-                RoundIconButton(Icons.Rounded.Close, "Zamknij", 44.dp, onDismiss)
-            }
-            val cur = s
-            if (cur == null) {
-                Text(
-                    "Bliscy zobaczą w przeglądarce, gdzie jest auto, trasę i godzinę przyjazdu – bez instalowania aplikacji. " +
-                        "Link jest zaszyfrowany: kto go nie ma, nic nie zobaczy.",
-                    fontSize = 17.sp, color = CarColors.Text2,
+    val cur = s
+    CarPanel(
+        onDismiss, "Jazda na żywo",
+        if (cur == null) "Bliscy zobaczą w przeglądarce auto na mapie, trasę i godzinę przyjazdu – bez instalowania aplikacji"
+        else "Udostępniasz – link jest zaszyfrowany, kto go nie ma, nic nie zobaczy",
+        Icons.Rounded.Share,
+        actions = { ctl ->
+            if (cur == null) PanelButton("Anuluj", { ctl.dismiss() }, Modifier.weight(1f))
+            else {
+                PanelButton(
+                    "Zakończ udostępnianie", { TripShare.stop("stopped"); Toaster.show("Udostępnianie jazdy zakończone"); ctl.dismiss() },
+                    Modifier.weight(1.3f), icon = Icons.Rounded.Close, danger = true,
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    if (route != null) PrimaryButton("Do celu", { TripShare.start(minutes = null) }, Modifier.weight(1f))
-                    SecondaryButton("Na 1 h", { TripShare.start(minutes = 60) }, Modifier.weight(1f))
-                    SecondaryButton("Na 4 h", { TripShare.start(minutes = 240) }, Modifier.weight(1f))
+                PanelButton("Gotowe", { ctl.dismiss() }, Modifier.weight(1f), primary = true)
+            }
+        },
+    ) {
+        if (cur == null) {
+            Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                if (route != null) ShareOption(Icons.Rounded.Flag, "Do celu", "Kończy się samo po dojechaniu", true, Modifier.weight(1f)) { TripShare.start(minutes = null) }
+                ShareOption(Icons.Rounded.Timer, "Na 1 h", "Potem link wygaśnie", route == null, Modifier.weight(1f)) { TripShare.start(minutes = 60) }
+                ShareOption(Icons.Rounded.Schedule, "Na 4 h", "Na dłuższą trasę", false, Modifier.weight(1f)) { TripShare.start(minutes = 240) }
+            }
+            Text("Po wybraniu pokaże się kod QR – zeskanuj go telefonem i wyślij link komu chcesz.", fontSize = 16.sp, color = CarColors.Muted)
+        } else {
+            Row(horizontalArrangement = Arrangement.spacedBy(24.dp), verticalAlignment = Alignment.CenterVertically) {
+                val qr = remember(cur.link) { ParkingRepository.qr(cur.link, 420)?.asImageBitmap() }
+                if (qr != null) Box(Modifier.size(250.dp).clip(RoundedCornerShape(22.dp)).background(Color.White).padding(14.dp)) {
+                    Image(qr, "Kod QR linku", modifier = Modifier.fillMaxSize())
                 }
-            } else {
-                Row(horizontalArrangement = Arrangement.spacedBy(20.dp), verticalAlignment = Alignment.CenterVertically) {
-                    val qr = remember(cur.link) { ParkingRepository.qr(cur.link, 420)?.asImageBitmap() }
-                    if (qr != null) Box(Modifier.size(230.dp).clip(RoundedCornerShape(18.dp)).background(Color.White).padding(12.dp)) {
-                        Image(qr, "Kod QR linku", modifier = Modifier.fillMaxSize())
-                    }
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        val until = SimpleDateFormat("H:mm", Locale("pl")).format(Date(cur.until))
-                        Text(if (cur.toDest) "Do dojechania do celu" else "Do $until", fontSize = 22.sp, fontWeight = FontWeight.SemiBold, color = accent)
-                        Text("Zeskanuj aparatem telefonu i wyślij link komu chcesz (SMS, WhatsApp…).", fontSize = 17.sp, color = CarColors.Text2)
-                        if (paired) Text("Link jest też w CAR OS Connect: zakładka Auto → Jazda na żywo.", fontSize = 16.sp, color = CarColors.Muted)
-                        Text("Pozycja co 2 min, między nimi strona przesuwa auto po trasie.", fontSize = 15.sp, color = CarColors.Muted)
-                    }
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    SecondaryButton("Zakończ udostępnianie", { TripShare.stop("stopped"); Toaster.show("Udostępnianie jazdy zakończone") }, Modifier.weight(1f), icon = Icons.Rounded.Close)
-                    PrimaryButton("Gotowe", onDismiss, Modifier.weight(1f))
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    val until = SimpleDateFormat("H:mm", Locale("pl")).format(Date(cur.until))
+                    Text(if (cur.toDest) "Do dojechania do celu" else "Do $until", fontSize = 26.sp, fontWeight = FontWeight.Bold, color = accent)
+                    Text("Zeskanuj aparatem telefonu i wyślij link komu chcesz (SMS, WhatsApp…).", fontSize = 18.sp, color = CarColors.Text2)
+                    if (paired) Text("Link jest też w CAR OS Connect: zakładka Auto → Jazda na żywo.", fontSize = 16.sp, color = CarColors.Muted)
+                    Text("Pozycja co 2 min, między nimi strona przesuwa auto po trasie.", fontSize = 15.sp, color = CarColors.Muted)
                 }
             }
         }
+    }
+}
+
+/** Duży kafel wyboru w panelu (ikona, tytuł, podpis). */
+@Composable
+private fun ShareOption(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, sub: String, main: Boolean, modifier: Modifier, onClick: () -> Unit) {
+    val accent = LocalAccent.current
+    val shape = RoundedCornerShape(24.dp)
+    val src = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    Column(
+        modifier.pressScale(src).clip(shape)
+            .background(if (main) accent.copy(alpha = 0.16f) else CarColors.Card)
+            .border(2.dp, if (main) accent else CarColors.Border, shape)
+            .clickable(interactionSource = src, indication = androidx.compose.foundation.LocalIndication.current, onClick = onClick)
+            .padding(horizontal = 22.dp, vertical = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        androidx.compose.material3.Icon(icon, null, tint = accent, modifier = Modifier.size(36.dp))
+        Text(title, fontSize = 26.sp, fontWeight = FontWeight.Bold, color = CarColors.Text)
+        Text(sub, fontSize = 16.sp, color = CarColors.Muted, maxLines = 2)
     }
 }
