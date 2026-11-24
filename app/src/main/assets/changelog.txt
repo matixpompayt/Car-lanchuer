@@ -2,7 +2,7 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
-## next
+## 2.0-beta.14 · 2026-11-24
 Odświeżanie danych z auta: w tle i tylko przy pracującym silniku
 - W tle: na czas odświeżania CAR OS kładzie nad wszystkim swój zrzut ekranu, a ekran „Informacje” działa pod spodem – nie widać go (z usługą ułatwień dostępu CAR OS zakryty jest też górny pasek radia)
 - Dotknięcie ekranu w tym czasie przerywa odświeżanie
