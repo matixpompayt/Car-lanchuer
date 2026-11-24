@@ -2,6 +2,13 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
+## next
+Odświeżanie danych z auta
+- Napięcie, temperatury (na zewnątrz, płyn, olej) i zasięg radio TopWay dostaje z auta tylko przy otwartym ekranie „Informacje” – CAR OS otwiera go teraz sam na 2–4 s (aż przyjdą świeże dane) i wraca
+- Kiedy: po włączeniu zapłonu i co 15 min (do zmiany: wyłączone, po starcie, co 5/10/15/30 min) – tylko gdy CAR OS jest na ekranie; nie przy cofaniu, rozmowie, otwartym panelu ani tuż przed manewrem nawigacji
+- Odczytane wartości zostają do następnego odświeżenia (obroty tylko na żywo)
+- Ustawienia → Auto → „Dane z radia (CAN)”: częstotliwość, ekran z danymi (wykryty sam albo do wybrania z listy) i „Odśwież teraz”
+
 ## 2.0-beta.11 · 2026-11-24
 Pasy ruchu w nawigacji i nowe panele
 - Nawigacja: przed skrzyżowaniem i zjazdem pod banerem pokazują się pasy ruchu – podświetlone te, którymi jechać (na autostradzie z ok. 1,5 km, w mieście z ok. 500 m)

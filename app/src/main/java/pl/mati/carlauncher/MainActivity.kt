@@ -150,6 +150,7 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         pl.mati.carlauncher.data.ShadeGuard.launcherResumed = true
+        pl.mati.carlauncher.data.CarInfoRefresh.attach(this)
         SystemControls.attach(this)
         watchSources()
         hideSystemBars()

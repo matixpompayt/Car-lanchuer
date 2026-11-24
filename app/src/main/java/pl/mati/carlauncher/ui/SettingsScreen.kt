@@ -16,6 +16,7 @@ import android.net.Uri
 import android.provider.Settings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -935,6 +936,7 @@ private fun LazyListScope.carPage() {
         val st by pl.mati.carlauncher.data.TsCarBridge.status.collectAsState()
         SettingRow("Dane z MainApp (TopWay)", "$st") {}
     }
+    item { CarInfoRefreshRows() }
     item { SectionLabel("Dane na żywo") }
     item {
         val d by pl.mati.carlauncher.data.Vehicle.data.collectAsState()
@@ -1759,3 +1761,85 @@ private fun Chevron() = Icon(Icons.Rounded.ChevronRight, null, tint = CarColors.
 @Composable
 private fun StatusText(ok: Boolean) =
     Text(if (ok) "Włączone" else "Włącz", fontSize = 17.sp, fontWeight = FontWeight.SemiBold, color = if (ok) CarColors.Green else LocalAccent.current)
+
+/**
+ * Odświeżanie danych z auta: CAR OS na chwilę otwiera ekran „Informacje” radia (tylko wtedy
+ * przejściówka CAN podaje napięcie, temperatury, zasięg) i sam wraca.
+ */
+@Composable
+private fun CarInfoRefreshRows() {
+    val ctx = LocalContext.current
+    val mode by Prefs.carInfoRefresh.collectAsState()
+    val chosen by Prefs.carInfoApp.collectAsState()
+    val running by pl.mati.carlauncher.data.CarInfoRefresh.running.collectAsState()
+    val info by pl.mati.carlauncher.data.CarInfoRefresh.lastInfo.collectAsState()
+    val target = remember(chosen) { pl.mati.carlauncher.data.CarInfoRefresh.target(ctx) }
+    var pick by remember { mutableStateOf(false) }
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        SettingRow(
+            "Odświeżanie danych z auta",
+            "Napięcie, temperatury i zasięg radio dostaje z auta tylko przy otwartym ekranie „Informacje”. CAR OS otworzy go na 2–4 s i sam wróci – po włączeniu zapłonu i co wybrany czas, gdy CAR OS jest na ekranie (nie przy cofaniu, rozmowie ani tuż przed manewrem)",
+        ) {}
+        Row(Modifier.horizontalScroll(androidx.compose.foundation.rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            listOf(-1 to "Wyłączone", 0 to "Po starcie", 5 to "Co 5 min", 10 to "Co 10 min", 15 to "Co 15 min", 30 to "Co 30 min").forEach { (v, l) ->
+                CarChip(l, mode == v, { Prefs.setCarInfoRefresh(v) })
+            }
+        }
+        SettingRow(
+            "Ekran z danymi auta",
+            when {
+                target == null -> "Nie znaleziono – dotknij i wybierz (np. „Informacje”)"
+                chosen != null -> "${target.label} · wybrany ręcznie"
+                else -> "${target.label} · wykryty sam"
+            },
+            onClick = { pick = true },
+        ) { Chevron() }
+        Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
+            SecondaryButton(
+                if (running) "Odświeżam…" else "Odśwież teraz",
+                { if (!running) pl.mati.carlauncher.data.CarInfoRefresh.refresh(manual = true) },
+                height = 52.dp, icon = Icons.Rounded.Refresh,
+            )
+            info?.let { Text(it, fontSize = 15.sp, color = CarColors.Muted, modifier = Modifier.weight(1f)) }
+        }
+    }
+    if (pick) CarInfoAppPicker(chosen) { pick = false }
+}
+
+@Composable
+private fun CarInfoAppPicker(chosen: String?, onDismiss: () -> Unit) {
+    val ctx = LocalContext.current
+    val apps = remember { pl.mati.carlauncher.data.CarInfoRefresh.apps(ctx) }
+    val auto = remember { pl.mati.carlauncher.data.CarInfoRefresh.detect(ctx) }
+    val accent = LocalAccent.current
+    CarPanel(
+        onDismiss, "Ekran z danymi auta", "Ten, na którym radio pokazuje napięcie, temperaturę na zewnątrz, paliwo itd.",
+        Icons.Rounded.DirectionsCar, scroll = true,
+        actions = { ctl -> PanelButton("Anuluj", { ctl.dismiss() }, Modifier.weight(1f)) },
+    ) { ctl ->
+        @Composable
+        fun row(title: String, sub: String, sel: Boolean, onClick: () -> Unit) {
+            Row(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp))
+                    .background(if (sel) accent.copy(alpha = 0.14f) else CarColors.Card)
+                    .clickable(onClick = onClick).padding(horizontal = 20.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(title, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, color = if (sel) accent else CarColors.Text)
+                    Text(sub, fontSize = 14.sp, color = CarColors.Muted, maxLines = 1)
+                }
+                if (sel) Icon(Icons.Rounded.CheckCircle, null, tint = accent, modifier = Modifier.size(28.dp))
+            }
+        }
+        row("Wykryj sam", auto?.let { "Teraz: ${it.label}" } ?: "Nic nie pasuje – wybierz z listy", chosen == null) {
+            Prefs.setCarInfoApp(null); ctl.dismiss()
+        }
+        apps.forEach { a ->
+            val flat = a.cn.flattenToString()
+            row(a.label, a.cn.packageName + if (a.system) " · systemowa" else "", chosen == flat) {
+                Prefs.setCarInfoApp(flat); ctl.dismiss()
+            }
+        }
+    }
+}

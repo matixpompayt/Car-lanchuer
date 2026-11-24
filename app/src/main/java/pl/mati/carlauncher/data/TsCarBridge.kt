@@ -91,9 +91,26 @@ object TsCarBridge {
      * cała grupa jest nieaktualna i jej nie pokazujemy (zamiast „zamrożonych” liczb).
      */
     private val QUERY_GROUP = setOf(3, 4, 11, 12, 13, 15, 67, 68)
+    /**
+     * Z tej grupy wolno zmienne (napięcie, temperatury, zasięg, średnie spalanie) – po odświeżeniu
+     * ([CarInfoRefresh]) zostają do następnego odświeżenia. Obroty i chwilowe spalanie tylko na żywo.
+     */
+    private val SLOW_GROUP = setOf(4, 11, 13, 15, 67, 68)
+    @Volatile private var refreshedAt = 0L
+    /** Kiedy ostatnio zmieniły się dane z zapytania (obroty / napięcie). */
+    val lastQueryChange: Long get() = groupChanged
+
+    /** Ekran „Informacje” był przed chwilą otwarty – wartości w MainApp są świeże. */
+    fun markRefreshed() { refreshedAt = System.currentTimeMillis() }
+
+    /** Jak długo trzymać wolno zmienne wartości po odświeżeniu (do następnego + zapas). */
+    private fun slowKeepMs(): Long {
+        val m = Prefs.carInfoRefresh.value
+        return if (m > 0) (m + 3) * 60_000L else 30 * 60_000L
+    }
     private var lastRpm = Int.MIN_VALUE
     private var lastBat = Int.MIN_VALUE
-    private var groupChanged = 0L
+    @Volatile private var groupChanged = 0L
     /** Czy dane z zapytania (obroty, napięcie, temperatura…) są teraz świeże. */
     val queryFresh = MutableStateFlow(false)
     private var loop: Job? = null
@@ -164,10 +181,12 @@ object TsCarBridge {
                     }
                     val fresh = now - groupChanged < 12_000
                     queryFresh.value = fresh
+                    // po odświeżeniu ekranem „Informacje” wartości w MainApp stoją, ale są aktualne
+                    val kept = refreshedAt > 0 && now - refreshedAt < slowKeepMs()
                     for ((idx, name) in BASE) {
                         if (idx >= arr.size) continue
                         val key = "ts:base/$name"
-                        if (idx in QUERY_GROUP && !fresh) CanRepository.expire(key)
+                        if (idx in QUERY_GROUP && !fresh && !(kept && idx in SLOW_GROUP)) CanRepository.expire(key)
                         else CanRepository.observe(key, arr[idx].toString())
                     }
                     if (fresh) autoBase(arr) else checkSpeed(arr.getOrNull(2) ?: 0)
@@ -184,7 +203,12 @@ object TsCarBridge {
                 }
                 status.value = when {
                     i == null && c == null && f == null -> "rozłączono"
-                    got > 0 && i != null -> "połączono z MainApp (dane CAN" + (if (queryFresh.value) ", obroty i napięcie na żywo)" else "; obroty, napięcie i temperatury tylko przy otwartym ekranie auta w MainApp)")
+                    got > 0 && i != null -> "połączono z MainApp (dane CAN" + when {
+                        queryFresh.value -> ", obroty i napięcie na żywo)"
+                        refreshedAt > 0 && System.currentTimeMillis() - refreshedAt < slowKeepMs() ->
+                            "; napięcie, temperatury i zasięg z odświeżenia ${(System.currentTimeMillis() - refreshedAt) / 60_000} min temu)"
+                        else -> "; obroty, napięcie i temperatury tylko przy otwartym ekranie auta w MainApp – albo z odświeżania)"
+                    }
                     got > 0 -> "połączono z MainApp (bez danych CAN)"
                     else -> "połączono, ale MainApp nie odpowiada"
                 }
