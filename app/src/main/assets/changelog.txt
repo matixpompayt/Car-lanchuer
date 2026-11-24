@@ -2,7 +2,7 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
-## next
+## 2.0-beta.13 · 2026-11-24
 - Odświeżanie danych z auta: CAR OS szuka teraz ekranu „Informacje” wewnątrz MainApp (nie ma własnej ikony, więc nie było go na liście aplikacji)
 - Wybór ekranu: na górze listy ekrany MainApp, pasujące pierwsze; raport danych z radia pokazuje też te ekrany
 
