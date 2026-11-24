@@ -1810,6 +1810,13 @@ private fun CarInfoRefreshRows() {
 private fun CarInfoAppPicker(chosen: String?, onDismiss: () -> Unit) {
     val ctx = LocalContext.current
     val apps = remember { pl.mati.carlauncher.data.CarInfoRefresh.apps(ctx) }
+    val screens = remember {
+        pl.mati.carlauncher.data.CarInfoRefresh.screens(ctx).sortedWith(
+            compareByDescending<pl.mati.carlauncher.data.CarInfoRefresh.App> { pl.mati.carlauncher.data.CarInfoRefresh.looksLikeInfo(it) }
+                .thenByDescending { it.exported }
+                .thenBy { it.label.lowercase() },
+        )
+    }
     val auto = remember { pl.mati.carlauncher.data.CarInfoRefresh.detect(ctx) }
     val accent = LocalAccent.current
     CarPanel(
@@ -1835,6 +1842,19 @@ private fun CarInfoAppPicker(chosen: String?, onDismiss: () -> Unit) {
         row("Wykryj sam", auto?.let { "Teraz: ${it.label}" } ?: "Nic nie pasuje – wybierz z listy", chosen == null) {
             Prefs.setCarInfoApp(null); ctl.dismiss()
         }
+        if (screens.isNotEmpty()) {
+            Caption("Ekrany w MainApp (radio) – „Informacje” nie ma własnej ikony, jest tutaj")
+            screens.forEach { a ->
+                val flat = a.cn.flattenToString()
+                val simple = a.cn.className.substringAfterLast('.')
+                row(
+                    a.label,
+                    (if (a.label != simple) "$simple · " else "") + a.cn.packageName + (if (!a.exported) " · może być zablokowany" else ""),
+                    chosen == flat,
+                ) { Prefs.setCarInfoApp(flat); ctl.dismiss() }
+            }
+        }
+        Caption("Aplikacje")
         apps.forEach { a ->
             val flat = a.cn.flattenToString()
             row(a.label, a.cn.packageName + if (a.system) " · systemowa" else "", chosen == flat) {

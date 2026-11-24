@@ -2,6 +2,10 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
+## next
+- Odświeżanie danych z auta: CAR OS szuka teraz ekranu „Informacje” wewnątrz MainApp (nie ma własnej ikony, więc nie było go na liście aplikacji)
+- Wybór ekranu: na górze listy ekrany MainApp, pasujące pierwsze; raport danych z radia pokazuje też te ekrany
+
 ## 2.0-beta.12 · 2026-11-24
 Odświeżanie danych z auta
 - Napięcie, temperatury (na zewnątrz, płyn, olej) i zasięg radio TopWay dostaje z auta tylko przy otwartym ekranie „Informacje” – CAR OS otwiera go teraz sam na 2–4 s (aż przyjdą świeże dane) i wraca

@@ -342,6 +342,14 @@ object CanRepository {
                 sb.append('\n')
             }
         }
+        sb.append("\n== Ekrany aplikacji radia (do odświeżania danych) ==\n")
+        try {
+            CarInfoRefresh.screens(ctx).forEach { a ->
+                sb.append(a.cn.flattenToShortString()).append("  „").append(a.label).append("”").append(if (a.exported) "" else " (nieeksportowany)").append('\n')
+            }
+            sb.append("Wybrany do odświeżania: ").append(CarInfoRefresh.target(ctx)?.let { it.cn.flattenToShortString() + " „" + it.label + "”" } ?: "brak").append('\n')
+        } catch (_: Exception) {
+        }
         sb.append("\n== Inne aplikacje systemowe (nie Google/Android) ==\n")
         try {
             pm.getInstalledApplications(0)

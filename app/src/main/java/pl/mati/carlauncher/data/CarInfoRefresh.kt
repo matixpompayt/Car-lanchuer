@@ -33,7 +33,11 @@ object CarInfoRefresh {
     private const val MIN_MS = 1_500L
     private const val MAX_MS = 4_500L
 
-    data class App(val cn: ComponentName, val label: String, val system: Boolean)
+    /**
+     * Aplikacja (ikona w menu) albo [screen] – ekran wewnątrz aplikacji radia (np. „Informacje”
+     * w MainApp nie ma własnej ikony). [exported] = false: system może nie pozwolić go otworzyć.
+     */
+    data class App(val cn: ComponentName, val label: String, val system: Boolean, val screen: Boolean = false, val exported: Boolean = true)
 
     val running = MutableStateFlow(false)
     /** Ostatnie udane odświeżenie (0 = jeszcze nie w tej jeździe). */
@@ -71,25 +75,76 @@ object CarInfoRefresh {
         emptyList()
     }
 
+    /** Pakiety radia, w których szukać ekranu z danymi auta (MainApp TopWay i podobne). */
+    private fun radioPackages(ctx: Context): List<String> {
+        val pm = ctx.packageManager
+        val list = LinkedHashSet<String>()
+        // MainApp TopWay – tam jest „Informacje” (to samo, co podaje dane CAN)
+        try {
+            pm.queryIntentServices(Intent("com.ts.can.carinfo.CarInfoService"), 0).forEach { list += it.serviceInfo.packageName }
+        } catch (_: Exception) {}
+        list += "com.ts.MainUI"
+        list += CanRepository.canPackages(ctx)
+        return list.filter { p -> try { pm.getPackageInfo(p, 0); true } catch (_: Exception) { false } }
+    }
+
+    /** Wszystkie ekrany (aktywności) aplikacji radia z nazwami. */
+    fun screens(ctx: Context): List<App> {
+        val pm = ctx.packageManager
+        val out = ArrayList<App>()
+        for (p in radioPackages(ctx)) {
+            try {
+                val pi = pm.getPackageInfo(p, android.content.pm.PackageManager.GET_ACTIVITIES)
+                val appLabel = try { pi.applicationInfo?.loadLabel(pm)?.toString() ?: "" } catch (_: Exception) { "" }
+                pi.activities?.forEach { ai ->
+                    val l = try { ai.loadLabel(pm).toString().trim() } catch (_: Exception) { "" }
+                    val simple = ai.name.substringAfterLast('.')
+                    out += App(
+                        ComponentName(p, ai.name),
+                        if (l.isBlank() || l == appLabel) simple else l,
+                        true, screen = true, exported = ai.exported,
+                    )
+                }
+            } catch (_: Exception) {
+            }
+        }
+        return out
+    }
+
+    private val CARINFO_CLS = Regex("car_?info", RegexOption.IGNORE_CASE)
+    private val NOT_INFO = Regex("set|setting|service|receiver|provider|dialog", RegexOption.IGNORE_CASE)
+
+    /** Czy ekran wygląda na „informacje o aucie” (do sortowania listy i wykrywania). */
+    fun looksLikeInfo(a: App): Boolean = LABEL.matches(a.label) ||
+        (CARINFO_CLS.containsMatchIn(a.cn.className.substringAfterLast('.')) && !NOT_INFO.containsMatchIn(a.cn.className.substringAfterLast('.')))
+
     private val LABEL = Regex(
         "^(informacje|informacje o (aucie|poje[zź]dzie|samochodzie)|info(rmacje)? auta|car ?info|vehicle ?info|carinfo|auto ?info|dane auta)$",
         RegexOption.IGNORE_CASE,
     )
 
-    /** Ekran informacji o aucie radia: po nazwie („Informacje”, „Car info”…) albo po klasie. */
+    /**
+     * Ekran informacji o aucie radia: najpierw ekrany MainApp po nazwie („Informacje”, „Car info”…)
+     * i po klasie (…CarInfo…), potem aplikacje z ikoną w menu.
+     */
     fun detect(ctx: Context): App? {
+        val sc = screens(ctx)
+        sc.firstOrNull { it.exported && LABEL.matches(it.label) }?.let { return it }
+        sc.firstOrNull { it.exported && looksLikeInfo(it) }?.let { return it }
         val all = apps(ctx)
         fun radio(a: App) = a.cn.packageName.startsWith("com.ts.") || a.cn.packageName.contains("can", true) || a.cn.packageName.contains("car", true)
         return all.firstOrNull { radio(it) && LABEL.matches(it.label) }
             ?: all.firstOrNull { radio(it) && it.cn.className.contains("carinfo", true) }
             ?: all.firstOrNull { it.system && LABEL.matches(it.label) }
+            // nieeksportowany – spróbujemy, może MainApp pozwoli
+            ?: sc.firstOrNull { LABEL.matches(it.label) }
     }
 
     /** Wybrana w ustawieniach albo wykryta sama. */
     fun target(ctx: Context): App? {
         Prefs.carInfoApp.value?.let { s ->
             val cn = ComponentName.unflattenFromString(s) ?: return@let
-            return apps(ctx).firstOrNull { it.cn == cn } ?: App(cn, cn.className.substringAfterLast('.'), true)
+            return apps(ctx).firstOrNull { it.cn == cn } ?: screens(ctx).firstOrNull { it.cn == cn } ?: App(cn, cn.className.substringAfterLast('.'), true, screen = true)
         }
         cached?.let { return it }
         return detect(ctx)?.also { cached = it }
@@ -159,6 +214,10 @@ object CarInfoRefresh {
             a.startActivityForResult(i, REQ)
             @Suppress("DEPRECATION")
             a.overridePendingTransition(0, 0)
+        } catch (e: SecurityException) {
+            lastInfo.value = "MainApp nie pozwala otworzyć „${app.label}” z innej aplikacji – wybierz inny ekran z listy"
+            if (manual) Toaster.show("MainApp nie pozwala otworzyć tego ekranu")
+            return false
         } catch (e: Exception) {
             lastInfo.value = "Nie udało się otworzyć „${app.label}” (${e.javaClass.simpleName})"
             if (manual) Toaster.show("Nie udało się otworzyć „${app.label}”")
