@@ -2,7 +2,7 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
-## next
+## 2.0-beta.15 · 2026-11-24
 - Trasa: dowolnie dużo przystanków (do 100) – także z telefonu (stacje i postoje z planu podróży), wcześniej najwyżej 8
 - Duże trasy z telefonu przychodzą w częściach (przekaźnik przyjmuje do 4 KB na wiadomość) – radio składa je samo
 - „Trasa z telefonu … przez 12 punktów” – poprawna odmiana
