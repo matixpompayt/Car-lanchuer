@@ -94,6 +94,8 @@ object ConnectRepository {
         val k = key(false) ?: return
         val now = System.currentTimeMillis()
         val moving = l.hasSpeed() && l.speed > 2f
+        // pierwsza pozycja jazdy – od razu (telefon może czuwać: alarm „auto jedzie bez Ciebie”)
+        val starting = moving && !liveMoving
         if (moving) liveMoving = true
         // Firebase: co wybrany czas (postój w trakcie jazdy – co 30 s, żeby telefon wiedział, że auto stoi w korku)
         if (liveMoving) firebaseLive(k, l, moving)
@@ -102,7 +104,7 @@ object ConnectRepository {
         // (z przekaźnika telefon w tle wie, że „auto ruszyło”)
         // przy udostępnianiu jazdy linkiem (osobne wiadomości) – co 3 min, żeby zmieścić się w limicie
         val gap = if (now - fbOkAt < 60_000) 5 * 60_000L else if (TripShare.session.value != null) 180_000L else 60_000L
-        if (now - lastLive < gap) return
+        if (!starting && now - lastLive < gap) return
         lastLive = now
         send(
             JSONObject().put("type", "live").put("lat", l.latitude).put("lon", l.longitude)
