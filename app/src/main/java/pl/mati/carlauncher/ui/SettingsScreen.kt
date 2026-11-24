@@ -1778,13 +1778,36 @@ private fun CarInfoRefreshRows() {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         SettingRow(
             "Odświeżanie danych z auta",
-            "Napięcie, temperatury i zasięg radio dostaje z auta tylko przy otwartym ekranie „Informacje”. CAR OS otworzy go na 2–4 s i sam wróci – po włączeniu zapłonu i co wybrany czas, gdy CAR OS jest na ekranie (nie przy cofaniu, rozmowie ani tuż przed manewrem)",
+            "Napięcie, temperatury i zasięg radio dostaje z auta tylko przy otwartym ekranie „Informacje”. CAR OS otwiera go na 2–4 s i sam wraca – przy pracującym silniku: po odpaleniu i co wybrany czas, gdy CAR OS jest na ekranie (nie przy cofaniu, rozmowie ani tuż przed manewrem). Odczyt bez pracującego silnika jest odrzucany",
         ) {}
         Row(Modifier.horizontalScroll(androidx.compose.foundation.rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             listOf(-1 to "Wyłączone", 0 to "Po starcie", 5 to "Co 5 min", 10 to "Co 10 min", 15 to "Co 15 min", 30 to "Co 30 min").forEach { (v, l) ->
                 CarChip(l, mode == v, { Prefs.setCarInfoRefresh(v) })
             }
         }
+        val hidden by Prefs.carInfoHidden.collectAsState()
+        var tick by remember { mutableStateOf(0) }
+        LaunchedEffect(Unit) { while (true) { kotlinx.coroutines.delay(2_000); tick++ } }
+        val how = remember(tick) { pl.mati.carlauncher.data.RefreshCover.method(ctx) }
+        SettingRow(
+            "W tle (niewidocznie)",
+            when {
+                !hidden -> "Wyłączone – ekran „Informacje” widać przez 2–4 s"
+                how == pl.mati.carlauncher.data.RefreshCover.Method.ACCESSIBILITY -> "Na czas odświeżania CAR OS kładzie nad wszystkim swój zrzut ekranu – nic nie widać (przez usługę ułatwień dostępu CAR OS)"
+                how == pl.mati.carlauncher.data.RefreshCover.Method.OVERLAY -> "CAR OS kładzie nad wszystkim swój zrzut ekranu – może mignąć tylko górny pasek radia (zniknie, gdy włączysz usługę ułatwień dostępu CAR OS: Ustawienia → System → blokada zasłony)"
+                else -> "Brak zgody na wyświetlanie nad innymi aplikacjami – dotknij, żeby zezwolić"
+            },
+            onClick = {
+                if (hidden && how == null) {
+                    try {
+                        ctx.startActivity(
+                            Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, android.net.Uri.parse("package:" + ctx.packageName))
+                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                        )
+                    } catch (_: Exception) {}
+                } else Prefs.setCarInfoHidden(!hidden)
+            },
+        ) { CarSwitch(hidden) }
         SettingRow(
             "Ekran z danymi auta",
             when {

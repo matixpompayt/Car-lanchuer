@@ -43,6 +43,8 @@ object Prefs {
     val carInfoRefresh = MutableStateFlow(15)
     /** Ręcznie wybrany ekran z danymi auta (ComponentName.flattenToString), null = sam wykryj. */
     val carInfoApp = MutableStateFlow<String?>(null)
+    /** Odświeżanie pod zasłoną (zrzut CAR OS nad ekranem „Informacje”). */
+    val carInfoHidden = MutableStateFlow(true)
     val profile = MutableStateFlow(Profile())
     val wallpaper = MutableStateFlow(0)
     val autoNight = MutableStateFlow(true)
@@ -159,6 +161,7 @@ object Prefs {
         obdMac.value = p.getString("obd_mac", null)
         carInfoRefresh.value = p.getInt("car_info_refresh", 15)
         carInfoApp.value = p.getString("car_info_app", null)
+        carInfoHidden.value = p.getBoolean("car_info_hidden", true)
         wallpaper.value = p.getInt("wallpaper", 0)
         autoNight.value = p.getBoolean("auto_night", true)
         nightNow.value = p.getBoolean("night_now", false)
@@ -254,6 +257,7 @@ object Prefs {
     fun setObdMac(mac: String?) { obdMac.value = mac; edit { putString("obd_mac", mac) } }
     fun setCarInfoRefresh(v: Int) { carInfoRefresh.value = v; edit { putInt("car_info_refresh", v) } }
     fun setCarInfoApp(v: String?) { carInfoApp.value = v; edit { putString("car_info_app", v) } }
+    fun setCarInfoHidden(v: Boolean) { carInfoHidden.value = v; edit { putBoolean("car_info_hidden", v) } }
     fun setWallpaper(i: Int) { wallpaper.value = i; edit { putInt("wallpaper", i) } }
     fun setAutoNight(v: Boolean) { autoNight.value = v; edit { putBoolean("auto_night", v) } }
     fun setNightNow(v: Boolean) { nightNow.value = v; edit { putBoolean("night_now", v) } }

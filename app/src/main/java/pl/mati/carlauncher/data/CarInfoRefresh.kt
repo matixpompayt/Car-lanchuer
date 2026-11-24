@@ -152,12 +152,18 @@ object CarInfoRefresh {
 
     // ---------- kiedy ----------
 
+    /** Ostatnia próba znalazła zgaszony silnik – kiedy spróbować znowu. */
+    @Volatile private var engineOffUntil = 0L
+
+    private fun moving(): Boolean = (LocationRepository.gpsSpeed.value ?: 0) >= 5
+
     private suspend fun schedule(ctx: Context) {
         // nowy zapłon = nowa jazda → odśwież zaraz po starcie
         main.launch {
             var prev: Boolean? = null
             TsCarBridge.acc.collect { on ->
-                if (on == true && prev == false) lastAt.value = 0L
+                if (on == true && prev == false) { lastAt.value = 0L; engineOffUntil = 0L }
+                if (on == false) TsCarBridge.discardRefresh()
                 prev = on
             }
         }
@@ -168,15 +174,18 @@ object CarInfoRefresh {
             val now = System.currentTimeMillis()
             val due = when {
                 mode < 0 -> false
+                TsCarBridge.acc.value == false -> false                  // bez zapłonu dane z auta są złe
                 lastAt.value == 0L -> true
                 mode == 0 -> false
                 else -> now - lastAt.value >= mode * 60_000L
             }
-            if (due && now - lastTry > 60_000 && quiet()) {
+            // silnik był zgaszony: spróbuj za 3 min albo od razu, gdy auto ruszy
+            val engineWait = now < engineOffUntil && !moving()
+            if (due && !engineWait && now - lastTry > 45_000 && quiet()) {
                 lastTry = now
                 if (target(ctx) != null) refresh(manual = false)
             }
-            delay(10_000)
+            delay(5_000)
         }
     }
 
@@ -195,53 +204,92 @@ object CarInfoRefresh {
 
     // ---------- samo odświeżenie ----------
 
-    /** Otwórz ekran „Informacje” na chwilę i wróć. Zwraca false, gdy się nie dało. */
+    /** Otwórz ekran „Informacje” na chwilę (pod zasłoną) i wróć. Zwraca false, gdy się nie dało. */
     fun refresh(manual: Boolean): Boolean {
         val a = act?.get()
         if (a == null || a.isFinishing) return false
         if (running.value) return false
         val app = target(a)
         if (app == null) {
-            lastInfo.value = "Nie znaleziono ekranu informacji o aucie – wybierz aplikację niżej"
-            if (manual) Toaster.show("Nie znaleziono aplikacji z danymi auta – wybierz ją w ustawieniach")
-            return false
-        }
-        val t0 = System.currentTimeMillis()
-        try {
-            val i = Intent(Intent.ACTION_MAIN).setComponent(app.cn).addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION)
-            // „na wynik” – wtedy można go potem zamknąć (finishActivity), a CAR OS wraca na wierzch
-            @Suppress("DEPRECATION")
-            a.startActivityForResult(i, REQ)
-            @Suppress("DEPRECATION")
-            a.overridePendingTransition(0, 0)
-        } catch (e: SecurityException) {
-            lastInfo.value = "MainApp nie pozwala otworzyć „${app.label}” z innej aplikacji – wybierz inny ekran z listy"
-            if (manual) Toaster.show("MainApp nie pozwala otworzyć tego ekranu")
-            return false
-        } catch (e: Exception) {
-            lastInfo.value = "Nie udało się otworzyć „${app.label}” (${e.javaClass.simpleName})"
-            if (manual) Toaster.show("Nie udało się otworzyć „${app.label}”")
+            lastInfo.value = "Nie znaleziono ekranu informacji o aucie – wybierz go niżej"
+            if (manual) Toaster.show("Nie znaleziono ekranu z danymi auta – wybierz go w ustawieniach")
             return false
         }
         running.value = true
         main.launch {
+            // zasłona: zrzut CAR OS nad wszystkim – „Informacje” działa pod spodem
+            aborted = false
+            val cover = Prefs.carInfoHidden.value && RefreshCover.show(a) { aborted = true }
+            if (cover) delay(60)
+            val t0 = System.currentTimeMillis()
+            val err = try {
+                val i = Intent(Intent.ACTION_MAIN).setComponent(app.cn).addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION)
+                // „na wynik” – wtedy można go potem zamknąć (finishActivity), a CAR OS wraca na wierzch
+                @Suppress("DEPRECATION")
+                a.startActivityForResult(i, REQ)
+                @Suppress("DEPRECATION")
+                a.overridePendingTransition(0, 0)
+                null
+            } catch (e: SecurityException) {
+                "MainApp nie pozwala otworzyć „${app.label}” z innej aplikacji – wybierz inny ekran z listy"
+            } catch (e: Exception) {
+                "Nie udało się otworzyć „${app.label}” (${e.javaClass.simpleName})"
+            }
+            if (err != null) {
+                RefreshCover.hide()
+                lastInfo.value = err
+                if (manual) Toaster.show(err.substringBefore(" – "))
+                running.value = false
+                return@launch
+            }
             // czekaj na świeże dane (zmieniły się obroty/napięcie), najdłużej kilka sekund
             var got = false
-            while (true) {
-                delay(250)
+            while (!aborted) {
+                delay(200)
                 val el = System.currentTimeMillis() - t0
                 got = TsCarBridge.lastQueryChange > t0 + 200
                 if (el >= MAX_MS || (got && el >= MIN_MS)) break
             }
-            TsCarBridge.markRefreshed()
+            // silnik: obroty z właśnie odczytanych danych (albo auto jedzie)
+            val engine = TsCarBridge.lastRpmRaw in 300..9000 || moving()
+            if (engine && got) {
+                TsCarBridge.markRefreshed()
+                engineOffUntil = 0L
+                lastAt.value = System.currentTimeMillis()
+            } else if (got) {
+                // bez pracującego silnika wartości są złe (napięcie akumulatora, temperatury) – nie trzymaj ich
+                TsCarBridge.discardRefresh()
+                engineOffUntil = System.currentTimeMillis() + 3 * 60_000L
+            } else {
+                engineOffUntil = System.currentTimeMillis() + 3 * 60_000L
+            }
             back(a)
-            lastAt.value = System.currentTimeMillis()
-            lastInfo.value = if (got) "Dane odświeżone z „${app.label}”" else "Otwarto „${app.label}”, ale dane się nie zmieniły (silnik zgaszony?)"
+            // CAR OS już na wierzchu – zdejmij zasłonę, gdy zdąży się narysować
+            if (cover) {
+                var w = 0
+                while (!ShadeGuard.launcherResumed && w < 15) { delay(100); w++ }
+                delay(350)
+                RefreshCover.hide()
+            }
+            lastInfo.value = when {
+                aborted -> "Przerwano (dotknięto ekranu)"
+                engine && got -> "Dane odświeżone z „${app.label}”" + (if (cover) " – w tle" else "")
+                got -> "Silnik nie pracuje – odczyt bez zapłonu odrzucony, spróbuję po odpaleniu"
+                else -> "Otwarto „${app.label}”, ale dane się nie zmieniły (silnik zgaszony?)"
+            }
             running.value = false
-            if (manual) Toaster.show(if (got) "Dane z auta odświeżone" else "Odświeżono – bez zmian")
+            if (manual) Toaster.show(
+                when {
+                    engine && got -> "Dane z auta odświeżone"
+                    got -> "Silnik nie pracuje – odpal auto i odśwież"
+                    else -> "Odświeżono – bez zmian"
+                },
+            )
         }
         return true
     }
+
+    @Volatile private var aborted = false
 
     private suspend fun back(a: Activity) {
         try { a.finishActivity(REQ) } catch (_: Exception) {}

@@ -103,12 +103,18 @@ object TsCarBridge {
     /** Ekran „Informacje” był przed chwilą otwarty – wartości w MainApp są świeże. */
     fun markRefreshed() { refreshedAt = System.currentTimeMillis() }
 
+    /** Odczyt bez pracującego silnika / po zgaszeniu – nie pokazuj starych wartości. */
+    fun discardRefresh() { refreshedAt = 0L }
+
+    /** Ostatnie obroty z MainApp (surowe, = obr/min). */
+    val lastRpmRaw: Int get() = lastRpm
+
     /** Jak długo trzymać wolno zmienne wartości po odświeżeniu (do następnego + zapas). */
     private fun slowKeepMs(): Long {
         val m = Prefs.carInfoRefresh.value
         return if (m > 0) (m + 3) * 60_000L else 30 * 60_000L
     }
-    private var lastRpm = Int.MIN_VALUE
+    @Volatile private var lastRpm = Int.MIN_VALUE
     private var lastBat = Int.MIN_VALUE
     @Volatile private var groupChanged = 0L
     /** Czy dane z zapytania (obroty, napięcie, temperatura…) są teraz świeże. */
