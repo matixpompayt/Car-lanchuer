@@ -219,7 +219,7 @@ private fun ColumnScope.PlannerPanel(p: RouteRepository.Plan, onAddStop: () -> U
                 StarButton(p.dest)
             }
         }
-        if (p.stops.size < 8) {
+        if (p.stops.size < pl.mati.caros.core.Proto.MAX_STOPS) {
             Row(
                 Modifier.clip(RoundedCornerShape(14.dp)).clickable { RouteRepository.clearResults(); onAddStop() }.padding(vertical = 8.dp, horizontal = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,

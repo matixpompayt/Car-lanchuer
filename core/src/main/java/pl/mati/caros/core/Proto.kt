@@ -77,6 +77,10 @@ object Proto {
     object Feat {
         /** Do 8 przystanków na trasie (wcześniej 3). */
         const val STOPS8 = "stops8"
+        /** Dowolnie dużo przystanków (do [MAX_STOPS]) – stacje i postoje z planu bez limitu 8. */
+        const val STOPS_MANY = "stops_many"
+        /** Duże komendy w częściach ([Parts]) – przekaźnik przyjmuje do 4 KB na wiadomość. */
+        const val PARTS = "parts"
         /** Status z litrami w baku ("fuel.left"). */
         const val FUEL_LEFT = "fuel_left"
         /** Odpowiedź "nack" na nieznaną komendę. */
@@ -103,7 +107,11 @@ object Proto {
     val CAR_CAPS: Set<String> = V1_BASE + setOf(
         Cmd.FUEL_TANK, Cmd.FUEL_RK, Cmd.LOOK, Cmd.SHARE, Cmd.SHARE_END,
         Feat.STOPS8, Feat.FUEL_LEFT, Feat.NACK, Feat.ACK, Feat.CFG_TK, Feat.FUEL_SRC, Feat.LOOK, Feat.PARK_DEST,
+        Feat.STOPS_MANY, Feat.PARTS,
     )
+
+    /** Najwięcej punktów po drodze w jednej trasie (praktycznie bez limitu; OSRM i TomTom przyjmują więcej). */
+    const val MAX_STOPS = 100
 
     /** Druga strona połączenia: wersja protokołu, wersja aplikacji, obsługiwane komendy. */
     data class Peer(val pv: Int, val app: String?, val caps: Set<String>) {

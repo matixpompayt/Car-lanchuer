@@ -226,7 +226,7 @@ fun SmartPlanCar(p: RouteRepository.Plan) {
                                 .clickable { pick[si] = (k + 1) % s.options.size }.padding(horizontal = 12.dp, vertical = 8.dp),
                         ) { Text("Inna ${k + 1}/${s.options.size}", fontSize = 15.sp, color = accent) }
                         val added = p.stops.any { kotlin.math.abs(it.lat - o.place.lat) < 1e-5 && kotlin.math.abs(it.lon - o.place.lon) < 1e-5 }
-                        if (!added && p.stops.size < 8) Box(
+                        if (!added && p.stops.size < pl.mati.caros.core.Proto.MAX_STOPS) Box(
                             Modifier.clip(RoundedCornerShape(12.dp)).background(accent.copy(alpha = 0.18f)).clickable {
                                 SmartRoute.addStopInOrder(r, p.stops, o)
                                 Toaster.show("Dodano przystanek: ${o.place.name}")

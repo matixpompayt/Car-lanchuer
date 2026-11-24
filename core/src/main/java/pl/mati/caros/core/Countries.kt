@@ -119,7 +119,8 @@ object EuFuel {
             m[iso] = c.keys().asSequence().associateWith { c.getDouble(it) }
         }
         prices.value = m
-        date.value = o.optString("date").ifBlank { null }
+        // JSON null → optString daje "null"
+        date.value = o.optString("date").takeIf { it.isNotBlank() && it != "null" }
     }
 
     /** Pobiera plik (najwyżej co 6 h); przy błędzie zostaje kopia z telefonu. */

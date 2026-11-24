@@ -511,8 +511,15 @@ object ConnectRepository {
         return false
     }
 
+    /** Duże komendy z telefonu przychodzą w częściach (np. trasa z kilkudziesięcioma przystankami). */
+    private val joiner = pl.mati.caros.core.Parts.Joiner()
+
     private fun handle(o: JSONObject) {
         val type = o.optString("type")
+        if (type == pl.mati.caros.core.Parts.TYPE) {
+            joiner.add(o)?.let { handle(JSONObject(it)) }
+            return
+        }
         val ph = Proto.phoneFrom(o)
         if (phone.value != ph) {
             phone.value = ph
@@ -550,7 +557,7 @@ object ConnectRepository {
                 }.orEmpty()
                 RouteRepository.planTo(p, via, shape)
                 UiState.go(Screen.NAV)
-                say("Trasa z telefonu: ${p.name}" + if (via.isNotEmpty()) " przez ${via.size} ${if (via.size == 1) "punkt" else "punkty"}" else "")
+                say("Trasa z telefonu: ${p.name}" + if (via.isNotEmpty()) " przez ${via.size} ${punktow(via.size)}" else "")
             }
             "fav_add" -> {
                 val p = place(o)
@@ -726,4 +733,11 @@ object ConnectRepository {
     private fun decrypt(key: ByteArray, msg: String) = RelayCrypto.decrypt(key, msg)
     private fun gzip(b: ByteArray) = RelayCrypto.gzip(b)
     private fun gunzip(b: ByteArray) = RelayCrypto.gunzip(b)
+}
+
+/** 1 punkt, 2–4 punkty, 5 punktów, 22 punkty… */
+internal fun punktow(n: Int): String = when {
+    n == 1 -> "punkt"
+    n % 10 in 2..4 && n % 100 !in 12..14 -> "punkty"
+    else -> "punktów"
 }
