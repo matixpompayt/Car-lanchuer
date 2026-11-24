@@ -2,7 +2,7 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
-## next
+## 2.0-beta.10 · 2026-11-24
 - Auto na żywo: pierwsza pozycja po ruszeniu idzie do telefonu od razu (alarm „auto jedzie bez Ciebie” w CAR OS Connect)
 
 ## 2.0-beta.9 · 2026-11-23
