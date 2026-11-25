@@ -2,7 +2,7 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
-## next
+## 2.0-beta.17 · 2026-11-25
 - Wspólny wygląd: animacje (kropla w menu) już się nie synchronizują między telefonem a radiem – każde urządzenie ma swoje ustawienie (telefon mocniejszy, radio słabsze); Glass, styl szkła, jasny / ciemny i kolor akcentu dalej wspólne
 
 ## 2.0-beta.16 · 2026-11-25
