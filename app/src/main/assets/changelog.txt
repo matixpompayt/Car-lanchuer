@@ -2,7 +2,7 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
-## next
+## 2.0-beta.18 · 2026-11-25
 Stabilność i mapa na karcie SIM
 - Mapa: gdy styl mapy się nie wczyta (np. karta SIM jeszcze bez zasięgu zaraz po starcie, słaby zasięg), CAR OS ponawia wczytanie (co 3–30 s) i od razu, gdy internet wróci – wcześniej mapa zostawała pusta, dopóki nie włączyło się Wi-Fi z telefonu
 - Internet z karty SIM: po pojawieniu się sieci mapa od razu ponawia pobieranie kafelków
