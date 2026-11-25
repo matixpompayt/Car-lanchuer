@@ -2,6 +2,9 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
+## next
+- Wspólny wygląd: animacje (kropla w menu) już się nie synchronizują między telefonem a radiem – każde urządzenie ma swoje ustawienie (telefon mocniejszy, radio słabsze); Glass, styl szkła, jasny / ciemny i kolor akcentu dalej wspólne
+
 ## 2.0-beta.16 · 2026-11-25
 Liquid Glass: gładkie albo matowe szkło (jak w telefonie)
 - Ustawienia → Wygląd → „Styl szkła”: Gładkie szkło – przejrzyste karty, tło motywu widać ostro, a przy krawędzi zagina się jak w soczewce, jaśniejsza krawędź; Matowe szkło – jak dotąd, rozmyte i mleczne

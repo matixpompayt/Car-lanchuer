@@ -10,7 +10,8 @@ import kotlinx.coroutines.launch
 import pl.mati.caros.core.Look
 
 /**
- * Wspólny wygląd z CAR OS Connect: Liquid Glass, jasny / ciemny, kolor akcentu, animacja kropli.
+ * Wspólny wygląd z CAR OS Connect: Liquid Glass (gładkie / matowe), jasny / ciemny, kolor akcentu.
+ * Animacje NIE – telefon jest mocniejszy od radia, każde ma swoje ustawienie.
  * Zmiana w radiu idzie do telefonu w statusie, zmiana w telefonie przychodzi komendą „look” – nowsza wygrywa.
  */
 object LookSync {
@@ -20,6 +21,9 @@ object LookSync {
     private fun tone(mode: String) = when (mode) { "light" -> "light"; "dark" -> "dark"; else -> "auto" }
 
     private fun time() = Prefs.store?.getLong("look_t", 0L) ?: 0L
+
+    /** Do porównań „czy coś się zmieniło” – bez animacji (nie są wspólne). */
+    private fun key(l: Look) = l.copy(anim = true).content
 
     /** Wygląd radia teraz (z czasem ostatniej zmiany). */
     fun current(): Look = Look(Prefs.glassUi.value, tone(Prefs.themeMode.value), Prefs.accent.value, Prefs.glassAnim.value, time(), Prefs.glassFrost.value)
@@ -31,7 +35,7 @@ object LookSync {
         started = true
         scope.launch {
             delay(3000) // ustawienia wczytane
-            combine(Prefs.glassUi, Prefs.themeMode, Prefs.accent, Prefs.glassAnim, Prefs.glassFrost) { _, _, _, _, _ -> current().content }
+            combine(Prefs.glassUi, Prefs.themeMode, Prefs.accent, Prefs.glassFrost) { _, _, _, _ -> key(current()) }
                 .debounce(1500)
                 .collect { c ->
                     val sp = Prefs.store ?: return@collect
@@ -56,14 +60,14 @@ object LookSync {
             "light", "dark" -> l.tone
             else -> Prefs.themeMode.value.takeIf { it != "light" && it != "dark" } ?: "lights"
         }
-        val target = Look(l.glass, tone(mode), l.accent ?: Prefs.accent.value, l.anim, frost = l.frost ?: Prefs.glassFrost.value)
-        val changed = target.content != current().content
+        // animacja zostaje radia (telefon jest mocniejszy – tam może być włączona)
+        val target = Look(l.glass, tone(mode), l.accent ?: Prefs.accent.value, Prefs.glassAnim.value, frost = l.frost ?: Prefs.glassFrost.value)
+        val changed = key(target) != key(current())
         // najpierw „zsynchronizowany” stan – nasłuch zmian nie uzna tego za zmianę w radiu
-        Prefs.store?.edit()?.putString("look_c", target.content)?.putLong("look_t", l.t)?.apply()
+        Prefs.store?.edit()?.putString("look_c", key(target))?.putLong("look_t", l.t)?.apply()
         if (Prefs.glassUi.value != l.glass) Prefs.setGlassUi(l.glass)
         if (Prefs.themeMode.value != mode) Prefs.setThemeMode(mode)
         l.accent?.let { if (it != Prefs.accent.value) Prefs.setAccent(it) }
-        if (Prefs.glassAnim.value != l.anim) Prefs.setGlassAnim(l.anim)
         l.frost?.let { if (Prefs.glassFrost.value != it) Prefs.setGlassFrost(it) }
         return if (changed) l.describe() else null
     }

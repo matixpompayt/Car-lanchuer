@@ -265,7 +265,7 @@ private fun LazyListScope.lookPage() {
         val a by Prefs.glassAnim.collectAsState()
         if (g) SettingRow(
             "Animacja kropli w menu",
-            if (a) "Kropla przelewa się między ikonami i powiększa je" else "Wyłączona – kropla od razu przeskakuje, wygląd Glass zostaje",
+            (if (a) "Kropla przelewa się między ikonami i powiększa je" else "Wyłączona – kropla od razu przeskakuje, wygląd Glass zostaje") + " · tylko w radiu, telefon ma swoje",
             onClick = { Prefs.setGlassAnim(!a) },
         ) { CarSwitch(a) }
     }
@@ -273,7 +273,7 @@ private fun LazyListScope.lookPage() {
         val ls by Prefs.lookSync.collectAsState()
         SettingRow(
             "Ten sam wygląd w CAR OS Connect",
-            if (ls) "Glass, jasny / ciemny i kolor akcentu zmieniają się razem w radiu i w telefonie" else "Wyłączone – radio i telefon mają osobny wygląd",
+            if (ls) "Glass (gładkie / matowe), jasny / ciemny i kolor akcentu zmieniają się razem w radiu i w telefonie – animacje każde ma swoje" else "Wyłączone – radio i telefon mają osobny wygląd",
             leading = Icons.Rounded.AutoAwesome,
             onClick = { Prefs.setLookSync(!ls) },
         ) { CarSwitch(ls) }
