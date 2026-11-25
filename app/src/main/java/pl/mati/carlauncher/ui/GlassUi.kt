@@ -6,6 +6,12 @@ import android.graphics.Paint
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -72,6 +78,8 @@ object GlassUi {
     var on by mutableStateOf(false)
     /** Rozmyte tło motywu (null przy jednolitym tle – wtedy szkło to sam półprzezroczysty odcień). */
     var blurred by mutableStateOf<ImageBitmap?>(null)
+    /** Ostre tło motywu (połowa rozdzielczości) – do załamania światła na krawędziach gładkiego szkła. */
+    var sharp by mutableStateOf<ImageBitmap?>(null)
     var rootSize by mutableStateOf(IntSize.Zero)
 }
 
@@ -89,14 +97,36 @@ fun GlassBackdropSync() {
     val light = CarColors.isLight
     val size = GlassUi.rootSize
     LaunchedEffect(glass, th.id, wall, light, size) {
-        if (!glass || size.width <= 0 || th.bg == BgStyle.SOLID) { GlassUi.blurred = null; return@LaunchedEffect }
+        if (!glass || size.width <= 0 || th.bg == BgStyle.SOLID) { GlassUi.blurred = null; GlassUi.sharp = null; return@LaunchedEffect }
         delay(300) // przejście dzień/noc trwa ok. 1 s – licz po zmianie, nie w trakcie
         val brush = themeBackground(th, wall)
         val bg = th.bg
         GlassUi.blurred = withContext(Dispatchers.Default) {
             try { renderBlur(brush, bg, size.width, size.height) } catch (_: Throwable) { null }
         }
+        GlassUi.sharp = withContext(Dispatchers.Default) {
+            try { renderBg(brush, bg, size.width, size.height, 0.5f) } catch (_: Throwable) { null }
+        }
     }
+}
+
+/** Tło motywu do bitmapy w skali [k] (bez rozmycia). */
+private fun renderBg(brush: Brush, bg: BgStyle, w: Int, h: Int, k: Float): ImageBitmap {
+    val sw = max(4, (w * k).roundToInt()); val sh = max(4, (h * k).roundToInt())
+    val img = ImageBitmap(sw, sh)
+    val canvas = androidx.compose.ui.graphics.Canvas(img)
+    CanvasDrawScope().draw(Density(1f), LayoutDirection.Ltr, canvas, Size(sw.toFloat(), sh.toFloat())) {
+        scale(k, k, pivot = Offset.Zero) {
+            drawRect(brush, size = Size(w.toFloat(), h.toFloat()))
+            when (bg) {
+                BgStyle.SPORT -> drawCarbon(w.toFloat(), h.toFloat())
+                BgStyle.RETRO -> drawRetro(w.toFloat(), h.toFloat())
+                BgStyle.MIAMI -> drawMiami(w.toFloat(), h.toFloat(), CarColors.isLight)
+                else -> {}
+            }
+        }
+    }
+    return img
 }
 
 private fun renderBlur(brush: Brush, bg: BgStyle, w: Int, h: Int): ImageBitmap {
@@ -169,47 +199,97 @@ fun Modifier.carSurface(shape: Shape, color: Color = CarColors.Card, heavy: Bool
         val depth = LocalGlassDepth.current
         val light = CarColors.isLight
         val onMap = color == CarColors.Overlay
+        val frost by Prefs.glassFrost.collectAsState()
         val pos = remember { mutableStateOf(Offset.Zero) }
         this.onGloballyPositioned { pos.value = it.positionInRoot() }
             .drawWithCache {
                 val outline = shape.createOutline(size, layoutDirection, this)
                 val path = Path().apply { addOutline(outline) }
+                val clear = !frost
                 val sheen = Brush.verticalGradient(
-                    0f to Color.White.copy(alpha = if (light) 0.32f else 0.10f),
+                    0f to Color.White.copy(alpha = if (light) 0.32f else if (clear) 0.13f else 0.10f),
                     0.45f to Color.Transparent,
                     startY = 0f, endY = size.height,
                 )
+                // gładkie szkło: jaśniejsza, ostrzejsza krawędź (światło z lewej u góry)
                 val rim = Brush.linearGradient(
-                    0f to Color.White.copy(alpha = if (light) 0.95f else 0.48f),
-                    0.45f to Color.White.copy(alpha = if (light) 0.35f else 0.05f),
-                    1f to Color.White.copy(alpha = if (light) 0.7f else 0.20f),
+                    0f to Color.White.copy(alpha = if (light) 0.95f else if (clear) 0.75f else 0.48f),
+                    0.45f to Color.White.copy(alpha = if (light) 0.35f else if (clear) 0.10f else 0.05f),
+                    1f to Color.White.copy(alpha = if (light) 0.7f else if (clear) 0.38f else 0.20f),
                     start = Offset.Zero, end = Offset(size.width, size.height),
                 )
-                val stroke = Stroke(1.dp.toPx())
+                val stroke = Stroke((if (clear) 1.3f else 1f).dp.toPx())
+                val glow = Stroke(5.dp.toPx())
+                // załamanie światła przy krawędzi: pierścienie tła coraz mocniej „ściągane” z zewnątrz
+                val lens = if (!clear || depth > 0 || onMap || heavy) emptyList() else glassLensRings(shape, size, layoutDirection, this)
                 onDrawBehind {
                     val blur = GlassUi.blurred
+                    val sharp = GlassUi.sharp
                     val root = GlassUi.rootSize
                     // nakładki na mapie (Overlay) nie pokazują tapety – pod nimi jest mapa
                     val sample = depth == 0 && blur != null && root.width > 0 && !onMap
-                    // odcień w kolorze motywu: na rozmytym tle lżejszy, bez tła (mapa, czerń) – mocniejszy
+                    // odcień w kolorze motywu: na rozmytym tle lżejszy, bez tła (mapa, czerń) – mocniejszy;
+                    // gładkie szkło – prawie przezroczyste (widać tło motywu pod kartą)
                     val a = when {
                         depth > 0 -> if (light) 0.30f else 0.0f
+                        clear && !heavy && !onMap -> if (light) 0.30f else 0.20f
                         sample -> if (heavy) 0.62f else if (light) 0.52f else 0.40f
                         else -> if (heavy) 0.88f else 0.74f
                     }
                     clipPath(path) {
-                        if (sample) {
+                        if (sample && (!clear || heavy)) {
                             val p = pos.value
                             drawImage(blur!!, dstOffset = IntOffset(-p.x.roundToInt(), -p.y.roundToInt()), dstSize = root, filterQuality = FilterQuality.Low)
                         }
+                        if (lens.isNotEmpty() && sharp != null && root.width > 0) {
+                            val p = pos.value
+                            val c = Offset(size.width / 2f, size.height / 2f)
+                            lens.forEach { r ->
+                                clipPath(r.ring) {
+                                    scale(r.sx, r.sy, pivot = c) {
+                                        drawImage(sharp, dstOffset = IntOffset(-p.x.roundToInt(), -p.y.roundToInt()), dstSize = root, filterQuality = FilterQuality.Low)
+                                    }
+                                }
+                            }
+                        }
                         if (a > 0f) drawRect(color.copy(alpha = (color.alpha * a).coerceIn(0f, 1f)))
-                        drawRect(Color.White.copy(alpha = if (depth > 0) (if (light) 0.0f else 0.06f) else if (light) 0.08f else 0.05f))
+                        drawRect(Color.White.copy(alpha = if (depth > 0) (if (light) 0.0f else 0.06f) else if (light) 0.08f else if (clear) 0.03f else 0.05f))
                         drawRect(sheen)
+                        // grubość szkła: miękka poświata od środka krawędzi
+                        if (clear && depth == 0) drawOutline(outline, Color.White.copy(alpha = if (light) 0.18f else 0.07f), style = glow)
                     }
                     drawOutline(outline, rim, style = stroke)
                 }
             }
     }
+
+/** Pierścień przy krawędzi karty i skala, w jakiej rysujemy w nim tło (mniejsza = mocniej załamane). */
+private class LensRing(val ring: Path, val sx: Float, val sy: Float)
+
+/** 3 pierścienie od środka do krawędzi – im bliżej brzegu, tym więcej tła zza krawędzi (jak w soczewce). */
+private fun glassLensRings(shape: Shape, size: Size, dir: LayoutDirection, d: Density): List<LensRing> {
+    if (size.width < 24f || size.height < 24f) return emptyList()
+    val bevel = minOf(with(d) { 16.dp.toPx() }, size.minDimension * 0.3f)
+    val refr = with(d) { 9.dp.toPx() }
+    val steps = 3
+    fun inset(i: Float): Path {
+        val w = size.width - 2 * i
+        val h = size.height - 2 * i
+        return Path().apply {
+            addOutline(shape.createOutline(Size(w.coerceAtLeast(1f), h.coerceAtLeast(1f)), dir, d))
+            translate(Offset(i, i))
+        }
+    }
+    return (0 until steps).map { k ->
+        val outer = bevel * (steps - k) / steps          // od środka ku krawędzi
+        val inner = bevel * (steps - k - 1) / steps
+        val ring = Path().apply { op(inset(inner), inset(outer), androidx.compose.ui.graphics.PathOperation.Difference) }
+        // przesunięcie rośnie do krawędzi (^2)
+        val t = (k + 1f) / steps
+        val off = refr * t * t
+        LensRing(ring, 1f - 2f * off / size.width, 1f - 2f * off / size.height)
+    }
+}
 
 // ======================= kształt kropli =======================
 
@@ -431,5 +511,93 @@ fun GlassSwitch(on: Boolean) {
                 style = Stroke(1.3.dp.toPx()),
             )
         }
+    }
+}
+
+// ======================= wybór stylu szkła (jak w telefonie) =======================
+
+/** „Styl wizualny”: gładkie szkło (przejrzyste, załamanie na krawędziach) albo matowe (rozmyte). */
+@Composable
+fun GlassStylePicker() {
+    val frost by Prefs.glassFrost.collectAsState()
+    androidx.compose.foundation.layout.Column(verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(10.dp)) {
+        androidx.compose.material3.Text("Styl szkła", fontSize = 20.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold, color = CarColors.Text)
+        androidx.compose.foundation.layout.Row(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(16.dp)) {
+            GlassStyleTile("Gładkie szkło", "Przejrzyste, tło zagina się na krawędziach", sel = !frost, frost = false) { Prefs.setGlassFrost(false) }
+            GlassStyleTile("Matowe szkło", "Rozmyte tło, lepiej czytelne", sel = frost, frost = true) { Prefs.setGlassFrost(true) }
+        }
+    }
+}
+
+@Composable
+private fun GlassStyleTile(title: String, sub: String, sel: Boolean, frost: Boolean, onClick: () -> Unit) {
+    val accent = LocalAccent.current
+    val shape = androidx.compose.foundation.shape.RoundedCornerShape(26.dp)
+    androidx.compose.foundation.layout.Column(
+        Modifier.width(300.dp).clip(shape).clickable(onClick = onClick).padding(bottom = 6.dp),
+        horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
+        verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(6.dp),
+    ) {
+        androidx.compose.foundation.Canvas(
+            Modifier.size(width = 300.dp, height = 176.dp)
+                .border(if (sel) 3.dp else 1.dp, if (sel) accent else CarColors.Border, shape)
+                .padding(6.dp),
+        ) { drawGlassPreview(frost) }
+        androidx.compose.material3.Text(title, fontSize = 19.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold, color = if (sel) accent else CarColors.Text)
+        androidx.compose.material3.Text(sub, fontSize = 14.sp, color = CarColors.Muted, maxLines = 1)
+    }
+}
+
+/** Podgląd: niebieskie fale (jak tapeta w telefonie) i szklana kapsuła na środku. */
+private fun DrawScope.drawGlassPreview(frost: Boolean) {
+    val w = size.width
+    val h = size.height
+    val r = 22.dp.toPx()
+    val bg = Path().apply { addRoundRect(androidx.compose.ui.geometry.RoundRect(0f, 0f, w, h, androidx.compose.ui.geometry.CornerRadius(r))) }
+    fun scene(dx: Float = 0f, dy: Float = 0f, sx: Float = 1f, sy: Float = 1f) {
+        scale(sx, sy, pivot = Offset(w / 2f, h / 2f)) {
+            translate(dx, dy) {
+                drawRect(Brush.linearGradient(listOf(Color(0xFFDDE6F3), Color(0xFF8FB8EA), Color(0xFF2E6BD6)), Offset(0f, 0f), Offset(w, h)))
+                val p1 = Path().apply { moveTo(-0.1f * w, 0.25f * h); cubicTo(0.35f * w, 0.05f * h, 0.55f * w, 0.95f * h, 1.1f * w, 0.75f * h) }
+                drawPath(p1, Color(0xFF1C47B8), style = Stroke(0.07f * h))
+                val p2 = Path().apply { moveTo(0.75f * w, -0.1f * h); cubicTo(0.9f * w, 0.3f * h, 0.85f * w, 0.7f * h, 0.98f * w, 1.1f * h) }
+                drawPath(p2, Color(0xFF0B2E8F), style = Stroke(0.05f * h))
+                drawCircle(Color(0xFF4A86E0), radius = 0.45f * h, center = Offset(0.15f * w, 1.05f * h))
+            }
+        }
+    }
+    clipPath(bg) {
+        scene()
+        // kapsuła
+        val pw = w * 0.72f
+        val ph = h * 0.34f
+        val px = (w - pw) / 2f
+        val py = (h - ph) / 2f
+        val pill = Path().apply { addRoundRect(androidx.compose.ui.geometry.RoundRect(px, py, px + pw, py + ph, androidx.compose.ui.geometry.CornerRadius(ph / 2f))) }
+        clipPath(pill) {
+            if (frost) {
+                // matowe: mleczne i rozmyte (przybliżenie: kilka przesuniętych kopii + mleko)
+                for (i in -2..2) for (j in -1..1) scene(i * 6f, j * 6f)
+                drawRect(Color.White.copy(alpha = 0.42f))
+            } else {
+                // gładkie: ostre tło, przy krawędzi zagięte (pierścienie z rosnącą skalą)
+                scene()
+                val steps = 4
+                for (k in 0 until steps) {
+                    val t = (k + 1f) / steps
+                    val ins = ph * 0.32f * (1f - t)
+                    val ring = Path().apply {
+                        val inner = Path().apply { addRoundRect(androidx.compose.ui.geometry.RoundRect(px + ins + 4f, py + ins + 4f, px + pw - ins - 4f, py + ph - ins - 4f, androidx.compose.ui.geometry.CornerRadius((ph / 2f - ins - 4f).coerceAtLeast(1f)))) }
+                        val outer = Path().apply { addRoundRect(androidx.compose.ui.geometry.RoundRect(px + ins, py + ins, px + pw - ins, py + ph - ins, androidx.compose.ui.geometry.CornerRadius((ph / 2f - ins).coerceAtLeast(1f)))) }
+                        op(outer, inner, androidx.compose.ui.graphics.PathOperation.Difference)
+                    }
+                    val off = 14f * t * t
+                    clipPath(ring) { scene(sx = 1f - 2f * off / pw, sy = 1f - 2f * off / ph) }
+                }
+                drawRect(Color.White.copy(alpha = 0.10f))
+            }
+            drawRect(Brush.verticalGradient(0f to Color.White.copy(alpha = 0.35f), 0.5f to Color.Transparent, startY = py, endY = py + ph))
+        }
+        drawPath(pill, Brush.linearGradient(listOf(Color.White, Color.White.copy(alpha = 0.2f), Color.White.copy(alpha = 0.7f)), Offset(px, py), Offset(px + pw, py + ph)), style = Stroke(2.dp.toPx()))
     }
 }

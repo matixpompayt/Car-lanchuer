@@ -94,6 +94,8 @@ object Prefs {
     val glassUi = MutableStateFlow(false)
     /** Animacja kropli w menu Glass (wył. = kropla od razu przeskakuje, wygląd zostaje). */
     val glassAnim = MutableStateFlow(true)
+    /** Styl szkła: false = gładkie (przejrzyste, załamanie na krawędziach), true = matowe (rozmyte). */
+    val glassFrost = MutableStateFlow(false)
     /** Wygląd (Glass, jasny / ciemny, akcent) taki sam jak w CAR OS Connect – w obie strony. */
     val lookSync = MutableStateFlow(true)
     /** Nie pozwalaj wysuwać systemowego paska / zasłony powiadomień nad CAR OS. */
@@ -198,6 +200,7 @@ object Prefs {
         animations.value = p.getBoolean("animations", true)
         glassUi.value = p.getBoolean("glass_ui", false)
         glassAnim.value = p.getBoolean("glass_anim", true)
+        glassFrost.value = p.getBoolean("glass_frost", false)
         lookSync.value = p.getBoolean("look_sync", true)
         blockStatusBar.value = p.getBoolean("block_status_bar", true)
         themeMode.value = p.getString("theme_mode", "lights") ?: "lights"
@@ -325,6 +328,7 @@ object Prefs {
     fun setAnimations(v: Boolean) { animations.value = v; edit { putBoolean("animations", v) } }
     fun setGlassUi(v: Boolean) { glassUi.value = v; edit { putBoolean("glass_ui", v) } }
     fun setGlassAnim(v: Boolean) { glassAnim.value = v; edit { putBoolean("glass_anim", v) } }
+    fun setGlassFrost(v: Boolean) { glassFrost.value = v; edit { putBoolean("glass_frost", v) } }
     fun setLookSync(v: Boolean) { lookSync.value = v; edit { putBoolean("look_sync", v) } }
     fun setSpeedLimits(v: Boolean) { speedLimits.value = v; edit { putBoolean("speed_limits", v) } }
     fun setSpeedTolerance(v: Int) { speedTolerance.value = v.coerceIn(0, 20); edit { putInt("speed_tol", speedTolerance.value) } }

@@ -2,6 +2,12 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
+## next
+Liquid Glass: gładkie albo matowe szkło (jak w telefonie)
+- Ustawienia → Wygląd → „Styl szkła”: Gładkie szkło – przejrzyste karty, tło motywu widać ostro, a przy krawędzi zagina się jak w soczewce, jaśniejsza krawędź; Matowe szkło – jak dotąd, rozmyte i mleczne
+- Gładkie jest teraz domyślne; okna i nakładki na mapie zostają mocniej przyciemnione (czytelność)
+- Styl szkła synchronizuje się z CAR OS Connect (wspólny wygląd)
+
 ## 2.0-beta.15 · 2026-11-24
 - Trasa: dowolnie dużo przystanków (do 100) – także z telefonu (stacje i postoje z planu podróży), wcześniej najwyżej 8
 - Duże trasy z telefonu przychodzą w częściach (przekaźnik przyjmuje do 4 KB na wiadomość) – radio składa je samo

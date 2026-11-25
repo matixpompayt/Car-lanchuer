@@ -258,6 +258,10 @@ private fun LazyListScope.lookPage() {
     }
     item {
         val g by Prefs.glassUi.collectAsState()
+        if (g) GlassStylePicker()
+    }
+    item {
+        val g by Prefs.glassUi.collectAsState()
         val a by Prefs.glassAnim.collectAsState()
         if (g) SettingRow(
             "Animacja kropli w menu",

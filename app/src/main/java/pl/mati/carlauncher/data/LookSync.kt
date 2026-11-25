@@ -22,7 +22,7 @@ object LookSync {
     private fun time() = Prefs.store?.getLong("look_t", 0L) ?: 0L
 
     /** Wygląd radia teraz (z czasem ostatniej zmiany). */
-    fun current(): Look = Look(Prefs.glassUi.value, tone(Prefs.themeMode.value), Prefs.accent.value, Prefs.glassAnim.value, time())
+    fun current(): Look = Look(Prefs.glassUi.value, tone(Prefs.themeMode.value), Prefs.accent.value, Prefs.glassAnim.value, time(), Prefs.glassFrost.value)
 
     /** Zmiany w ustawieniach radia → nowy czas wyglądu i status do telefonu. */
     @OptIn(kotlinx.coroutines.FlowPreview::class)
@@ -31,7 +31,7 @@ object LookSync {
         started = true
         scope.launch {
             delay(3000) // ustawienia wczytane
-            combine(Prefs.glassUi, Prefs.themeMode, Prefs.accent, Prefs.glassAnim) { _, _, _, _ -> current().content }
+            combine(Prefs.glassUi, Prefs.themeMode, Prefs.accent, Prefs.glassAnim, Prefs.glassFrost) { _, _, _, _, _ -> current().content }
                 .debounce(1500)
                 .collect { c ->
                     val sp = Prefs.store ?: return@collect
@@ -56,7 +56,7 @@ object LookSync {
             "light", "dark" -> l.tone
             else -> Prefs.themeMode.value.takeIf { it != "light" && it != "dark" } ?: "lights"
         }
-        val target = Look(l.glass, tone(mode), l.accent ?: Prefs.accent.value, l.anim)
+        val target = Look(l.glass, tone(mode), l.accent ?: Prefs.accent.value, l.anim, frost = l.frost ?: Prefs.glassFrost.value)
         val changed = target.content != current().content
         // najpierw „zsynchronizowany” stan – nasłuch zmian nie uzna tego za zmianę w radiu
         Prefs.store?.edit()?.putString("look_c", target.content)?.putLong("look_t", l.t)?.apply()
@@ -64,6 +64,7 @@ object LookSync {
         if (Prefs.themeMode.value != mode) Prefs.setThemeMode(mode)
         l.accent?.let { if (it != Prefs.accent.value) Prefs.setAccent(it) }
         if (Prefs.glassAnim.value != l.anim) Prefs.setGlassAnim(l.anim)
+        l.frost?.let { if (Prefs.glassFrost.value != it) Prefs.setGlassFrost(it) }
         return if (changed) l.describe() else null
     }
 }

@@ -14,17 +14,20 @@ data class Look(
     val accent: Int? = null,
     val anim: Boolean = true,
     val t: Long = 0L,
+    /** Styl szkła: true = matowe (rozmyte), false = gładkie (przejrzyste z załamaniem), null = nie podano (starsza wersja). */
+    val frost: Boolean? = null,
 ) {
     /** To samo bez znacznika czasu – do porównań „czy coś się zmieniło”. */
-    val content: String get() = "$glass|$tone|${accent ?: ""}|$anim"
+    val content: String get() = "$glass|$tone|${accent ?: ""}|$anim" + (frost?.let { "|$it" } ?: "")
 
     fun toJson(): JSONObject = JSONObject()
         .put("glass", glass).put("tone", tone)
         .put("accent", accent?.toLong()?.and(0xFFFFFFFFL) ?: JSONObject.NULL)
         .put("anim", anim).put("t", t)
+        .apply { frost?.let { put("frost", it) } }
 
     /** Krótki opis do komunikatów: „Liquid Glass · ciemny”. */
-    fun describe(): String = (if (glass) "Liquid Glass" else "Klasyczny") + " · " + when (tone) {
+    fun describe(): String = (if (glass) "Liquid Glass" + (frost?.let { if (it) " matowe" else " gładkie" } ?: "") else "Klasyczny") + " · " + when (tone) {
         "light" -> "jasny"
         "dark" -> "ciemny"
         else -> "automatycznie jasny / ciemny"
@@ -37,7 +40,8 @@ data class Look(
             if (o == null) return null
             val tone = o.optString("tone").takeIf { it in TONES } ?: return null
             val acc = if (o.has("accent") && !o.isNull("accent")) o.optLong("accent").toInt() else null
-            return Look(o.optBoolean("glass"), tone, acc, o.optBoolean("anim", true), o.optLong("t"))
+            val frost = if (o.has("frost") && !o.isNull("frost")) o.optBoolean("frost") else null
+            return Look(o.optBoolean("glass"), tone, acc, o.optBoolean("anim", true), o.optLong("t"), frost)
         }
 
         /** Kolory akcentu do wyboru – te same w obu aplikacjach. */
