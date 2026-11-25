@@ -2,6 +2,13 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
+## next
+Stabilność i mapa na karcie SIM
+- Mapa: gdy styl mapy się nie wczyta (np. karta SIM jeszcze bez zasięgu zaraz po starcie, słaby zasięg), CAR OS ponawia wczytanie (co 3–30 s) i od razu, gdy internet wróci – wcześniej mapa zostawała pusta, dopóki nie włączyło się Wi-Fi z telefonu
+- Internet z karty SIM: po pojawieniu się sieci mapa od razu ponawia pobieranie kafelków
+- Dziennik błędów: awarie, zacięcia (ekran nie odpowiada dłużej niż 5 s – z miejscem w kodzie), stan internetu (Wi-Fi / karta SIM), ładowanie mapy i brak pamięci; po awarii lub zacięciu wysyła się sam do CAR OS Connect (Ustawienia → Raport danych z radia), ręcznie: Ustawienia → System → „Dziennik błędów”
+- Liquid Glass w radiu lżejszy: gładkie szkło bez „soczewki” na krawędziach (dużo rysowania na słabym radiu – mogło zacinać)
+
 ## 2.0-beta.17 · 2026-11-25
 - Wspólny wygląd: animacje (kropla w menu) już się nie synchronizują między telefonem a radiem – każde urządzenie ma swoje ustawienie (telefon mocniejszy, radio słabsze); Glass, styl szkła, jasny / ciemny i kolor akcentu dalej wspólne
 

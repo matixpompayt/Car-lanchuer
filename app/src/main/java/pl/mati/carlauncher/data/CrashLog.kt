@@ -33,6 +33,10 @@ object CrashLog {
                 val text = "CAR OS ${BuildConfig.VERSION_NAME} – błąd $time\n" +
                     "Wątek: ${t.name}\nUrządzenie: ${Build.MANUFACTURER} ${Build.MODEL} (${Build.HARDWARE}), Android ${Build.VERSION.RELEASE}\n\n$sw"
                 File(app.filesDir, FILE).writeText(text)
+                // też do dziennika błędów (ostatnie awarie, wysyłany do telefonu)
+                val all = File(app.filesDir, Diag.CRASHES)
+                all.appendText("\n=== AWARIA ===\n$text")
+                if (all.length() > 120_000) all.writeText(all.readText().takeLast(90_000))
             } catch (_: Throwable) {
             }
             prev?.uncaughtException(t, e)
@@ -46,6 +50,7 @@ object CrashLog {
         val text = try { f.readText() } catch (_: Exception) { return }
         f.delete()
         val path = saveText(ctx, "CarOS-blad.txt", text)
+        Diag.onPreviousCrash()
         pl.mati.carlauncher.ui.Toaster.show(
             "CAR OS wcześniej się wyłączył – opis błędu zapisany" + (path?.let { ": $it" } ?: ""),
         )

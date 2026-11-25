@@ -278,6 +278,7 @@ object CarInfoRefresh {
                 else -> "Otwarto „${app.label}”, ale dane się nie zmieniły (silnik zgaszony?)"
             }
             running.value = false
+            Diag.log("Dane z auta: ${lastInfo.value}")
             if (manual) Toaster.show(
                 when {
                     engine && got -> "Dane z auta odświeżone"

@@ -104,9 +104,7 @@ fun GlassBackdropSync() {
         GlassUi.blurred = withContext(Dispatchers.Default) {
             try { renderBlur(brush, bg, size.width, size.height) } catch (_: Throwable) { null }
         }
-        GlassUi.sharp = withContext(Dispatchers.Default) {
-            try { renderBg(brush, bg, size.width, size.height, 0.5f) } catch (_: Throwable) { null }
-        }
+        GlassUi.sharp = null
     }
 }
 
@@ -220,8 +218,8 @@ fun Modifier.carSurface(shape: Shape, color: Color = CarColors.Card, heavy: Bool
                 )
                 val stroke = Stroke((if (clear) 1.3f else 1f).dp.toPx())
                 val glow = Stroke(5.dp.toPx())
-                // załamanie światła przy krawędzi: pierścienie tła coraz mocniej „ściągane” z zewnątrz
-                val lens = if (!clear || depth > 0 || onMap || heavy) emptyList() else glassLensRings(shape, size, layoutDirection, this)
+                // radio jest słabe: gładkie szkło bez „soczewki” na krawędzi (pierścienie tła kosztowały dużo rysowania)
+                val lens = emptyList<LensRing>()
                 onDrawBehind {
                     val blur = GlassUi.blurred
                     val sharp = GlassUi.sharp

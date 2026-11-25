@@ -44,6 +44,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         pl.mati.carlauncher.data.CrashLog.install(this)
         Prefs.init(this)
+        // dziennik błędów: zacięcia, internet (Wi-Fi / karta SIM), mapa, pamięć
+        pl.mati.carlauncher.data.Diag.start(this)
         pl.mati.carlauncher.data.Changelog.init(this)
         // tryb dzień/noc znany od pierwszej klatki (także ekran startowy)
         pl.mati.carlauncher.data.ThemeManager.start(this)
@@ -146,6 +148,11 @@ class MainActivity : ComponentActivity() {
     }
 
     private var probeStarted = false
+
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        pl.mati.carlauncher.data.Diag.onTrim(level)
+    }
 
     override fun onResume() {
         super.onResume()

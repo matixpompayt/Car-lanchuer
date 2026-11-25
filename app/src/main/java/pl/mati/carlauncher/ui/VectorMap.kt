@@ -104,8 +104,45 @@ private class VectorHolder(ctx: Context) {
                     if (!previewing) main.postDelayed(autoReturn, AUTO_RETURN_MS)
                 }
             }
-            m.setStyle(Style.Builder().fromUri(CarMapStyle.STYLE_URL)) { st -> onStyle(ctx, m, st) }
+            loadStyle(ctx)
         }
+        // styl mapy się nie wczytał (np. karta SIM jeszcze bez zasięgu po starcie) – spróbuj znowu
+        view.addOnDidFailLoadingMapListener { msg ->
+            pl.mati.carlauncher.data.Diag.mapState = "błąd: $msg"
+            pl.mati.carlauncher.data.Diag.log("Mapa: nie wczytała się – $msg (sieć: ${pl.mati.carlauncher.data.Diag.netDesc})")
+            if (!ready) {
+                styleTries++
+                retryH.removeCallbacks(retry)
+                retryH.postDelayed(retry, (3_000L * styleTries).coerceAtMost(30_000L))
+            }
+        }
+    }
+
+    private val appCtx: Context = ctx.applicationContext
+    private var styleTries = 0
+    private var styleAt = 0L
+    private val retryH = android.os.Handler(android.os.Looper.getMainLooper())
+    private val retry = Runnable { loadStyle(appCtx) }
+
+    private fun loadStyle(ctx: Context) {
+        val m = map ?: return
+        if (ready) return
+        styleAt = android.os.SystemClock.uptimeMillis()
+        pl.mati.carlauncher.data.Diag.mapState = "ładuje styl (próba ${styleTries + 1})"
+        if (styleTries > 0) pl.mati.carlauncher.data.Diag.log("Mapa: ponawiam wczytanie (próba ${styleTries + 1}, sieć: ${pl.mati.carlauncher.data.Diag.netDesc})")
+        m.setStyle(Style.Builder().fromUri(CarMapStyle.STYLE_URL)) { st ->
+            val ms = android.os.SystemClock.uptimeMillis() - styleAt
+            pl.mati.carlauncher.data.Diag.mapState = "wczytana"
+            pl.mati.carlauncher.data.Diag.log("Mapa: wczytana w ${ms} ms (próba ${styleTries + 1}, sieć: ${pl.mati.carlauncher.data.Diag.netDesc})")
+            onStyle(ctx, m, st)
+        }
+    }
+
+    /** Internet wrócił – gdy mapa wciąż pusta, wczytaj od razu. */
+    fun retryNow() {
+        if (ready || map == null) return
+        retryH.removeCallbacks(retry)
+        loadStyle(appCtx)
     }
 
     @SuppressLint("MissingPermission")
@@ -776,6 +813,10 @@ fun VectorMap(modifier: Modifier, full: Boolean = false) {
         }
     }
 
+    // internet wrócił (karta SIM / Wi-Fi) – pusta mapa wczytuje się od razu, bez czekania
+    LaunchedEffect(h) {
+        pl.mati.carlauncher.data.Diag.online.collect { if (it == true) h.retryNow() }
+    }
     Box(modifier) {
         AndroidView(factory = { h.view }, modifier = Modifier.fillMaxSize())
         // styl Miami w 3D: palmy wzdłuż ulic i poświata zachodu słońca

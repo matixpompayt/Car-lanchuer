@@ -1509,6 +1509,21 @@ private fun LazyListScope.systemPage() {
     }
     item { SettingRow("Kreator pierwszego uruchomienia", "Przejdź konfigurację od nowa", onClick = { UiState.openSetup(0) }) { Chevron() } }
     item { SectionLabel("System") }
+    item {
+        val cnt by pl.mati.carlauncher.data.Diag.counts.collectAsState()
+        val (crashes, freezes) = cnt
+        SettingRow(
+            "Dziennik błędów",
+            "Awarie: $crashes · zacięcia: $freezes · internet: ${pl.mati.carlauncher.data.Diag.netDesc} · mapa: ${pl.mati.carlauncher.data.Diag.mapState}. " +
+                "Dotknij – wyślij do CAR OS Connect (Ustawienia → Raport danych z radia → Udostępnij)",
+            onClick = {
+                Toaster.show(
+                    if (pl.mati.carlauncher.data.Diag.sendToPhone()) "Dziennik wysłany do CAR OS Connect"
+                    else "Telefon nie jest sparowany – połącz CAR OS Connect kodem QR",
+                )
+            },
+        ) { Chevron() }
+    }
     item { SettingRow("Uruchom ponownie", "Pokaż animację startu", onClick = { UiState.reboot() }) { Chevron() } }
     item {
         SettingRow("Przywróć domyślny wygląd", "Kolor, tapeta, tryb nocny, animacja", onClick = {
