@@ -42,7 +42,10 @@ android {
             signingConfig = signingConfigs.getByName("caros")
         }
         release {
-            isMinifyEnabled = false
+            // R8: optymalizacja bibliotek (Compose, Kotlin) – płynniejszy interfejs i szybszy start na słabym radiu.
+            // Kod CAR OS i biblioteki z kodem natywnym zostają w całości (proguard-rules.pro), nazwy bez zmian.
+            isMinifyEnabled = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             signingConfig = signingConfigs.getByName("caros")
         }
     }

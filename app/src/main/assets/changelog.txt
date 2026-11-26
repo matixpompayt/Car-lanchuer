@@ -2,6 +2,18 @@
 # "## next" = wersja w przygotowaniu: GitHub Actions przy budowaniu wstawia numer wersji i datę.
 # Pierwsza linia pod nagłówkiem = tytuł, linie z "- " = punkty.
 
+## next
+Płynniej na radiu – nic nie usunięte
+- Cała aplikacja zbudowana z optymalizacją (R8): szybszy start, płynniejsze przewijanie i animacje, mniejszy plik aktualizacji
+- Numery domów na mapie 3D: liczone dla najbliższych ok. 450 numerów i wszystkie naraz jednym przeliczeniem – wcześniej przy każdym ruchu mapy nawet 1500 osobnych przeliczeń (główna przyczyna szarpania mapy w mieście)
+- Palmy w stylu Miami: to samo – jedno przeliczenie na klatkę zamiast setek
+- „Budynki jak prawdziwe” (dachy): przeliczanie obrysów w tle, ekran nie staje co 1,5 s w czasie jazdy
+- Mapa pod mapą na pełnym ekranie (licznik) nie rysuje się, gdy jest zasłonięta – zamiast dwóch map naraz rysuje się jedna
+- Zegar i pasek stanu odświeżają się raz na minutę zamiast co sekundę (zegar pokazuje godziny i minuty – wygląda tak samo)
+- Migające ostrzeżenia (fotoradar, przekroczenie prędkości, serwis, kafle, shift-light) rysowane bez przeliczania całej karty co klatkę; animacje stoją, gdy nic nie miga (np. kaseta w pauzie)
+- Karta muzyki i ekran Muzyka: co pół sekundy odświeża się tylko pasek postępu, nie cały ekran
+- Komunikaty z radia (CAN, przyciski, Bluetooth) – zapis i rozbiór danych w tle, wątek ekranu wolny
+
 ## 2.0-beta.18 · 2026-11-25
 Stabilność i mapa na karcie SIM
 - Mapa: gdy styl mapy się nie wczyta (np. karta SIM jeszcze bez zasięgu zaraz po starcie, słaby zasięg), CAR OS ponawia wczytanie (co 3–30 s) i od razu, gdy internet wróci – wcześniej mapa zostawała pusta, dopóki nie włączyło się Wi-Fi z telefonu

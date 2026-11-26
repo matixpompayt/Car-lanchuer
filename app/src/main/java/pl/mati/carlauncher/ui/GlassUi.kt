@@ -193,10 +193,23 @@ private fun boxBlur(px: IntArray, w: Int, h: Int, r: Int) {
  */
 fun Modifier.carSurface(shape: Shape, color: Color = CarColors.Card, heavy: Boolean = false): Modifier =
     if (!GlassUi.on) this.background(color, shape)
-    else composed {
+    else glassSurface(shape, color == CarColors.Overlay, heavy) { color }
+
+/**
+ * Jak [carSurface], ale kolor czytany dopiero przy rysowaniu (miganie kafla) – zmienia się co klatkę
+ * bez przeliczania całego kafla od nowa.
+ */
+fun Modifier.carSurfaceAnimated(shape: Shape, heavy: Boolean = false, colorOf: () -> Color): Modifier =
+    if (!GlassUi.on) this.drawWithCache {
+        val o = shape.createOutline(size, layoutDirection, this)
+        onDrawBehind { drawOutline(o, colorOf()) }
+    }
+    else glassSurface(shape, false, heavy, colorOf)
+
+private fun Modifier.glassSurface(shape: Shape, onMap: Boolean, heavy: Boolean, colorOf: () -> Color): Modifier =
+    composed {
         val depth = LocalGlassDepth.current
         val light = CarColors.isLight
-        val onMap = color == CarColors.Overlay
         val frost by Prefs.glassFrost.collectAsState()
         val pos = remember { mutableStateOf(Offset.Zero) }
         this.onGloballyPositioned { pos.value = it.positionInRoot() }
@@ -221,6 +234,7 @@ fun Modifier.carSurface(shape: Shape, color: Color = CarColors.Card, heavy: Bool
                 // radio jest słabe: gładkie szkło bez „soczewki” na krawędzi (pierścienie tła kosztowały dużo rysowania)
                 val lens = emptyList<LensRing>()
                 onDrawBehind {
+                    val color = colorOf()
                     val blur = GlassUi.blurred
                     val sharp = GlassUi.sharp
                     val root = GlassUi.rootSize

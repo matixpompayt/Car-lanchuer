@@ -81,6 +81,7 @@ fun MiamiOverlay(map: MapLibreMap?, style: Style?, enabled: Boolean, light: Bool
 
     val sprites = remember(light) { listOf(palmBitmap(light, 0), palmBitmap(light, 1), palmBitmap(light, 2)) }
     val paint = remember { Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG) }
+    val pb = remember(map) { PalmBuf() }
     val haze = remember(light) {
         if (light) listOf(Color(0x66FF9A62), Color(0x26FF7FB0), Color.Transparent)
         else listOf(Color(0x80FF4FA3), Color(0x338A3FD1), Color.Transparent)
@@ -119,17 +120,29 @@ fun MiamiOverlay(map: MapLibreMap?, style: Style?, enabled: Boolean, light: Bool
             val b = proj.visibleRegion.latLngBounds
             val tilt = (cam.tilt / 90.0).toFloat().coerceIn(0f, 1f)
             val vis = ArrayList<FloatArray>(300)
-            for (p in palms) {
+            // palmy w widoku na ekran jednym wywołaniem (zamiast osobno każdą – setki na klatkę)
+            val all = palms
+            if (pb.ll.size < all.size * 2) { pb.ll = DoubleArray(all.size * 2); pb.xy = DoubleArray(all.size * 2); pb.idx = IntArray(all.size) }
+            var cnt = 0
+            for ((i, p) in all.withIndex()) {
                 if (p.lat < b.latitudeSouth || p.lat > b.latitudeNorth || p.lon < b.longitudeWest || p.lon > b.longitudeEast) continue
-                val s = proj.toScreenLocation(LatLng(p.lat, p.lon))
-                if (s.x < -60 || s.x > w + 60 || s.y < h * 0.08f || s.y > h + 80) continue
-                if (car != null && hypot(s.x - car.x, s.y - car.y) < carR) continue
-                val k = ppmAt(s.y)
+                pb.ll[cnt * 2] = p.lat; pb.ll[cnt * 2 + 1] = p.lon
+                pb.idx[cnt] = i
+                cnt++
+            }
+            MapProject.toScreen(proj, pb.ll, cnt, pb.xy)
+            for (j in 0 until cnt) {
+                val p = all[pb.idx[j]]
+                val sx = pb.xy[j * 2].toFloat()
+                val sy = pb.xy[j * 2 + 1].toFloat()
+                if (sx < -60 || sx > w + 60 || sy < h * 0.08f || sy > h + 80) continue
+                if (car != null && hypot(sx - car.x, sy - car.y) < carR) continue
+                val k = ppmAt(sy)
                 if (k <= 0f) continue
                 // pionowy obiekt w pochylonym widoku: skrót zależny od pochylenia
                 val hp = (p.height * k * (0.35f + 0.6f * tilt)).coerceAtMost(150f * density)
                 if (hp < 9f * density) continue
-                vis += floatArrayOf(s.x, s.y, hp, p.kind.toFloat(), if (p.flip) 1f else 0f)
+                vis += floatArrayOf(sx, sy, hp, p.kind.toFloat(), if (p.flip) 1f else 0f)
             }
             // najdalsze (wyżej na ekranie) najpierw, bliższe na wierzchu; najwyżej ~260 palm
             vis.sortBy { it[1] }
@@ -162,6 +175,12 @@ fun MiamiOverlay(map: MapLibreMap?, style: Style?, enabled: Boolean, light: Bool
 }
 
 private const val MIN_ZOOM = 15.2
+
+private class PalmBuf {
+    var ll = DoubleArray(0)
+    var xy = DoubleArray(0)
+    var idx = IntArray(0)
+}
 
 private class Palm(val lat: Double, val lon: Double, val height: Float, val kind: Int, val flip: Boolean)
 

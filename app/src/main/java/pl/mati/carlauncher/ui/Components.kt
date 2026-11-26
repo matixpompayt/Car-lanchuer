@@ -80,6 +80,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.graphics.drawOutline
+import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -132,9 +135,16 @@ fun isNightHour(ms: Long = System.currentTimeMillis()): Boolean {
 
 @Composable
 fun rememberNow(): State<Long> = produceState(System.currentTimeMillis()) {
+    // zegar pokazuje godziny i minuty – zmiana stanu (i przerysowanie) tylko przy nowej minucie,
+    // a nie co sekundę; sprawdzanie co ≤10 s łapie też przestawienie zegara (GPS / sieć po starcie)
+    var shown = value / 60_000
     while (true) {
-        value = System.currentTimeMillis()
-        delay(1000 - value % 1000)
+        val t = System.currentTimeMillis()
+        if (t / 60_000 != shown) {
+            shown = t / 60_000
+            value = t
+        }
+        delay((60_000 - t % 60_000 + 15).coerceIn(15, 10_000))
     }
 }
 
@@ -217,6 +227,8 @@ fun CarCard(
     modifier: Modifier = Modifier,
     color: Color = CarColors.Card,
     radius: Dp = 24.dp,
+    /** Kolor zmieniany co klatkę (miganie) – czytany przy rysowaniu, zamiast [color]. */
+    colorOf: (() -> Color)? = null,
     content: @Composable BoxScope.() -> Unit,
 ) {
     val th = CarColors.theme
@@ -229,12 +241,31 @@ fun CarCard(
         modifier
             .stagger()
             .clip(shape)
-            .carSurface(shape, color)
+            .then(if (colorOf != null) Modifier.carSurfaceAnimated(shape, colorOf = colorOf) else Modifier.carSurface(shape, color))
             .then(if (!border) Modifier else Modifier.border(th.borderWidth, CarColors.Border, shape)),
     ) {
         CompositionLocalProvider(LocalGlassDepth provides depth + 1) { content() }
     }
 }
+
+/**
+ * Ramka jak [border], ale przezroczystość czytana przy rysowaniu – pulsowanie (ostrzeżenia)
+ * nie przelicza całej karty co klatkę.
+ */
+fun Modifier.pulseBorder(width: Dp, color: Color, shape: androidx.compose.ui.graphics.Shape, alpha: () -> Float): Modifier =
+    this.drawWithCache {
+        val w = width.toPx()
+        val inner = shape.createOutline(
+            androidx.compose.ui.geometry.Size((size.width - w).coerceAtLeast(0f), (size.height - w).coerceAtLeast(0f)), layoutDirection, this,
+        )
+        val stroke = androidx.compose.ui.graphics.drawscope.Stroke(w)
+        onDrawWithContent {
+            drawContent()
+            translate(w / 2f, w / 2f) {
+                drawOutline(inner, color.copy(alpha = (color.alpha * alpha()).coerceIn(0f, 1f)), style = stroke)
+            }
+        }
+    }
 
 @Composable
 fun Caption(text: String, modifier: Modifier = Modifier, size: TextUnit = 13.sp, color: Color = CarColors.Muted) {

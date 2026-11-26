@@ -85,10 +85,11 @@ fun MusicScreen() {
     val access by MediaRepository.access.collectAsState()
     val apps = remember { installedMediaApps(ctx) }
     val np = rememberNowPlaying()
-    var pos by remember { mutableLongStateOf(0L) }
+    // pozycja utworu: czytana tylko w pasku przewijania – ekran nie przelicza się co pół sekundy
+    val pos = remember { mutableLongStateOf(0L) }
     LaunchedEffect(m, np.key, np.title) {
         while (true) {
-            pos = Player.position(np)
+            pos.longValue = Player.position(np)
             delay(500)
         }
     }
@@ -154,13 +155,9 @@ fun MusicScreen() {
                 }
                 Text("Stację i utwory zmieniasz w aplikacji radia albo przyciskami na kierownicy.", fontSize = 16.sp, color = CarColors.Muted)
             } else if (np.duration > 0) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    SeekBar(pos.toFloat() / np.duration) { f -> if (np.key != "bt") MediaRepository.seekTo((f * np.duration).toLong()) }
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text(formatDuration(pos), fontSize = 16.sp, color = CarColors.Muted)
-                        Text(formatDuration(np.duration), fontSize = 16.sp, color = CarColors.Muted)
-                    }
-                }
+                val dur = np.duration
+                val bt = np.key == "bt"
+                PlaybackSeek({ pos.longValue }, dur) { f -> if (!bt) MediaRepository.seekTo((f * dur).toLong()) }
             }
             if (np.controllable || np.pkg == null) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(22.dp)) {
                 RoundIconButton(Icons.Rounded.SkipPrevious, "Poprzedni", 72.dp, { Player.previous(np) }, iconSize = 40.dp)
@@ -173,6 +170,18 @@ fun MusicScreen() {
                 Spacer(Modifier.weight(1f))
                 RoundIconButton(Icons.Rounded.Equalizer, "Korektor", 60.dp, { Launch.equalizer(ctx) }, iconSize = 30.dp)
             }
+        }
+    }
+}
+
+@Composable
+private fun PlaybackSeek(posOf: () -> Long, duration: Long, onSeek: (Float) -> Unit) {
+    val pos = posOf()
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        SeekBar(pos.toFloat() / duration, onSeek)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(formatDuration(pos), fontSize = 16.sp, color = CarColors.Muted)
+            Text(formatDuration(duration), fontSize = 16.sp, color = CarColors.Muted)
         }
     }
 }

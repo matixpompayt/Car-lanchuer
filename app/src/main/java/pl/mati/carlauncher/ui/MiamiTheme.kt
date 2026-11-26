@@ -264,8 +264,10 @@ private fun MiamiSpeed(modifier: Modifier) {
 private fun MiamiMedia(modifier: Modifier) {
     val m = rememberNowPlaying()
     val shape = RoundedCornerShape(24.dp)
-    val t = rememberInfiniteTransition(label = "mm")
-    val glow by t.animateFloat(0.35f, 0.8f, infiniteRepeatable(tween(1600), RepeatMode.Reverse), label = "mmg")
+    val glow: androidx.compose.runtime.State<Float>? = if (m.playing) {
+        val t = rememberInfiniteTransition(label = "mm")
+        t.animateFloat(0.35f, 0.8f, infiniteRepeatable(tween(1600), RepeatMode.Reverse), label = "mmg")
+    } else null
     Column(
         modifier.clip(shape).carSurface(shape, CarColors.Card, heavy = true).clickable { UiState.go(Screen.MUSIC) }.padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -274,7 +276,7 @@ private fun MiamiMedia(modifier: Modifier) {
             Box(
                 Modifier.size(104.dp).drawBehind {
                     // poświata pod okładką – pulsuje, gdy gra muzyka
-                    val a = if (m.playing) glow else 0.3f
+                    val a = glow?.value ?: 0.3f
                     drawCircle(Brush.radialGradient(listOf(MIAMI_PINK.copy(alpha = a), Color.Transparent)), size.minDimension * 0.75f)
                 },
                 contentAlignment = Alignment.Center,

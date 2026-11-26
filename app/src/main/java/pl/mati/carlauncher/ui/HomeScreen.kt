@@ -238,10 +238,11 @@ private fun MediaCard(modifier: Modifier) {
     val np = rememberNowPlaying()
     val access by MediaRepository.access.collectAsState()
     val ctx = LocalContext.current
-    var pos by remember { mutableLongStateOf(0L) }
+    // pozycja utworu: czytana tylko w pasku postępu – karta nie przelicza się co pół sekundy
+    val pos = remember { mutableLongStateOf(0L) }
     LaunchedEffect(m, np.key, np.title) {
         while (true) {
-            pos = Player.position(np)
+            pos.longValue = Player.position(np)
             delay(500)
         }
     }
@@ -334,13 +335,7 @@ private fun MediaCard(modifier: Modifier) {
                 Box(Modifier.height(12.dp))
                 // postęp
                 if (np.duration > 0) {
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        ProgressBar(pos.toFloat() / np.duration, CarColors.Text, height = 4.dp)
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text(formatDuration(pos), fontSize = 14.sp, color = CarColors.Text2)
-                            Text(formatDuration(np.duration), fontSize = 14.sp, color = CarColors.Text2)
-                        }
-                    }
+                    MediaProgress({ pos.longValue }, np.duration)
                     Box(Modifier.height(6.dp))
                 }
                 // sterowanie
@@ -414,14 +409,13 @@ private fun VehicleTiles(modifier: Modifier, fill: Boolean = false) {
                     AddTile(Modifier.weight(1f).fillMaxHeight()) { UiState.homeEdit.value = true; pickFor = -1 }
                     return@forEachIndexed
                 }
-                val wiggle = if (editing) {
+                val wiggle: androidx.compose.runtime.State<Float>? = if (editing) {
                     val t = rememberInfiniteTransition(label = "wig$i")
-                    val r by t.animateFloat(-0.8f, 0.8f, infiniteRepeatable(tween(260 + i * 40), RepeatMode.Reverse), label = "r$i")
-                    r
-                } else 0f
+                    t.animateFloat(-0.8f, 0.8f, infiniteRepeatable(tween(260 + i * 40), RepeatMode.Reverse), label = "r$i")
+                } else null
                 Box(
                     Modifier.weight(1f).fillMaxHeight()
-                        .graphicsLayer { rotationZ = wiggle }
+                        .graphicsLayer { rotationZ = wiggle?.value ?: 0f }
                         .longPressToEdit { UiState.homeEdit.value = true },
                 ) {
                     TileContent(k, Modifier.fillMaxWidth().fillMaxHeight(), size)
@@ -654,15 +648,28 @@ private fun SmallTile(
         }
         return
     }
-    val bg = if (blink) {
+    // miganie: kolor liczony przy rysowaniu – kafel nie przelicza się co klatkę
+    val f: androidx.compose.runtime.State<Float>? = if (blink) {
         val t = rememberInfiniteTransition(label = "blink")
-        val f by t.animateFloat(0f, 1f, infiniteRepeatable(tween(700), RepeatMode.Reverse), label = "f")
-        lerp(CarColors.Card, CarColors.Blink, f)
-    } else CarColors.Card
-    CarCard(modifier.clickable(onClick = onClick), color = bg, radius = 20.dp) {
+        t.animateFloat(0f, 1f, infiniteRepeatable(tween(700), RepeatMode.Reverse), label = "f")
+    } else null
+    CarCard(modifier.clickable(onClick = onClick), radius = 20.dp, colorOf = f?.let { s -> { lerp(CarColors.Card, CarColors.Blink, s.value) } }) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
             Caption(label, color = labelColor)
             ValueText(value, unit, size, Modifier.fillMaxWidth(), color = valueColor)
+        }
+    }
+}
+
+/** Pasek postępu utworu na karcie muzyki (osobno – co pół sekundy przelicza się tylko on). */
+@Composable
+private fun MediaProgress(posOf: () -> Long, duration: Long) {
+    val pos = posOf()
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        ProgressBar(pos.toFloat() / duration, CarColors.Text, height = 4.dp)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(formatDuration(pos), fontSize = 14.sp, color = CarColors.Text2)
+            Text(formatDuration(duration), fontSize = 14.sp, color = CarColors.Text2)
         }
     }
 }
@@ -690,11 +697,13 @@ private fun ServiceTile(
     val cur = pool.getOrNull(idx % maxOf(1, pool.size))
     val overdue = cur?.overdue == true
 
-    val t = rememberInfiniteTransition(label = "blink")
-    val f by t.animateFloat(0f, 1f, infiniteRepeatable(tween(700), RepeatMode.Reverse), label = "f")
-    val bg = if (overdue) lerp(CarColors.Card, CarColors.Blink, f) else CarColors.Card
+    // miga tylko po terminie (bez animacji co klatkę, gdy wszystko w porządku)
+    val f: androidx.compose.runtime.State<Float>? = if (overdue) {
+        val t = rememberInfiniteTransition(label = "blink")
+        t.animateFloat(0f, 1f, infiniteRepeatable(tween(700), RepeatMode.Reverse), label = "f")
+    } else null
 
-    CarCard(m.clickable { UiState.go(Screen.SERVICE) }, color = bg, radius = 20.dp) {
+    CarCard(m.clickable { UiState.go(Screen.SERVICE) }, radius = 20.dp, colorOf = f?.let { s -> { lerp(CarColors.Card, CarColors.Blink, s.value) } }) {
         AnimatedContent(
             targetState = cur,
             transitionSpec = {

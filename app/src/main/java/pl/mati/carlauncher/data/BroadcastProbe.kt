@@ -156,12 +156,20 @@ object BroadcastProbe {
         val ex = intent.extras
         val pairs = mutableMapOf<String, String>()
         if (ex != null) for (k in ex.keySet()) pairs[k] = valueOf(ex, k)
-        val line = formatTime(System.currentTimeMillis()) + " " + action +
-            if (pairs.isEmpty()) "" else " → " + pairs.entries.joinToString(", ") { "${it.key}=${it.value}" }.take(300)
-        log.value = (listOf(line) + log.value).take(40)
+        val at = System.currentTimeMillis()
+        // dziennik komunikatów i dane z CAN (dużo tekstu, setki wartości) – w tle, nie na wątku ekranu;
+        // jeden wątek = ta sama kolejność co komunikaty
+        work.execute {
+            try {
+                val line = formatTime(at) + " " + action +
+                    if (pairs.isEmpty()) "" else " → " + pairs.entries.joinToString(", ") { "${it.key}=${it.value}" }.take(300)
+                log.value = (listOf(line) + log.value).take(40)
+                CanRepository.observeBundle(action, pairs)
+            } catch (_: Exception) {
+            }
+        }
         HeadlightDetector.onBroadcast(action, pairs)
         try { SteeringKeys.onBroadcast(action, pairs) } catch (_: Exception) {}
-        CanRepository.observeBundle(action, pairs)
         if (action.endsWith("headsetclient.profile.action.AG_EVENT")) {
             PhoneStatusRepository.onAgEvent(pairs)
             return
@@ -228,5 +236,10 @@ object BroadcastProbe {
         }
     }
 
-    private fun formatTime(ms: Long): String = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US).format(java.util.Date(ms))
+    /** Wątek do dziennika i danych CAN z komunikatów. */
+    private val work = java.util.concurrent.Executors.newSingleThreadExecutor { r -> Thread(r, "caros-bc").apply { isDaemon = true } }
+    private val timeFmt = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US)
+
+    /** Tylko z wątku [work] (SimpleDateFormat nie jest wielowątkowy). */
+    private fun formatTime(ms: Long): String = timeFmt.format(java.util.Date(ms))
 }

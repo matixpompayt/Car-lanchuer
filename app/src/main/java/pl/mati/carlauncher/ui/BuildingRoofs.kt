@@ -112,8 +112,12 @@ object BuildingRoofs {
         val w = bb.longitudeWest - mLon; val e = bb.longitudeEast + mLon
         val tLat = target.latitude; val tLon = target.longitude
         val kx = cos(Math.toRadians(tLat))
+        // odczyt z kafelków musi być na wątku mapy; przeliczanie obrysów – już w tle
+        val feats = vs.querySourceFeatures(arrayOf("building"), null)
+        val prev = lastSig[style] ?: 0L
+        val res = withContext(Dispatchers.Default) {
         val raws = ArrayList<Raw>()
-        for (f in vs.querySourceFeatures(arrayOf("building"), null)) {
+        for (f in feats) {
             if (f.hasProperty("hide_3d") && f.getBooleanProperty("hide_3d") == true) continue
             val polys: List<List<List<Point>>> = when (val g = f.geometry()) {
                 is Polygon -> listOf(g.coordinates())
@@ -134,8 +138,6 @@ object BuildingRoofs {
                 raws += Raw(id, arr, h, mh, dy * dy + dx * dx)
             }
         }
-        val prev = lastSig[style] ?: 0L
-        val res = withContext(Dispatchers.Default) {
             raws.sortBy { it.dist }
             // ten sam budynek bywa w kilku kafelkach: identyczny – bierzemy raz, przycięty na granicy – bez dachu
             val byId = HashMap<Double, MutableList<Raw>>()

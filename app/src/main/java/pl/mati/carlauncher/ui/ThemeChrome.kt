@@ -117,8 +117,11 @@ fun ShiftLights(modifier: Modifier) {
     val n = 26
     val lit = ((rpm / max) * n).toInt().coerceIn(0, n)
     val flash = rpm >= 4300
-    val t = rememberInfiniteTransition(label = "shift")
-    val blink = t.animateFloat(1f, 0.15f, infiniteRepeatable(tween(110), RepeatMode.Reverse), label = "b")
+    // mruganie tylko przy odcięciu – poza nim bez animacji co klatkę
+    val blink: androidx.compose.runtime.State<Float>? = if (flash) {
+        val t = rememberInfiniteTransition(label = "shift")
+        t.animateFloat(1f, 0.15f, infiniteRepeatable(tween(110), RepeatMode.Reverse), label = "b")
+    } else null
     Canvas(modifier.background(Color.Black).padding(horizontal = 10.dp, vertical = 3.dp)) {
         val gap = 4.dp.toPx()
         val w = (size.width - gap * (n - 1)) / n
@@ -130,7 +133,7 @@ fun ShiftLights(modifier: Modifier) {
             }
             val on = i < lit
             val c = when {
-                flash -> Color(0xFFFF1E1E).copy(alpha = blink.value)
+                flash -> Color(0xFFFF1E1E).copy(alpha = blink?.value ?: 1f)
                 on -> base
                 else -> base.copy(alpha = 0.12f)
             }

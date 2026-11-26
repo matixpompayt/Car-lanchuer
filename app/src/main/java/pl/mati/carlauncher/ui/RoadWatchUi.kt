@@ -31,6 +31,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -87,15 +88,16 @@ private fun LimitSign(v: Int, size: Int = 58) {
 @Composable
 private fun CameraCard(c: RoadWatch.Camera) {
     val shape = RoundedCornerShape(26.dp)
-    val pulse = if (c.over) {
+    val pulse: androidx.compose.runtime.State<Float>? = if (c.over) {
         val t = rememberInfiniteTransition(label = "cam")
-        val f by t.animateFloat(1f, 0.55f, infiniteRepeatable(tween(420), RepeatMode.Reverse), label = "camA")
-        f
-    } else 1f
+        t.animateFloat(1f, 0.55f, infiniteRepeatable(tween(420), RepeatMode.Reverse), label = "camA")
+    } else null
     val bg = if (c.over) Danger else Amber
     val fg = if (c.over) Color.White else Color(0xFF1A1205)
     Row(
-        Modifier.clip(shape).background(bg.copy(alpha = 0.55f + 0.45f * pulse)).padding(start = 14.dp, end = 14.dp, top = 10.dp, bottom = 10.dp),
+        Modifier.clip(shape)
+            .drawBehind { drawRect(bg.copy(alpha = 0.55f + 0.45f * (pulse?.value ?: 1f))) }
+            .padding(start = 14.dp, end = 14.dp, top = 10.dp, bottom = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {

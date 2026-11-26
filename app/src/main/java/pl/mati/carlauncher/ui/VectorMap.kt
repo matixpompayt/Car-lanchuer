@@ -813,6 +813,25 @@ fun VectorMap(modifier: Modifier, full: Boolean = false) {
         }
     }
 
+    // mapa pod mapą na pełnym ekranie (licznik) jest całkiem zasłonięta – nie rysuj jej w tym czasie,
+    // zamiast dwóch map naraz rysuje się jedna (po zamknięciu od razu wraca, kamera dalej jedzie za autem)
+    if (!full) {
+        val covered by UiState.mapFull.collectAsState()
+        var paused by remember { mutableStateOf(false) }
+        LaunchedEffect(covered) {
+            if (covered) {
+                delay(700) // po animacji otwierania
+                try { h.view.onPause() } catch (_: Exception) {}
+                paused = true
+            } else if (paused) {
+                paused = false
+                if (lifecycle?.currentState?.isAtLeast(Lifecycle.State.RESUMED) != false) {
+                    try { h.view.onResume() } catch (_: Exception) {}
+                }
+            }
+        }
+    }
+
     // internet wrócił (karta SIM / Wi-Fi) – pusta mapa wczytuje się od razu, bez czekania
     LaunchedEffect(h) {
         pl.mati.carlauncher.data.Diag.online.collect { if (it == true) h.retryNow() }

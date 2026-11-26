@@ -391,9 +391,12 @@ private fun RetroSpeed(modifier: Modifier) {
 private fun CassettePlayer(modifier: Modifier) {
     val m = rememberNowPlaying()
     val anim by Prefs.animations.collectAsState()
-    val t = rememberInfiniteTransition(label = "reels")
-    val rot = t.animateFloat(0f, 360f, infiniteRepeatable(tween(2600, easing = LinearEasing)), label = "rot")
     val playing = m.playing && anim
+    // szpule kręcą się tylko przy odtwarzaniu – w pauzie bez animacji co klatkę
+    val rot: androidx.compose.runtime.State<Float>? = if (playing) {
+        val t = rememberInfiniteTransition(label = "reels")
+        t.animateFloat(0f, 360f, infiniteRepeatable(tween(2600, easing = LinearEasing)), label = "rot")
+    } else null
     Column(
         modifier.clip(RoundedCornerShape(12.dp)).carSurface(RoundedCornerShape(12.dp), CarColors.Card).border(1.5.dp, NEON_PINK, RoundedCornerShape(12.dp))
             .clickable { UiState.go(Screen.MUSIC) }.padding(14.dp),
@@ -412,7 +415,7 @@ private fun CassettePlayer(modifier: Modifier) {
                 // okienko i szpule
                 drawRoundRect(Color(0xFF0A0218), Offset(w * 0.22f, h * 0.55f), Size(w * 0.56f, h * 0.33f), CornerRadius(h * 0.16f))
                 val reel = h * 0.12f
-                val a = if (playing) rot.value else 0f
+                val a = rot?.value ?: 0f
                 listOf(w * 0.36f, w * 0.64f).forEach { cx ->
                     val c = Offset(cx, h * 0.715f)
                     drawCircle(Color(0xFFE6CCFF), reel, c)

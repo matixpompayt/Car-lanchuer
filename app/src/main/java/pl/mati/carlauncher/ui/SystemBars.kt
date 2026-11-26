@@ -63,6 +63,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -438,13 +439,14 @@ private fun CamSamAlertCard(a: AlertRepository.Alert, modifier: Modifier = Modif
     val ctx = LocalContext.current
     val tone = alertTone(a)
     val t = rememberInfiniteTransition(label = "cs")
-    val glow by t.animateFloat(0.55f, 1f, infiniteRepeatable(tween(700), RepeatMode.Reverse), label = "csg")
+    val glow = t.animateFloat(0.55f, 1f, infiniteRepeatable(tween(700), RepeatMode.Reverse), label = "csg")
     val shape = RoundedCornerShape(CarColors.theme.radius(20.dp))
     Column(
         modifier
             .clip(shape)
             .carSurface(shape, CarColors.Panel, heavy = true)
-            .border(2.dp, tone.copy(alpha = glow), shape)
+            // pulsująca ramka rysowana bez przeliczania całej karty co klatkę (płynniej w czasie jazdy)
+            .pulseBorder(2.dp, tone, shape) { glow.value }
             .clickable { if (a.fromPhone || a.source == "t") AlertRepository.dismiss() else Launch.pkg(ctx, a.pkg) }
             .padding(start = 14.dp, end = 10.dp, top = 12.dp, bottom = 12.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -647,8 +649,11 @@ private fun ServiceBarIcon() {
         }
     }
     if (state == 0) return
-    val t = rememberInfiniteTransition(label = "svc")
-    val a by t.animateFloat(1f, 0.15f, infiniteRepeatable(tween(650), RepeatMode.Reverse), label = "a")
+    // miga tylko „po terminie” – „wkrótce” stoi, więc bez animacji co klatkę
+    val a: androidx.compose.runtime.State<Float>? = if (state == 2) {
+        val t = rememberInfiniteTransition(label = "svc")
+        t.animateFloat(1f, 0.15f, infiniteRepeatable(tween(650), RepeatMode.Reverse), label = "a")
+    } else null
     Box(
         Modifier.size(40.dp).clip(CircleShape)
             .background(if (state == 2) CarColors.Red.copy(alpha = 0.18f) else Color.Transparent)
@@ -658,7 +663,7 @@ private fun ServiceBarIcon() {
         Icon(
             Icons.Rounded.Build, "Serwis",
             tint = if (state == 2) CarColors.Red else CarColors.Orange,
-            modifier = Modifier.size(22.dp).alpha(if (state == 2) a else 1f),
+            modifier = Modifier.size(22.dp).graphicsLayer { alpha = a?.value ?: 1f },
         )
     }
 }
@@ -675,7 +680,7 @@ fun ServiceAlertOverlay() {
         val rowBg = if (light) androidx.compose.ui.graphics.lerp(CarColors.Card, CarColors.Red, 0.14f) else Color(0xFF2A1214)
         val dueText = if (light) CarColors.Red else Color(0xFFFF8A8E)
         val t = rememberInfiniteTransition(label = "alert")
-        val a by t.animateFloat(1f, 0.35f, infiniteRepeatable(tween(700), RepeatMode.Reverse), label = "a")
+        val a = t.animateFloat(1f, 0.35f, infiniteRepeatable(tween(700), RepeatMode.Reverse), label = "a")
         Box(
             Modifier
                 .fillMaxSize()
@@ -689,13 +694,13 @@ fun ServiceAlertOverlay() {
                     .fillMaxSize()
                     .clip(RoundedCornerShape(32.dp))
                     .background(cardBg)
-                    .border(3.dp, CarColors.Red.copy(alpha = a), RoundedCornerShape(32.dp))
+                    .pulseBorder(3.dp, CarColors.Red, RoundedCornerShape(32.dp)) { a.value }
                     .padding(horizontal = 44.dp, vertical = 30.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(20.dp)) {
                     Box(Modifier.size(84.dp).clip(CircleShape).background(CarColors.Red.copy(alpha = 0.2f)), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Rounded.Warning, null, tint = CarColors.Red, modifier = Modifier.size(52.dp).alpha(a))
+                        Icon(Icons.Rounded.Warning, null, tint = CarColors.Red, modifier = Modifier.size(52.dp).graphicsLayer { alpha = a.value })
                     }
                     Column(Modifier.weight(1f)) {
                         Text("Przekroczony termin serwisu", fontSize = 40.sp, fontWeight = FontWeight.Bold, color = CarColors.Text)

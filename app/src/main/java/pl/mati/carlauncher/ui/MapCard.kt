@@ -307,16 +307,16 @@ fun SpeedLimitBadge(modifier: Modifier) {
     val over by SpeedLimitRepository.over.collectAsState()
     val gps by LocationRepository.gpsSpeed.collectAsState()
     if (!on || lim == null) return
-    val pulse = if (over) {
+    // pulsowanie czytane w warstwie (graphicsLayer) – bez przeliczania znaku co klatkę
+    val pulse: androidx.compose.runtime.State<Float>? = if (over) {
         val t = androidx.compose.animation.core.rememberInfiniteTransition(label = "sl")
-        val f by t.animateFloat(1f, 1.12f, androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(450), androidx.compose.animation.core.RepeatMode.Reverse), label = "slf")
-        f
-    } else 1f
+        t.animateFloat(1f, 1.12f, androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(450), androidx.compose.animation.core.RepeatMode.Reverse), label = "slf")
+    } else null
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Box(
             Modifier
                 .size(74.dp)
-                .graphicsLayer { scaleX = pulse; scaleY = pulse }
+                .graphicsLayer { val p = pulse?.value ?: 1f; scaleX = p; scaleY = p }
                 .clip(CircleShape)
                 .background(Color.White)
                 .border(9.dp, Color(0xFFE0262B), CircleShape),
