@@ -388,9 +388,17 @@
    "pb95": 5.81,
    "pb98": 6.47,
    "on": 7.12,
-   "eli": "gov:maksymalna-cena-detaliczna-paliw-obowiazujaca-27-listopada-2026-r",
+   "eli": "MP/2026/1179",
    "published": "2026-11-26",
    "from": "2026-11-27"
+  },
+  {
+   "pb95": 5.77,
+   "pb98": 6.43,
+   "on": 7.15,
+   "eli": "gov:maksymalna-cena-detaliczna-paliw-obowiazujaca-w-dniach-28-30-listopada-2026-r",
+   "published": "2026-11-27",
+   "from": "2026-11-28"
   }
  ],
  "lpgHistory": [
@@ -491,11 +499,11 @@
   },
   {
    "date": "2026-11-27",
-   "price": 3.94,
+   "price": 3.93,
    "src": "www.autocentrum.pl"
   }
  ],
  "source": "Ceny maksymalne: obwieszczenia Ministra Energii (Monitor Polski). LPG: średnia detaliczna z serwisów cenowych.",
- "updated": "2026-11-27T00:59:46+00:00",
+ "updated": "2026-11-27T16:33:28+00:00",
  "v": 2
 }
